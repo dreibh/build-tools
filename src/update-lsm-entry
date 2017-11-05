@@ -83,4 +83,5 @@ echo -en "\x1b[34mRun: Apply update? [yes/no]?\x1b[0m "
 read -er applyChanges
 if [ "$applyChanges" == "yes" -o "$applyChanges" == "y" ] ; then
    mv $LSM_ENTRY.new ${LSM_ENTRY}
+   thunderbird -compose to=lsm@pug.qqx.org,subject=add,attachment="`pwd`/$LSM_ENTRY" || true &
 fi
