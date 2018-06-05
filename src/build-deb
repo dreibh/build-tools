@@ -1,5 +1,5 @@
 #!/bin/bash -e
-# $Id$
+# $Id: build-deb 2104 2018-05-24 15:02:35Z dreibh $
 #
 # Debian Packaging Scripts
 # Copyright (C) 2002-2018 by Thomas Dreibholz
