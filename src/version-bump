@@ -33,7 +33,7 @@ debianVersionString     = False
 if os.path.isfile(debianChangeLogFileName):
    re_version = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+)\.(\d+)\.(\d+)(.*|)-(\d[a-zA-Z-+]+\d)\)[ \t]*([a-zA-Z-+]+)[ \t]*;')
    try:
-      debianChangeLogFile = open(debianChangeLogFileName, 'r')
+      debianChangeLogFile = open(debianChangeLogFileName, 'r', encoding='utf-8')
       header = debianChangeLogFile.readline()
       match = re_version.match(header)
       if match != None:
@@ -63,7 +63,7 @@ if len(rpmSpecFileNames) > 0:
    re_version = re.compile(r'^(Version:)[ \t]*(\d+)\.(\d+)\.(\d+)(.*|)')
    re_release = re.compile(r'^(Release:)[ \t]*(\d+)')
    try:
-      rpmSpecFileOld = open(rpmSpecFileName, 'r')
+      rpmSpecFileOld = open(rpmSpecFileName, 'r', encoding='utf-8')
       contents = rpmSpecFileOld.readlines()
       for line in contents:
          match = re_version.match(line)
@@ -99,7 +99,7 @@ if os.path.isfile(cmakeFileName):
    re_minor = re.compile(r'^SET\(BUILD_MINOR[ \t]*"(\d+)"[ \t]*\)')
    re_patch = re.compile(r'^SET\(BUILD_PATCH[ \t]*"(\d+)(~[a-zA-Z0-9\.+]+|)"[ \t]*\)')
    try:
-      cmakeFileOld = open(cmakeFileName, 'r')
+      cmakeFileOld = open(cmakeFileName, 'r', encoding='utf-8')
       contents = cmakeFileOld.readlines()
       for line in contents:
          match = re_major.match(line)
@@ -145,3 +145,45 @@ if rpmVersionString != None:
    if rpmVersionString != cmakeVersionString:
       sys.stderr.write('ERROR: RPM version does not match CMakeFile.txt version!\n')
       sys.exit(1)
+
+
+# ====== Version bump =======================================================
+versionMajor = cmakeVersionMajor
+versionMinor = cmakeVersionMinor
+versionPatch = cmakeVersionPatch
+versionExtra = cmakeVersionExtra
+for i in range(1, len(sys.argv)):
+   if (sys.argv[i] == '-M') or (sys.argv[i] == '--major'):
+      versionMajor = versionMajor + 1
+      versionMinor = 0
+      versionPatch = 0
+      versionExtra = ""
+
+   elif (sys.argv[i] == '-m') or (sys.argv[i] == '--minor'):
+      versionMinor = versionMinor + 1
+      versionPatch = 0
+      versionExtra = ""
+
+   elif (sys.argv[i] == '-p') or (sys.argv[i] == '--patch'):
+      versionPatch = versionPatch + 1
+      versionExtra = ""
+
+   elif (sys.argv[i] == '-e') or (sys.argv[i] == '--extra'):
+      if versionExtra == '':
+         versionExtra = '~alpha1.0'
+      else:
+         match = re.match(r'^(~.*)(\d+)$', versionExtra)
+         if match != None:
+            e = int(match.group(2)) + 1
+            versionExtra = match.group(1) + str(e)
+         else:
+            sys.stderr.write('ERROR: Unable to increment extra version ' + versionExtra + '!\n')
+            sys.exit(1)
+
+   else:
+      sys.stderr.write('Usage: ' + sys.argv[0] + ' [-M|--major | -m|--minor | -p|--patch  -e|--extra]')
+      sys.exit(1)
+
+versionString = str(versionMajor) + '.' + str(versionMinor) + '.' + \
+                str(versionPatch) + versionExtra
+print(versionString)
