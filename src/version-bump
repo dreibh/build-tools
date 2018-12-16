@@ -1,0 +1,77 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+#
+# Packaging Scripts
+# Copyright (C) 2018-2019 by Thomas Dreibholz
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Contact: dreibh@simula.no
+#
+
+import glob
+import os
+import re
+import sys
+
+
+# ====== Read Debian configuration ==========================================
+debianChangeLogFileName = 'debian/changelog'
+debianFoundVersion = False
+
+if os.path.isfile(debianChangeLogFileName):
+   re_version = re.compile(r'^([a-zA-Z0-9-+]+)([ \t]*)\((\d+)\.(\d+)\.(\d+)(.*|)-(\d[a-zA-Z-+]+\d)\)([ \t]*)([a-zA-Z-+]+)([ \t]*);')
+   try:
+      debianChangeLogFileOld = open(debianChangeLogFileName, 'r')
+      header = debianChangeLogFileOld.readline()
+      print(header)
+      match = re_version.match(header)
+      if match != None:
+         debianVersionMajor     = int(match.group(3))
+         debianVersionMinor     = int(match.group(4))
+         debianVersionPatch     = int(match.group(5))
+         debianVersionExtra     = match.group(6)
+         debianVersionPackaging = match.group(7)
+         debianFoundVersion = True
+         print(debianVersionMajor, debianVersionMinor, debianVersionPatch, debianVersionExtra, debianVersionPackaging)
+      debianChangeLogFileOld.close()
+   except:
+      sys.stderr.write('ERROR: Unable to read ' + debianChangeLogFileName + '\n')
+      sys.exit(1)
+
+
+# ====== Read RPM configuration =============================================
+rpmSpecFileName = None
+rpmFoundVersion = False
+
+rpmSpecFileNames = glob.glob('rpm/*.spec')
+if len(rpmSpecFileNames) > 0:
+   rpmSpecFileName = rpmSpecFileNames[0]
+   re_version = re.compile(r'^(Version:)([ \t]*)(\d+)\.(\d+)\.(\d+)(.*|)')
+   try:
+      rpmSpecFileOld = open(rpmSpecFileName, 'r')
+      contents = rpmSpecFileOld.readlines()
+      for line in contents:
+         match = re_version.match(line)
+         if match != None:
+            rpmVersionMajor = int(match.group(3))
+            rpmVersionMinor = int(match.group(4))
+            rpmVersionPatch = int(match.group(5))
+            rpmVersionExtra = match.group(6)
+            rpmFoundVersion = True
+            print(rpmVersionMajor, rpmVersionMinor, rpmVersionPatch, rpmVersionExtra)
+      rpmSpecFileOld.close()
+   except:
+      sys.stderr.write('ERROR: Unable to read ' + rpmSpecFileName + '\n')
+      sys.exit(1)
