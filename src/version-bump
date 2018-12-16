@@ -28,13 +28,13 @@ import sys
 
 # ====== Read Debian configuration ==========================================
 debianChangeLogFileName = 'debian/changelog'
-debianFoundVersion = False
+debianVersionString     = False
 
 if os.path.isfile(debianChangeLogFileName):
    re_version = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+)\.(\d+)\.(\d+)(.*|)-(\d[a-zA-Z-+]+\d)\)[ \t]*([a-zA-Z-+]+)[ \t]*;')
    try:
-      debianChangeLogFileOld = open(debianChangeLogFileName, 'r')
-      header = debianChangeLogFileOld.readline()
+      debianChangeLogFile = open(debianChangeLogFileName, 'r')
+      header = debianChangeLogFile.readline()
       match = re_version.match(header)
       if match != None:
          debianVersionMajor     = int(match.group(2))
@@ -43,17 +43,18 @@ if os.path.isfile(debianChangeLogFileName):
          debianVersionExtra     = match.group(5)
          debianVersionPackaging = match.group(6)
          debianDistribution     = match.group(7)
-         debianFoundVersion = True
-         print(debianVersionMajor, debianVersionMinor, debianVersionPatch, debianVersionExtra, debianVersionPackaging, debianDistribution)
-      debianChangeLogFileOld.close()
+         debianVersionString    = str(debianVersionMajor) + '.' + \
+                                  str(debianVersionMinor) + '.' + \
+                                  str(debianVersionPatch) + debianVersionExtra
+      debianChangeLogFile.close()
    except:
       sys.stderr.write('ERROR: Unable to read ' + debianChangeLogFileName + '\n')
       sys.exit(1)
 
 
 # ====== Read RPM configuration =============================================
-rpmSpecFileName     = None
-rpmFoundVersion     = False
+rpmSpecFileName  = None
+rpmVersionString = None
 
 rpmSpecFileNames = glob.glob('rpm/*.spec')
 if len(rpmSpecFileNames) > 0:
@@ -71,13 +72,13 @@ if len(rpmSpecFileNames) > 0:
             rpmVersionMinor = int(match.group(3))
             rpmVersionPatch = int(match.group(4))
             rpmVersionExtra = match.group(5)
-            rpmFoundVersion = True
-            print(rpmVersionMajor, rpmVersionMinor, rpmVersionPatch, rpmVersionExtra)
+            rpmVersionString = str(rpmVersionMajor) + '.' + \
+                               str(rpmVersionMinor) + '.' + \
+                               str(rpmVersionPatch) + rpmVersionExtra
          else:
             match = re_release.match(line)
             if match != None:
                rpmVersionPackaging = int(match.group(2))
-               print(rpmVersionPackaging)
       rpmSpecFileOld.close()
    except:
       sys.stderr.write('ERROR: Unable to read ' + rpmSpecFileName + '\n')
@@ -85,40 +86,62 @@ if len(rpmSpecFileNames) > 0:
 
 
 # ====== Read CMakeLists.txt configuration ==================================
-cmakeFileName     = 'CMakeLists.txt'
-cmakeFoundVersion = False
-cmakeVersionMajor = None
-cmakeVersionMinor = None
-cmakeVersionPatch = None
-cmakeVersionExtra = None
-#[ \t]+"(\d)"[ \t]+\)
-re_major = re.compile(r'^SET\(BUILD_MAJOR[ \t]*"(\d+)"[ \t]*\)')
-re_minor = re.compile(r'^SET\(BUILD_MINOR[ \t]*"(\d+)"[ \t]*\)')
-re_patch = re.compile(r'^SET\(BUILD_PATCH[ \t]*"(\d+)(~[a-zA-Z0-9\.+]+|)"[ \t]*\)')
-#re_release = re.compile(r'^(Release:)[ \t]*(\d+)')
-try:
-   cmakeFileOld = open(cmakeFileName, 'r')
-   contents = cmakeFileOld.readlines()
-   for line in contents:
-      match = re_major.match(line)
-      if match != None:
-         cmakeVersionMajor = int(match.group(1))
-      else:
-         match = re_minor.match(line)
+cmakeFileName      = 'CMakeLists.txt'
+cmakeFoundVersion  = False
+cmakeVersionMajor  = None
+cmakeVersionMinor  = None
+cmakeVersionPatch  = None
+cmakeVersionExtra  = None
+cmakeVersionString = None
+
+if os.path.isfile(cmakeFileName):
+   re_major = re.compile(r'^SET\(BUILD_MAJOR[ \t]*"(\d+)"[ \t]*\)')
+   re_minor = re.compile(r'^SET\(BUILD_MINOR[ \t]*"(\d+)"[ \t]*\)')
+   re_patch = re.compile(r'^SET\(BUILD_PATCH[ \t]*"(\d+)(~[a-zA-Z0-9\.+]+|)"[ \t]*\)')
+   try:
+      cmakeFileOld = open(cmakeFileName, 'r')
+      contents = cmakeFileOld.readlines()
+      for line in contents:
+         match = re_major.match(line)
          if match != None:
-            cmakeVersionMinor = int(match.group(1))
+            cmakeVersionMajor = int(match.group(1))
          else:
-            match = re_patch.match(line)
+            match = re_minor.match(line)
             if match != None:
-               cmakeVersionPatch = int(match.group(1))
-               cmakeVersionExtra = match.group(2)
-   cmakeFileOld.close()
-   cmakeFoundVersion = (cmakeVersionMajor != None) and \
-                       (cmakeVersionMinor != None) and \
-                       (cmakeVersionPatch != None) and \
-                       (cmakeVersionExtra != None)
-   print(cmakeVersionMajor, cmakeVersionMinor, cmakeVersionPatch, cmakeVersionExtra)
-except:
-   sys.stderr.write('ERROR: Unable to read ' + cmakeFileName + '\n')
+               cmakeVersionMinor = int(match.group(1))
+            else:
+               match = re_patch.match(line)
+               if match != None:
+                  cmakeVersionPatch = int(match.group(1))
+                  cmakeVersionExtra = match.group(2)
+      cmakeFileOld.close()
+      if (cmakeVersionMajor != None) and \
+         (cmakeVersionMinor != None) and \
+         (cmakeVersionPatch != None) and \
+         (cmakeVersionExtra != None):
+         cmakeVersionString = str(cmakeVersionMajor) + '.' + \
+                              str(cmakeVersionMinor) + '.' + \
+                              str(cmakeVersionPatch) + cmakeVersionExtra
+   except:
+      sys.stderr.write('ERROR: Unable to read ' + cmakeFileName + '\n')
+      sys.exit(1)
+
+
+# ====== Check versions =====================================================
+if cmakeVersionString == None:
+   sys.stderr.write('ERROR: Unable to find version in CMakeFile.txt!\n')
    sys.exit(1)
 
+sys.stdout.write('Version from CMakeFiles.txt: ' + cmakeVersionString + '\n')
+
+if debianVersionString != None:
+   sys.stdout.write('Version from Debian file:    ' + debianVersionString + '\n')
+   if debianVersionString != cmakeVersionString:
+      sys.stderr.write('ERROR: Debian version does not match CMakeFile.txt version!\n')
+      sys.exit(1)
+
+if rpmVersionString != None:
+   sys.stdout.write('Version from RPM spec file:  ' + rpmVersionString + '\n')
+   if rpmVersionString != cmakeVersionString:
+      sys.stderr.write('ERROR: RPM version does not match CMakeFile.txt version!\n')
+      sys.exit(1)
