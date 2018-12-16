@@ -132,16 +132,16 @@ if cmakeVersionString == None:
    sys.stderr.write('ERROR: Unable to find version in CMakeFile.txt!\n')
    sys.exit(1)
 
-sys.stdout.write('Version from CMakeFiles.txt: ' + cmakeVersionString + '\n')
+sys.stdout.write('Version from CMakeFiles.txt:      ' + cmakeVersionString + '\n')
 
 if debianVersionString != None:
-   sys.stdout.write('Version from Debian file:    ' + debianVersionString + '\n')
+   sys.stdout.write('Version from Debian control file: ' + debianVersionString + '\n')
    if debianVersionString != cmakeVersionString:
       sys.stderr.write('ERROR: Debian version does not match CMakeFile.txt version!\n')
       sys.exit(1)
 
 if rpmVersionString != None:
-   sys.stdout.write('Version from RPM spec file:  ' + rpmVersionString + '\n')
+   sys.stdout.write('Version from RPM spec file:       ' + rpmVersionString + '\n')
    if rpmVersionString != cmakeVersionString:
       sys.stderr.write('ERROR: RPM version does not match CMakeFile.txt version!\n')
       sys.exit(1)
