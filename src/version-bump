@@ -73,11 +73,52 @@ if len(rpmSpecFileNames) > 0:
             rpmVersionExtra = match.group(5)
             rpmFoundVersion = True
             print(rpmVersionMajor, rpmVersionMinor, rpmVersionPatch, rpmVersionExtra)
-         match = re_release.match(line)
-         if match != None:
-            rpmVersionPackaging = int(match.group(2))
-            print(rpmVersionPackaging)
+         else:
+            match = re_release.match(line)
+            if match != None:
+               rpmVersionPackaging = int(match.group(2))
+               print(rpmVersionPackaging)
       rpmSpecFileOld.close()
    except:
       sys.stderr.write('ERROR: Unable to read ' + rpmSpecFileName + '\n')
       sys.exit(1)
+
+
+# ====== Read CMakeLists.txt configuration ==================================
+cmakeFileName     = 'CMakeLists.txt'
+cmakeFoundVersion = False
+cmakeVersionMajor = None
+cmakeVersionMinor = None
+cmakeVersionPatch = None
+cmakeVersionExtra = None
+#[ \t]+"(\d)"[ \t]+\)
+re_major = re.compile(r'^SET\(BUILD_MAJOR[ \t]*"(\d+)"[ \t]*\)')
+re_minor = re.compile(r'^SET\(BUILD_MINOR[ \t]*"(\d+)"[ \t]*\)')
+re_patch = re.compile(r'^SET\(BUILD_PATCH[ \t]*"(\d+)(~[a-zA-Z0-9\.+]+|)"[ \t]*\)')
+#re_release = re.compile(r'^(Release:)[ \t]*(\d+)')
+try:
+   cmakeFileOld = open(cmakeFileName, 'r')
+   contents = cmakeFileOld.readlines()
+   for line in contents:
+      match = re_major.match(line)
+      if match != None:
+         cmakeVersionMajor = int(match.group(1))
+      else:
+         match = re_minor.match(line)
+         if match != None:
+            cmakeVersionMinor = int(match.group(1))
+         else:
+            match = re_patch.match(line)
+            if match != None:
+               cmakeVersionPatch = int(match.group(1))
+               cmakeVersionExtra = match.group(2)
+   cmakeFileOld.close()
+   cmakeFoundVersion = (cmakeVersionMajor != None) and \
+                       (cmakeVersionMinor != None) and \
+                       (cmakeVersionPatch != None) and \
+                       (cmakeVersionExtra != None)
+   print(cmakeVersionMajor, cmakeVersionMinor, cmakeVersionPatch, cmakeVersionExtra)
+except:
+   sys.stderr.write('ERROR: Unable to read ' + cmakeFileName + '\n')
+   sys.exit(1)
+
