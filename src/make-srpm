@@ -57,14 +57,10 @@ if [ -e debian/changelog ] ; then
       echo >&2 "ERROR: RPM version and Debian version do not match -> ${PACKAGE}-${PACKAGE_VERSION} vs. ${DEBIAN_PACKAGE}-${DEBIAN_UPSTREAM_VERSION}!"
       exit 1
    fi
-   if [ ! -e ./debian.conf ] ; then
-      echo >&2 "ERROR: debian.conf does not exist -> no configuration for the new package!"
-      exit 1
-   fi
 fi
 
-if [ -e rpm.conf ] ; then
-   . ./rpm.conf
+if [ -e packaging.conf ] ; then
+   . ./packaging.conf
 fi
 
 
