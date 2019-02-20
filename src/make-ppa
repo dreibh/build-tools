@@ -25,9 +25,12 @@ DPUT=0
 DPUT_DISTRIBUTIONS="precise trusty xenial bionic cosmic disco   unstable"
 
 while [ $# -gt 0 ] ; do
-   if [ "$1" == "dput" -o "$1" == "all" ] ; then
+   if [ "$1" == "dput" ] ; then
       DPUT=1
-   elif [ "$1" == "copr" -o "$1" == "all" ] ; then
+   elif [ "$1" == "copr" ] ; then
+      COPR=1
+   elif [ "$1" == "all" ] ; then
+      DPUT=1
       COPR=1
    else
       echo >&2 "Usage: $0 [dput] [copr] [all]"
