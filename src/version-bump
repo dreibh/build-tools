@@ -44,22 +44,31 @@ def applyUpdate(new, old):
 
 
 # ====== Read packaging configuration =======================================
-maintainer            = None
+packageMaintainer     = None
+packageMakeDist       = None
 packagingConfFileName = 'packaging.conf'
-re_maintainer = re.compile(r'^(MAINTAINER=\")(.*)(\".*$)')
+re_package_maintainer = re.compile(r'^(MAINTAINER=\")(.*)(\".*$)')
+re_package_makedist   = re.compile(r'^(MAKE_DIST=\")(.*)(\".*$)')
 try:
    packagingConfFile = open(packagingConfFileName, 'r', encoding='utf-8')
    packagingConfFileContents = packagingConfFile.readlines()
    for line in packagingConfFileContents:
-      match = re_maintainer.match(line)
+      match = re_package_maintainer.match(line)
       if match != None:
-         maintainer = match.group(2)
+         packageMaintainer = match.group(2)
+      else:
+         match = re_package_makedist.match(line)
+         if match != None:
+            packageMakeDist = match.group(2)
    packagingConfFile.close()
 except:
    sys.stderr.write('ERROR: Unable to read ' + packagingConfFileName + '\n')
    sys.exit(1)
-if maintainer == None:
+if packageMaintainer == None:
    sys.stderr.write('ERROR: Unable to find MAINTAINER in ' + packagingConfFileName + '\n')
+   sys.exit(1)
+elif packageMakeDist == None:
+   sys.stderr.write('ERROR: Unable to find MAKE_DIST in ' + packagingConfFileName + '\n')
    sys.exit(1)
 
 
@@ -294,7 +303,7 @@ if debianVersionString != None:
          # ------ Create new entry ---------------------------------------------
          if debianNewChangeLogEntry == True:
             now = time.strftime('%a, %d %b %Y %H:%M:%S %z', time.localtime())
-            debianNewChangeLogFile.write('\n  * New upstream release.\n\n -- ' + maintainer + ', ' + now + '\n\n')
+            debianNewChangeLogFile.write('\n  * New upstream release.\n\n -- ' + packageMaintainer + ', ' + now + '\n\n')
 
 
       if ((n > 1) or (debianNewChangeLogEntry == True)):
@@ -331,7 +340,7 @@ if rpmVersionString != None:
       else:
          if versionExtra == '':
             now = time.strftime('%a %d %b %Y', time.localtime())
-            rpmSpecFileNew.write('* ' + now + ' ' + maintainer + ' - ' + versionString + '\n')
+            rpmSpecFileNew.write('* ' + now + ' ' + packageMaintainer + ' - ' + versionString + '\n')
             rpmSpecFileNew.write('- New upstream release.\n')
          rpmSpecFileNew.write(line)
          inChangeLog = False
@@ -349,18 +358,30 @@ if rpmVersionString != None:
 
 # ====== Apply changes ======================================================
 applyChanges = input('\x1b[34mApply update? [yes/no]?\x1b[0m ')
-if ((applyChanges == 'yes') or (applyChanges == 'y')):
-   applyUpdate(cmakeFileName + '.new', cmakeFileName)
-   if debianVersionString != None:
-      applyUpdate(debianChangeLogFileName + '.new', debianChangeLogFileName)
-   if rpmVersionString != None:
-      applyUpdate(rpmSpecFileName + '.new', rpmSpecFileName)
+if ((applyChanges != 'yes') and (applyChanges != 'y')):
+   sys.exit(0)
 
-   if versionExtra == '':
-      newGitTag = debianPackage + '-' + versionString
+# ------ Update files -------------------------------------------------------
+applyUpdate(cmakeFileName + '.new', cmakeFileName)
+if debianVersionString != None:
+   applyUpdate(debianChangeLogFileName + '.new', debianChangeLogFileName)
+if rpmVersionString != None:
+   applyUpdate(rpmSpecFileName + '.new', rpmSpecFileName)
+sys.stdout.write('Done!\n')
 
-      applyChanges = input('\x1b[34mCreate signed Git tag ' + newGitTag + '? [yes/no]?\x1b[0m ')
-      if ((applyChanges == 'yes') or (applyChanges == 'y')):
-         subprocess.call([ 'echo', 'git', 'tag', '-s', newGitTag ])
+# ------ Release version ----------------------------------------------------
+if versionExtra == '':
+   sys.stdout.write('New release!\n')
 
-   sys.stdout.write('Done!\n')
+   # ------ Update changelog ------------------------------------------------
+   pathname = os.path.dirname(sys.argv[0])
+   if os.path.isfile("ChangeLog"):
+      sys.stdout.write('Updating ChangeLog ...\n')
+      subprocess.call([ pathname + '/update-changelog' ])
+
+   # ------ Create Git tag --------------------------------------------------
+   newGitTag = debianPackage + '-' + versionString
+   applyChanges = input('\x1b[34mCreate signed Git tag ' + newGitTag + '? [yes/no]?\x1b[0m ')
+   if ((applyChanges == 'yes') or (applyChanges == 'y')):
+      subprocess.call([ 'git', 'clean', '-df' ])
+      subprocess.call([ 'echo', 'git', 'tag', '-s', newGitTag, '-m', 'New release ' + versionString + '.' ])
