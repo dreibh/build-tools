@@ -24,6 +24,7 @@ import glob
 import os
 import re
 import sys
+import time
 
 
 # ====== Read Debian configuration ==========================================
@@ -37,6 +38,7 @@ if os.path.isfile(debianChangeLogFileName):
       header = debianChangeLogFile.readline()
       match = re_version.match(header)
       if match != None:
+         debianPackage          = match.group(1)
          debianVersionMajor     = int(match.group(2))
          debianVersionMinor     = int(match.group(3))
          debianVersionPatch     = int(match.group(4))
@@ -190,6 +192,47 @@ for i in range(1, len(sys.argv)):
       sys.stderr.write('Usage: ' + sys.argv[0] + ' [-M|--major | -m|--minor | -p|--patch  -e|--extra|--extra=label]')
       sys.exit(1)
 
+
+# ======= Check version =====================================================
 versionString = str(versionMajor) + '.' + str(versionMinor) + '.' + \
                 str(versionPatch) + versionExtra
-print(versionString)
+sys.stdout.write('New version:                      ' + versionString + '\n')
+
+if (versionMajor == cmakeVersionMajor) and \
+   (versionMinor == cmakeVersionMinor) and \
+   (versionPatch == cmakeVersionPatch) and \
+   (versionExtra == cmakeVersionExtra):
+   sys.stdout.write('No change -> exiting.\n')
+   sys.exit(0)
+
+
+# ====== Update debian/changelog ============================================
+debianNewChangeLogEntry = (cmakeVersionExtra == '')
+debianChangeLogFile    = open(debianChangeLogFileName, 'r', encoding='utf-8')
+debianNewChangeLogFile = open(debianChangeLogFileName + '.new', 'w', encoding='utf-8')
+n    = 1
+line = debianChangeLogFile.readline()
+while line:
+    # ------ Update existing entry ------------------------------------------
+   if n == 1:
+      sys.stdout.write(debianPackage + ' (' + \
+                       str(versionMajor) + '.' + str(versionMinor) + '.' + str(versionPatch) + versionExtra + \
+                       '-1ubuntu1) ' + \
+                       debianDistribution + '; urgency=medium\n')
+
+      # ------ Create new entry ---------------------------------------------
+      if debianNewChangeLogEntry == True:
+         now = time.strftime('%a, %d %b %Y %H:%M:%S %z', time.localtime())
+         sys.stdout.write('\n  * New release.\n\n -- MT, ' + now + '\n\n')
+
+
+   if ((n > 1) or (debianNewChangeLogEntry == True)):
+      # ------ Copy line from original file ---------------------------------
+      sys.stdout.write(line)
+
+   line = debianChangeLogFile.readline()
+   n = n + 1
+
+
+debianNewChangeLogFile.close()
+debianChangeLogFile.close()
