@@ -23,8 +23,17 @@
 import glob
 import os
 import re
+import subprocess
 import sys
 import time
+
+
+def colorDiff(name1, name2):
+   h = '====== Updates for ' + name1 + ': '
+   while len(h) < 78:
+      h = h + '='
+   sys.stdout.write(h + '\n')
+   subprocess.call(['colordiff', name1, name2 ])
 
 
 # ====== Read packaging configuration =======================================
@@ -218,7 +227,7 @@ for i in range(1, len(sys.argv)):
       sys.exit(1)
 
 
-# ======= Check version =====================================================
+# ======= Check new version =================================================
 versionString = str(versionMajor) + '.' + str(versionMinor) + '.' + \
                 str(versionPatch) + versionExtra
 sys.stdout.write('New version:                      ' + versionString + '\n')
@@ -262,60 +271,70 @@ if (updatedMajor == False) or (updatedMinor == False) or (updatedPatch == False)
 
 
 # ====== Update debian/changelog ============================================
-debianNewChangeLogEntry = (cmakeVersionExtra == '')
-debianNewChangeLogFile = open(debianChangeLogFileName + '.new', 'w', encoding='utf-8')
+if debianVersionString != None:
+   debianNewChangeLogEntry = (cmakeVersionExtra == '')
+   debianNewChangeLogFile = open(debianChangeLogFileName + '.new', 'w', encoding='utf-8')
 
-n = 0
-for line in debianChangeLogFileContents:
-   n = n + 1
+   n = 0
+   for line in debianChangeLogFileContents:
+      n = n + 1
 
-    # ------ Update existing entry ------------------------------------------
-   if n == 1:
-      debianNewChangeLogFile.write(debianPackage + ' (' + versionString + '-1ubuntu1) ' + \
-                                   debianDistribution + '; urgency=medium\n')
+       # ------ Update existing entry ------------------------------------------
+      if n == 1:
+         debianNewChangeLogFile.write(debianPackage + ' (' + versionString + '-1ubuntu1) ' + \
+                                      debianDistribution + '; urgency=medium\n')
 
-      # ------ Create new entry ---------------------------------------------
-      if debianNewChangeLogEntry == True:
-         now = time.strftime('%a, %d %b %Y %H:%M:%S %z', time.localtime())
-         debianNewChangeLogFile.write('\n  * New upstream release.\n\n -- ' + maintainer + ', ' + now + '\n\n')
+         # ------ Create new entry ---------------------------------------------
+         if debianNewChangeLogEntry == True:
+            now = time.strftime('%a, %d %b %Y %H:%M:%S %z', time.localtime())
+            debianNewChangeLogFile.write('\n  * New upstream release.\n\n -- ' + maintainer + ', ' + now + '\n\n')
 
 
-   if ((n > 1) or (debianNewChangeLogEntry == True)):
-      # ------ Copy line from original file ---------------------------------
-      debianNewChangeLogFile.write(line)
+      if ((n > 1) or (debianNewChangeLogEntry == True)):
+         # ------ Copy line from original file ---------------------------------
+         debianNewChangeLogFile.write(line)
 
-debianNewChangeLogFile.close()
+   debianNewChangeLogFile.close()
 
 
 # ====== Update RPM spec file ===============================================
-rpmSpecFileNew = open(rpmSpecFileName + '.new', 'w', encoding='utf-8')
+if rpmVersionString != None:
+   rpmSpecFileNew = open(rpmSpecFileName + '.new', 'w', encoding='utf-8')
 
-re_rpm_changelog = re.compile(r'^%changelog[ \t]*$')
-inChangeLog = False
+   re_rpm_changelog = re.compile(r'^%changelog[ \t]*$')
+   inChangeLog = False
 
-for line in rpmSpecFileContents:
-   if inChangeLog == False:
-      match = re_rpm_version.match(line)
-      if match != None:
-         rpmSpecFileNew.write('Version: ' + versionString + '\n')
-      else:
-         match = re_rpm_release.match(line)
+   for line in rpmSpecFileContents:
+      if inChangeLog == False:
+         match = re_rpm_version.match(line)
          if match != None:
-            rpmSpecFileNew.write('Release: 1\n')
+            rpmSpecFileNew.write('Version: ' + versionString + '\n')
          else:
-            match = re_rpm_changelog.match(line)
+            match = re_rpm_release.match(line)
             if match != None:
-               inChangeLog = True
-            # ------ Copy line from original file ---------------------------
-            rpmSpecFileNew.write(line)
+               rpmSpecFileNew.write('Release: 1\n')
+            else:
+               match = re_rpm_changelog.match(line)
+               if match != None:
+                  inChangeLog = True
+               # ------ Copy line from original file ------------------------
+               rpmSpecFileNew.write(line)
 
-   # ------ Update ChangeLog ------------------------------------------------
-   else:
-      if versionExtra == '':
-         now = time.strftime('%a %d %b %Y', time.localtime())
-         rpmSpecFileNew.write('* ' + now + ' ' + maintainer + ' - ' + versionString + '\n')
-         rpmSpecFileNew.write('- New upstream release.\n')
-      rpmSpecFileNew.write(line)
-      inChangeLog = False
+      # ------ Update ChangeLog ---------------------------------------------
+      else:
+         if versionExtra == '':
+            now = time.strftime('%a %d %b %Y', time.localtime())
+            rpmSpecFileNew.write('* ' + now + ' ' + maintainer + ' - ' + versionString + '\n')
+            rpmSpecFileNew.write('- New upstream release.\n')
+         rpmSpecFileNew.write(line)
+         inChangeLog = False
 
-rpmSpecFileNew.close()
+   rpmSpecFileNew.close()
+
+
+# ====== Check result =======================================================
+colorDiff(cmakeFileName, cmakeFileName + '.new')
+if debianVersionString != None:
+   colorDiff(debianChangeLogFileName, debianChangeLogFileName + '.new')
+if rpmVersionString != None:
+   colorDiff(rpmSpecFileName, rpmSpecFileName + '.new')
