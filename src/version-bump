@@ -27,27 +27,52 @@ import sys
 import time
 
 
+# ====== Read packaging configuration =======================================
+maintainer            = None
+packagingConfFileName = 'packaging.conf'
+re_maintainer = re.compile(r'^(MAINTAINER=\")(.*)(\".*$)')
+try:
+   packagingConfFile = open(packagingConfFileName, 'r', encoding='utf-8')
+   packagingConfFileContents = packagingConfFile.readlines()
+   for line in packagingConfFileContents:
+      match = re_maintainer.match(line)
+      if match != None:
+         maintainer = match.group(2)
+   packagingConfFile.close()
+except:
+   sys.stderr.write('ERROR: Unable to read ' + packagingConfFileName + '\n')
+   sys.exit(1)
+if maintainer == None:
+   sys.stderr.write('ERROR: Unable to find MAINTAINER in ' + packagingConfFileName + '\n')
+   sys.exit(1)
+
+
 # ====== Read Debian configuration ==========================================
 debianChangeLogFileName = 'debian/changelog'
 debianVersionString     = False
 
 if os.path.isfile(debianChangeLogFileName):
-   re_version = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+)\.(\d+)\.(\d+)(.*|)-(\d[a-zA-Z-+]+\d)\)[ \t]*([a-zA-Z-+]+)[ \t]*;')
+   re_debian_version = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+)\.(\d+)\.(\d+)(.*|)-(\d[a-zA-Z-+]+\d)\)[ \t]*([a-zA-Z-+]+)[ \t]*;')
    try:
       debianChangeLogFile = open(debianChangeLogFileName, 'r', encoding='utf-8')
-      header = debianChangeLogFile.readline()
-      match = re_version.match(header)
-      if match != None:
-         debianPackage          = match.group(1)
-         debianVersionMajor     = int(match.group(2))
-         debianVersionMinor     = int(match.group(3))
-         debianVersionPatch     = int(match.group(4))
-         debianVersionExtra     = match.group(5)
-         debianVersionPackaging = match.group(6)
-         debianDistribution     = match.group(7)
-         debianVersionString    = str(debianVersionMajor) + '.' + \
-                                  str(debianVersionMinor) + '.' + \
-                                  str(debianVersionPatch) + debianVersionExtra
+      debianChangeLogFileContents = debianChangeLogFile.readlines()
+      n = 0
+      for line in debianChangeLogFileContents:
+         n = n + 1
+         if n > 1:
+            break
+         match = re_debian_version.match(line)
+         if match != None:
+            debianPackage          = match.group(1)
+            debianVersionMajor     = int(match.group(2))
+            debianVersionMinor     = int(match.group(3))
+            debianVersionPatch     = int(match.group(4))
+            debianVersionExtra     = match.group(5)
+            debianVersionPackaging = match.group(6)
+            debianDistribution     = match.group(7)
+            debianVersionString    = str(debianVersionMajor) + '.' + \
+                                     str(debianVersionMinor) + '.' + \
+                                     str(debianVersionPatch) + debianVersionExtra
       debianChangeLogFile.close()
    except:
       sys.stderr.write('ERROR: Unable to read ' + debianChangeLogFileName + '\n')
@@ -62,13 +87,13 @@ rpmSpecFileNames = glob.glob('rpm/*.spec')
 if len(rpmSpecFileNames) > 0:
    rpmSpecFileName     = rpmSpecFileNames[0]
    rpmVersionPackaging = None
-   re_version = re.compile(r'^(Version:)[ \t]*(\d+)\.(\d+)\.(\d+)(.*|)')
-   re_release = re.compile(r'^(Release:)[ \t]*(\d+)')
+   re_rpm_version = re.compile(r'^(Version:)[ \t]*(\d+)\.(\d+)\.(\d+)(.*|)')
+   re_rpm_release = re.compile(r'^(Release:)[ \t]*(\d+)')
    try:
       rpmSpecFileOld = open(rpmSpecFileName, 'r', encoding='utf-8')
       contents = rpmSpecFileOld.readlines()
       for line in contents:
-         match = re_version.match(line)
+         match = re_rpm_version.match(line)
          if match != None:
             rpmVersionMajor = int(match.group(2))
             rpmVersionMinor = int(match.group(3))
@@ -78,7 +103,7 @@ if len(rpmSpecFileNames) > 0:
                                str(rpmVersionMinor) + '.' + \
                                str(rpmVersionPatch) + rpmVersionExtra
          else:
-            match = re_release.match(line)
+            match = re_rpm_release.match(line)
             if match != None:
                rpmVersionPackaging = int(match.group(2))
       rpmSpecFileOld.close()
@@ -101,9 +126,9 @@ if os.path.isfile(cmakeFileName):
    re_minor = re.compile(r'^SET\(BUILD_MINOR[ \t]*"(\d+)"[ \t]*\)')
    re_patch = re.compile(r'^SET\(BUILD_PATCH[ \t]*"(\d+)(~[a-zA-Z0-9\.+]+|)"[ \t]*\)')
    try:
-      cmakeFileOld = open(cmakeFileName, 'r', encoding='utf-8')
-      contents = cmakeFileOld.readlines()
-      for line in contents:
+      cmakeFile = open(cmakeFileName, 'r', encoding='utf-8')
+      cmakeFileContents = cmakeFile.readlines()
+      for line in cmakeFileContents:
          match = re_major.match(line)
          if match != None:
             cmakeVersionMajor = int(match.group(1))
@@ -116,7 +141,7 @@ if os.path.isfile(cmakeFileName):
                if match != None:
                   cmakeVersionPatch = int(match.group(1))
                   cmakeVersionExtra = match.group(2)
-      cmakeFileOld.close()
+      cmakeFile.close()
       if (cmakeVersionMajor != None) and \
          (cmakeVersionMinor != None) and \
          (cmakeVersionPatch != None) and \
@@ -203,19 +228,23 @@ if (versionMajor == cmakeVersionMajor) and \
    (versionPatch == cmakeVersionPatch) and \
    (versionExtra == cmakeVersionExtra):
    sys.stdout.write('No change -> exiting.\n')
-   sys.exit(0)
+   sys.exit(1)
+
+
+# ====== Update CMakeLists.txt ==============================================
 
 
 # ====== Update debian/changelog ============================================
 debianNewChangeLogEntry = (cmakeVersionExtra == '')
-debianChangeLogFile    = open(debianChangeLogFileName, 'r', encoding='utf-8')
 debianNewChangeLogFile = open(debianChangeLogFileName + '.new', 'w', encoding='utf-8')
-n    = 1
-line = debianChangeLogFile.readline()
-while line:
+
+n = 0
+for line in debianChangeLogFileContents:
+   n = n + 1
+
     # ------ Update existing entry ------------------------------------------
    if n == 1:
-      sys.stdout.write(debianPackage + ' (' + \
+      debianNewChangeLogFile.write(debianPackage + ' (' + \
                        str(versionMajor) + '.' + str(versionMinor) + '.' + str(versionPatch) + versionExtra + \
                        '-1ubuntu1) ' + \
                        debianDistribution + '; urgency=medium\n')
@@ -223,16 +252,11 @@ while line:
       # ------ Create new entry ---------------------------------------------
       if debianNewChangeLogEntry == True:
          now = time.strftime('%a, %d %b %Y %H:%M:%S %z', time.localtime())
-         sys.stdout.write('\n  * New release.\n\n -- MT, ' + now + '\n\n')
+         debianNewChangeLogFile.write('\n  * New release.\n\n -- ' + maintainer + ', ' + now + '\n\n')
 
 
    if ((n > 1) or (debianNewChangeLogEntry == True)):
       # ------ Copy line from original file ---------------------------------
-      sys.stdout.write(line)
-
-   line = debianChangeLogFile.readline()
-   n = n + 1
-
+      debianNewChangeLogFile.write(line)
 
 debianNewChangeLogFile.close()
-debianChangeLogFile.close()
