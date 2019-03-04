@@ -28,12 +28,19 @@ import sys
 import time
 
 
-def colorDiff(name1, name2):
-   h = '====== Updates for ' + name1 + ': '
+# ###### Show differences ###################################################
+def colorDiff(old, new):
+   h = '====== Updates for ' + old + ': '
    while len(h) < 78:
       h = h + '='
    sys.stdout.write(h + '\n')
-   subprocess.call(['colordiff', name1, name2 ])
+   subprocess.call(['colordiff', old, new ])
+
+
+# ###### Apply update #######################################################
+def applyUpdate(new, old):
+   sys.stdout.write('Updating ' + old + ' ...\n')
+   os.rename(new, old)
 
 
 # ====== Read packaging configuration =======================================
@@ -338,3 +345,22 @@ if debianVersionString != None:
    colorDiff(debianChangeLogFileName, debianChangeLogFileName + '.new')
 if rpmVersionString != None:
    colorDiff(rpmSpecFileName, rpmSpecFileName + '.new')
+
+
+# ====== Apply changes ======================================================
+applyChanges = input('\x1b[34mApply update? [yes/no]?\x1b[0m ')
+if ((applyChanges == 'yes') or (applyChanges == 'y')):
+   applyUpdate(cmakeFileName + '.new', cmakeFileName)
+   if debianVersionString != None:
+      applyUpdate(debianChangeLogFileName + '.new', debianChangeLogFileName)
+   if rpmVersionString != None:
+      applyUpdate(rpmSpecFileName + '.new', rpmSpecFileName)
+
+   if versionExtra == '':
+      newGitTag = debianPackage + '-' + versionString
+
+      applyChanges = input('\x1b[34mCreate signed Git tag ' + newGitTag + '? [yes/no]?\x1b[0m ')
+      if ((applyChanges == 'yes') or (applyChanges == 'y')):
+         subprocess.call([ 'echo', 'git', 'tag', '-s', newGitTag ])
+
+   sys.stdout.write('Done!\n')
