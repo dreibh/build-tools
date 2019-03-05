@@ -303,7 +303,7 @@ if debianVersionString != None:
          # ------ Create new entry ---------------------------------------------
          if debianNewChangeLogEntry == True:
             now = time.strftime('%a, %d %b %Y %H:%M:%S %z', time.localtime())
-            debianNewChangeLogFile.write('\n  * New upstream release.\n\n -- ' + packageMaintainer + ', ' + now + '\n\n')
+            debianNewChangeLogFile.write('\n  * New upstream release.\n\n -- ' + packageMaintainer + '  ' + now + '\n\n')
 
 
       if ((n > 1) or (debianNewChangeLogEntry == True)):
