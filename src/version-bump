@@ -238,8 +238,11 @@ for i in range(1, len(sys.argv)):
             sys.stderr.write('ERROR: Unable to increment extra version ' + versionExtra + '!\n')
             sys.exit(1)
 
+   elif (sys.argv[i] == '-r') or (sys.argv[i] == '--release'):
+      versionExtra = ''
+
    else:
-      sys.stderr.write('Usage: ' + sys.argv[0] + ' [-M|--major | -m|--minor | -p|--patch  -e|--extra|--extra=label]')
+      sys.stderr.write('Usage: ' + sys.argv[0] + ' [-M|--major | -m|--minor | -p|--patch  -e|--extra|--extra=label | -r|--release]')
       sys.exit(1)
 
 
@@ -339,7 +342,7 @@ if rpmVersionString != None:
       # ------ Update ChangeLog ---------------------------------------------
       else:
          if versionExtra == '':
-            now = time.strftime('%a %d %b %Y', time.localtime())
+            now = time.strftime('%a %b %d %Y', time.localtime())
             rpmSpecFileNew.write('* ' + now + ' ' + packageMaintainer + ' - ' + versionString + '\n')
             rpmSpecFileNew.write('- New upstream release.\n')
          rpmSpecFileNew.write(line)
