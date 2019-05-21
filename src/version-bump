@@ -217,7 +217,8 @@ for i in range(1, len(sys.argv)):
       versionExtra = ""
 
    elif (sys.argv[i] == '-p') or (sys.argv[i] == '--patch'):
-      versionPatch = versionPatch + 1
+      if versionExtra == "":
+         versionPatch = versionPatch + 1
       versionExtra = ""
 
    elif (sys.argv[i] == '-e') or (sys.argv[i] == '--extra') or (sys.argv[i][0:8] == '--extra='):
@@ -384,7 +385,8 @@ if versionExtra == '':
 
    # ------ Create Git tag --------------------------------------------------
    newGitTag = debianPackage + '-' + versionString
-   applyChanges = input('\x1b[34mCreate signed Git tag ' + newGitTag + '? [yes/no]?\x1b[0m ')
+   applyChanges = input('\x1b[34mCommit and create signed Git tag ' + newGitTag + '? [yes/no]?\x1b[0m ')
    if ((applyChanges == 'yes') or (applyChanges == 'y')):
       subprocess.call([ 'git', 'clean', '-df' ])
-      subprocess.call([ 'echo', 'git', 'tag', '-s', newGitTag, '-m', 'New release ' + versionString + '.' ])
+      subprocess.call([ 'git', 'commit', '-a', '-m', 'New release ' + versionString + '.' ])
+      subprocess.call([ 'git', 'tag', '-s', newGitTag, '-m', 'New release ' + versionString + '.' ])
