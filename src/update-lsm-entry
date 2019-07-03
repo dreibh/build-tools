@@ -73,7 +73,7 @@ let size=$size/1024
 
 sed -e "s/^\(Entered-date:[ \t]*\)\(.*\)$/\1$today/g" \
     -e "s/^\(Version:[ \t]*\)\(.*\)$/\1${UPSTREAM_VERSION}/g" \
-    -e "s/\([0-9]*\)\([ ]*kB[ ]*\)\(download\/\)\(${PACKAGE}-\)\([0-9a-zA-Z\.~+-]*\)\(\.tar\.*\).*$/$size\2\3$UPSTREAM_PACKAGE/g" \
+    -e "s/\([0-9]*\)\([ ]*kB[ ]*\)\(.*\)\(${PACKAGE}-\)\([0-9a-zA-Z\.~+-]*\)\(\.tar\.*\).*$/$size\2\3$UPSTREAM_PACKAGE/g" \
    <${LSM_ENTRY} >${LSM_ENTRY}.new
 
 echo "Update:"
