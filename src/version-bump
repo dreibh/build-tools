@@ -388,5 +388,5 @@ if versionExtra == '':
    applyChanges = input('\x1b[34mCommit and create signed Git tag ' + newGitTag + '? [yes/no]?\x1b[0m ')
    if ((applyChanges == 'yes') or (applyChanges == 'y')):
       subprocess.call([ 'git', 'clean', '-df' ])
-      subprocess.call([ 'git', 'commit', '-a', '-m', 'New release ' + versionString + '.' ])
-      subprocess.call([ 'git', 'tag', '-s', newGitTag, '-m', 'New release ' + versionString + '.' ])
+      subprocess.call([ 'git', 'commit', '-a', '-m', 'New release ' + newGitTag + '.' ])
+      subprocess.call([ 'git', 'tag', '-s', newGitTag, '-m', 'New release ' + newGitTag + '.' ])
