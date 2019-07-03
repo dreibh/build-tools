@@ -231,7 +231,7 @@ for i in range(1, len(sys.argv)):
             if match == None:
                versionExtra = versionExtra + '0'
       else:
-         match = re.match(r'^(~.*)(\d+)$', versionExtra)
+         match = re.match(r'^(~.*[^\d])(\d+)$', versionExtra)
          if match != None:
             e = int(match.group(2)) + 1
             versionExtra = match.group(1) + str(e)
