@@ -61,14 +61,14 @@ try:
          if match != None:
             packageMakeDist = match.group(2)
    packagingConfFile.close()
-except:
-   sys.stderr.write('ERROR: Unable to read ' + packagingConfFileName + '\n')
+except Exception as e:
+   sys.stderr.write('ERROR: Unable to read ' + packagingConfFileName + ': ' + str(e) + '\n')
    sys.exit(1)
 if packageMaintainer == None:
-   sys.stderr.write('ERROR: Unable to find MAINTAINER in ' + packagingConfFileName + '\n')
+   sys.stderr.write('ERROR: Unable to find MAINTAINER in ' + packagingConfFileName + ': ' + str(e) + '\n')
    sys.exit(1)
 elif packageMakeDist == None:
-   sys.stderr.write('ERROR: Unable to find MAKE_DIST in ' + packagingConfFileName + '\n')
+   sys.stderr.write('ERROR: Unable to find MAKE_DIST in ' + packagingConfFileName + ': ' + str(e) + '\n')
    sys.exit(1)
 
 
@@ -99,8 +99,8 @@ if os.path.isfile(debianChangeLogFileName):
                                      str(debianVersionMinor) + '.' + \
                                      str(debianVersionPatch) + debianVersionExtra
       debianChangeLogFile.close()
-   except:
-      sys.stderr.write('ERROR: Unable to read ' + debianChangeLogFileName + '\n')
+   except Exception as e:
+      sys.stderr.write('ERROR: Unable to read ' + debianChangeLogFileName + ': ' + str(e) + '\n')
       sys.exit(1)
 
 
@@ -132,8 +132,34 @@ if len(rpmSpecFileNames) > 0:
             if match != None:
                rpmVersionPackaging = int(match.group(2))
       rpmSpecFile.close()
-   except:
-      sys.stderr.write('ERROR: Unable to read ' + rpmSpecFileName + '\n')
+   except Exception as e:
+      sys.stderr.write('ERROR: Unable to read ' + rpmSpecFileName + ': ' + str(e) + '\n')
+      sys.exit(1)
+
+
+# ====== Read FreeBSD configuration =========================================
+freeBSDMakefileName  = None
+freeBSDVersionString = None
+freeBSDMakefileNames = glob.glob('freebsd/*/Makefile')
+if len(freeBSDMakefileNames) > 0:
+   freeBSDMakefileName = freeBSDMakefileNames[0]
+   re_freebsd_version = re.compile(r'^(PORTVERSION=[ \t]*)(\d+)\.(\d+)\.(\d+)(.*|)')
+   try:
+      freeBSDMakefileFile = open(freeBSDMakefileName, 'r', encoding='utf-8')
+      freeBSDMakefileFileContents = freeBSDMakefileFile.readlines()
+      for line in freeBSDMakefileFileContents:
+         match = re_freebsd_version.match(line)
+         if match != None:
+            freeBSDVersionMajor = int(match.group(2))
+            freeBSDVersionMinor = int(match.group(3))
+            freeBSDVersionPatch = int(match.group(4))
+            freeBSDVersionExtra = match.group(5)
+            freeBSDVersionString = str(freeBSDVersionMajor) + '.' + \
+                                   str(freeBSDVersionMinor) + '.' + \
+                                   str(freeBSDVersionPatch) + freeBSDVersionExtra
+      freeBSDMakefileFile.close()
+   except Exception as e:
+      sys.stderr.write('ERROR: Unable to read ' + freeBSDMakefileName + ': ' + str(e) + '\n')
       sys.exit(1)
 
 
@@ -174,8 +200,8 @@ if os.path.isfile(cmakeFileName):
          cmakeVersionString = str(cmakeVersionMajor) + '.' + \
                               str(cmakeVersionMinor) + '.' + \
                               str(cmakeVersionPatch) + cmakeVersionExtra
-   except:
-      sys.stderr.write('ERROR: Unable to read ' + cmakeFileName + '\n')
+   except Exception as e:
+      sys.stderr.write('ERROR: Unable to read ' + cmakeFileName + ': ' + str(e) + '\n')
       sys.exit(1)
 
 
@@ -184,18 +210,24 @@ if cmakeVersionString == None:
    sys.stderr.write('ERROR: Unable to find version in CMakeFile.txt!\n')
    sys.exit(1)
 
-sys.stdout.write('Version from CMakeFiles.txt:      ' + cmakeVersionString + '\n')
+sys.stdout.write('Version from CMakeFiles.txt:         ' + cmakeVersionString + '   (in CMakeFiles.txt)\n')
 
 if debianVersionString != None:
-   sys.stdout.write('Version from Debian control file: ' + debianVersionString + '\n')
+   sys.stdout.write('Version from Debian changelog file:  ' + debianVersionString + '   (in ' + debianChangeLogFileName + ')\n')
    if debianVersionString != cmakeVersionString:
       sys.stderr.write('ERROR: Debian version does not match CMakeFile.txt version!\n')
       sys.exit(1)
 
 if rpmVersionString != None:
-   sys.stdout.write('Version from RPM spec file:       ' + rpmVersionString + '\n')
+   sys.stdout.write('Version from RPM spec file:          ' + rpmVersionString + '   (in ' + rpmSpecFileName + ')\n')
    if rpmVersionString != cmakeVersionString:
       sys.stderr.write('ERROR: RPM version does not match CMakeFile.txt version!\n')
+      sys.exit(1)
+
+if freeBSDVersionString != None:
+   sys.stdout.write('Version from FreeBSD ports Makefile: ' + freeBSDVersionString + '   (in ' + freeBSDMakefileName + ')\n')
+   if freeBSDVersionString != cmakeVersionString:
+      sys.stderr.write('ERROR: FreeBSD ports version does not match CMakeFile.txt version!\n')
       sys.exit(1)
 
 
@@ -250,7 +282,7 @@ for i in range(1, len(sys.argv)):
 # ======= Check new version =================================================
 versionString = str(versionMajor) + '.' + str(versionMinor) + '.' + \
                 str(versionPatch) + versionExtra
-sys.stdout.write('New version:                      ' + versionString + '\n')
+sys.stdout.write('New version:                         ' + versionString + '\n')
 
 if (versionMajor == cmakeVersionMajor) and \
    (versionMinor == cmakeVersionMinor) and \
@@ -352,12 +384,33 @@ if rpmVersionString != None:
    rpmSpecFileNew.close()
 
 
+# ====== Update FreeBSD ports Makefile ======================================
+if freeBSDVersionString != None:
+   freeBSDMakefileFileNew = open(freeBSDMakefileName + '.new', 'w', encoding='utf-8')
+
+   re_rpm_changelog = re.compile(r'^%changelog[ \t]*$')
+   inChangeLog = False
+
+   for line in freeBSDMakefileFileContents:
+      match = re_freebsd_version.match(line)
+      if match != None:
+         freeBSDMakefileFileNew.write(match.group(1) + versionString + '\n')
+      else:
+         # ------ Copy line from original file ------------------------------
+         freeBSDMakefileFileNew.write(line)
+
+   freeBSDMakefileFileNew.close()
+
+
+
 # ====== Check result =======================================================
 colorDiff(cmakeFileName, cmakeFileName + '.new')
 if debianVersionString != None:
    colorDiff(debianChangeLogFileName, debianChangeLogFileName + '.new')
 if rpmVersionString != None:
    colorDiff(rpmSpecFileName, rpmSpecFileName + '.new')
+if freeBSDVersionString != None:
+   colorDiff(freeBSDMakefileName, freeBSDMakefileName + '.new')
 
 
 # ====== Apply changes ======================================================
