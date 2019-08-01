@@ -207,13 +207,16 @@ if os.path.isfile(cmakeFileName):
 
 
 # ====== Read configure.ac configuration ====================================
-autoconfFileName      = 'configure.ac'
 autoconfFoundVersion  = False
 autoconfVersionMajor  = None
 autoconfVersionMinor  = None
 autoconfVersionPatch  = None
 autoconfVersionExtra  = None
 autoconfVersionString = None
+
+for autoconfFileName in [ 'configure.ac', 'configure.in' ]:
+   if os.path.isfile(autoconfFileName):
+      break
 
 if os.path.isfile(autoconfFileName):
    re_autoconffile_version = re.compile(r'^AC_INIT\([ \t]*\[(.*)\][ \t]*,[ \t]*\[(\d).(\d).(\d+)(~[a-zA-Z0-9\.+]+|)\][ \t]*,[ \t]*\[(.*)\][ \t]*\)')
