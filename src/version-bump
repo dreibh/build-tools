@@ -77,7 +77,7 @@ debianChangeLogFileName = 'debian/changelog'
 debianVersionString     = None
 
 if os.path.isfile(debianChangeLogFileName):
-   re_debian_version = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+)\.(\d+)\.(\d+)(.*|)-(\d[a-zA-Z-+]+\d)\)[ \t]*([a-zA-Z-+]+)[ \t]*;')
+   re_debian_version = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+:|)(\d+)\.(\d+)\.(\d+)(.*|)-(\d[a-zA-Z-+]+\d)\)[ \t]*([a-zA-Z-+]+)[ \t]*;')
    try:
       debianChangeLogFile = open(debianChangeLogFileName, 'r', encoding='utf-8')
       debianChangeLogFileContents = debianChangeLogFile.readlines()
@@ -89,12 +89,13 @@ if os.path.isfile(debianChangeLogFileName):
          match = re_debian_version.match(line)
          if match != None:
             debianPackage          = match.group(1)
-            debianVersionMajor     = int(match.group(2))
-            debianVersionMinor     = int(match.group(3))
-            debianVersionPatch     = int(match.group(4))
-            debianVersionExtra     = match.group(5)
-            debianVersionPackaging = match.group(6)
-            debianDistribution     = match.group(7)
+            debianVersionPrefix    = match.group(2)
+            debianVersionMajor     = int(match.group(3))
+            debianVersionMinor     = int(match.group(4))
+            debianVersionPatch     = int(match.group(5))
+            debianVersionExtra     = match.group(6)
+            debianVersionPackaging = match.group(7)
+            debianDistribution     = match.group(8)
             debianVersionString    = str(debianVersionMajor) + '.' + \
                                      str(debianVersionMinor) + '.' + \
                                      str(debianVersionPatch) + debianVersionExtra
@@ -406,7 +407,7 @@ if debianVersionString != None:
 
        # ------ Update existing entry ------------------------------------------
       if n == 1:
-         debianNewChangeLogFile.write(debianPackage + ' (' + versionString + '-1ubuntu1) ' + \
+         debianNewChangeLogFile.write(debianPackage + ' (' + debianVersionPrefix + versionString + '-1ubuntu1) ' + \
                                       debianDistribution + '; urgency=medium\n')
 
          # ------ Create new entry ---------------------------------------------
