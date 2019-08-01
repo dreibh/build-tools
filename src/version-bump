@@ -113,8 +113,8 @@ rpmSpecFileNames = glob.glob('rpm/*.spec')
 if len(rpmSpecFileNames) > 0:
    rpmSpecFileName     = rpmSpecFileNames[0]
    rpmVersionPackaging = None
-   re_rpm_version = re.compile(r'^(Version:)[ \t]*(\d+)\.(\d+)\.(\d+)(.*|)')
-   re_rpm_release = re.compile(r'^(Release:)[ \t]*(\d+)')
+   re_rpm_version = re.compile(r'^(Version:[ \t]*)(\d+)\.(\d+)\.(\d+)(.*|)')
+   re_rpm_release = re.compile(r'^(Release:[ \t]*)(\d+)')
    try:
       rpmSpecFile = open(rpmSpecFileName, 'r', encoding='utf-8')
       rpmSpecFileContents = rpmSpecFile.readlines()
@@ -437,11 +437,11 @@ if rpmVersionString != None:
       if inChangeLog == False:
          match = re_rpm_version.match(line)
          if match != None:
-            rpmSpecFileNew.write('Version: ' + versionString + '\n')
+            rpmSpecFileNew.write(match.group(1) + versionString + '\n')
          else:
             match = re_rpm_release.match(line)
             if match != None:
-               rpmSpecFileNew.write('Release: 1\n')
+               rpmSpecFileNew.write(match.group(1) + '1\n')
             else:
                match = re_rpm_changelog.match(line)
                if match != None:
