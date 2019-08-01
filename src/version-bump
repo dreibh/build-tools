@@ -74,7 +74,7 @@ elif packageMakeDist == None:
 
 # ====== Read Debian configuration ==========================================
 debianChangeLogFileName = 'debian/changelog'
-debianVersionString     = False
+debianVersionString     = None
 
 if os.path.isfile(debianChangeLogFileName):
    re_debian_version = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+)\.(\d+)\.(\d+)(.*|)-(\d[a-zA-Z-+]+\d)\)[ \t]*([a-zA-Z-+]+)[ \t]*;')
@@ -205,36 +205,78 @@ if os.path.isfile(cmakeFileName):
       sys.exit(1)
 
 
+# ====== Read configure.ac configuration ====================================
+autoconfFileName      = 'configure.ac'
+autoconfFoundVersion  = False
+autoconfVersionMajor  = None
+autoconfVersionMinor  = None
+autoconfVersionPatch  = None
+autoconfVersionExtra  = None
+autoconfVersionString = None
+
+if os.path.isfile(autoconfFileName):
+   re_autoconffile_version = re.compile(r'^AC_INIT\([ \t]*\[(.*)\][ \t]*,[ \t]*\[(\d).(\d).(\d+)(~[a-zA-Z0-9\.+]+|)\][ \t]*,[ \t]*\[(.*)\][ \t]*\)')
+   try:
+      autoconfFile = open(autoconfFileName, 'r', encoding='utf-8')
+      autoconfFileContents = autoconfFile.readlines()
+      for line in autoconfFileContents:
+         match = re_autoconffile_version.match(line)
+         if match != None:
+            autoconfVersionMajor = int(match.group(2))
+            autoconfVersionMinor = int(match.group(3))
+            autoconfVersionPatch = int(match.group(4))
+            autoconfVersionExtra = match.group(5)
+            autoconfVersionString = str(autoconfVersionMajor) + '.' + \
+                                    str(autoconfVersionMinor) + '.' + \
+                                    str(autoconfVersionPatch) + autoconfVersionExtra
+            break
+      autoconfFile.close()
+   except Exception as e:
+      sys.stderr.write('ERROR: Unable to read ' + autoconfFileName + ': ' + str(e) + '\n')
+      sys.exit(1)
+
+
 # ====== Check versions =====================================================
-if cmakeVersionString == None:
-   sys.stderr.write('ERROR: Unable to find version in CMakeFile.txt!\n')
+if cmakeVersionString != None:
+   versionString = cmakeVersionString
+   versionMajor  = cmakeVersionMajor
+   versionMinor  = cmakeVersionMinor
+   versionPatch  = cmakeVersionPatch
+   versionExtra  = cmakeVersionExtra
+elif autoconfVersionString != None:
+   versionString = autoconfVersionString
+   versionMajor  = autoconfVersionMajor
+   versionMinor  = autoconfVersionMinor
+   versionPatch  = autoconfVersionPatch
+   versionExtra  = autoconfVersionExtra
+else:
+   sys.stderr.write('ERROR: Unable to find version in ' + cmakeFileName + ' or ' + autoconfFileName + '!\n')
    sys.exit(1)
 
-sys.stdout.write('Version from CMakeFiles.txt:         ' + cmakeVersionString + '   (in CMakeFiles.txt)\n')
+if cmakeVersionString != None:
+   sys.stdout.write('Version from CMakefile file:         ' + cmakeVersionString + '   (in ' + cmakeFileName + ')\n')
+elif autoconfVersionString != None:
+   sys.stdout.write('Version from autoconf/automake file: ' + autoconfVersionString + '   (in ' + autoconfFileName + ')\n')
 
 if debianVersionString != None:
    sys.stdout.write('Version from Debian changelog file:  ' + debianVersionString + '   (in ' + debianChangeLogFileName + ')\n')
-   if debianVersionString != cmakeVersionString:
-      sys.stderr.write('ERROR: Debian version does not match CMakeFile.txt version!\n')
+   if debianVersionString != versionString:
+      sys.stderr.write('ERROR: Debian version does not match build version!\n')
       sys.exit(1)
 
 if rpmVersionString != None:
    sys.stdout.write('Version from RPM spec file:          ' + rpmVersionString + '   (in ' + rpmSpecFileName + ')\n')
-   if rpmVersionString != cmakeVersionString:
-      sys.stderr.write('ERROR: RPM version does not match CMakeFile.txt version!\n')
+   if rpmVersionString != versionString:
+      sys.stderr.write('ERROR: RPM version does not match build version!\n')
       sys.exit(1)
 
 if freeBSDVersionString != None:
    sys.stdout.write('Version from FreeBSD ports Makefile: ' + freeBSDVersionString + '   (in ' + freeBSDMakefileName + ')\n')
-   if freeBSDVersionString != cmakeVersionString:
-      sys.stderr.write('WARNING: FreeBSD ports version does not match CMakeFile.txt version!\n')
+   if freeBSDVersionString != versionString:
+      sys.stderr.write('WARNING: FreeBSD ports version does not match build version!\n')
 
 
 # ====== Version bump =======================================================
-versionMajor = cmakeVersionMajor
-versionMinor = cmakeVersionMinor
-versionPatch = cmakeVersionPatch
-versionExtra = cmakeVersionExtra
 for i in range(1, len(sys.argv)):
    if (sys.argv[i] == '-M') or (sys.argv[i] == '--major'):
       versionMajor = versionMajor + 1
@@ -283,42 +325,74 @@ versionString = str(versionMajor) + '.' + str(versionMinor) + '.' + \
                 str(versionPatch) + versionExtra
 sys.stdout.write('New version:                         ' + versionString + '\n')
 
-if (versionMajor == cmakeVersionMajor) and \
-   (versionMinor == cmakeVersionMinor) and \
-   (versionPatch == cmakeVersionPatch) and \
-   (versionExtra == cmakeVersionExtra):
-   sys.stdout.write('No change -> exiting.\n')
-   sys.exit(1)
+if cmakeVersionString != None:
+   if (versionMajor == cmakeVersionMajor) and \
+      (versionMinor == cmakeVersionMinor) and \
+      (versionPatch == cmakeVersionPatch) and \
+      (versionExtra == cmakeVersionExtra):
+      sys.stdout.write('No change -> exiting.\n')
+      sys.exit(1)
+elif autoconfVersionString != None:
+   if (versionMajor == autoconfVersionMajor) and \
+      (versionMinor == autoconfVersionMinor) and \
+      (versionPatch == autoconfVersionPatch) and \
+      (versionExtra == autoconfVersionExtra):
+      sys.stdout.write('No change -> exiting.\n')
+      sys.exit(1)
 
 
 # ====== Update CMakeLists.txt ==============================================
-cmakeFileNew = open(cmakeFileName + '.new', 'w', encoding='utf-8')
+if cmakeVersionString != None:
+   cmakeFileNew = open(cmakeFileName + '.new', 'w', encoding='utf-8')
 
-updatedMajor = False
-updatedMinor = False
-updatedPatch = False
-for line in cmakeFileContents:
-   match = re_cmakefile_major.match(line)
-   if match != None:
-      cmakeFileNew.write('SET(BUILD_MAJOR "' + str(versionMajor) + '")\n')
-      updatedMajor = True
-   else:
-      match = re_cmakefile_minor.match(line)
+   updatedMajor = False
+   updatedMinor = False
+   updatedPatch = False
+   for line in cmakeFileContents:
+      match = re_cmakefile_major.match(line)
       if match != None:
-         cmakeFileNew.write('SET(BUILD_MINOR "' + str(versionMinor) + '")\n')
-         updatedMinor = True
+         cmakeFileNew.write('SET(BUILD_MAJOR "' + str(versionMajor) + '")\n')
+         updatedMajor = True
       else:
-         match = re_cmakefile_patch.match(line)
+         match = re_cmakefile_minor.match(line)
          if match != None:
-            cmakeFileNew.write('SET(BUILD_PATCH "' + str(versionPatch) + versionExtra + '")\n')
-            updatedPatch = True
+            cmakeFileNew.write('SET(BUILD_MINOR "' + str(versionMinor) + '")\n')
+            updatedMinor = True
          else:
-            cmakeFileNew.write(line)
+            match = re_cmakefile_patch.match(line)
+            if match != None:
+               cmakeFileNew.write('SET(BUILD_PATCH "' + str(versionPatch) + versionExtra + '")\n')
+               updatedPatch = True
+            else:
+               cmakeFileNew.write(line)
 
-cmakeFileNew.close()
-if (updatedMajor == False) or (updatedMinor == False) or (updatedPatch == False):
-   sys.stderr.write('ERROR: ' + cmakeFileName + ' update failed! Check entries!\n')
-   sys.exit(1)
+   cmakeFileNew.close()
+   if (updatedMajor == False) or (updatedMinor == False) or (updatedPatch == False):
+      sys.stderr.write('ERROR: ' + cmakeFileName + ' update failed! Check entries!\n')
+      sys.exit(1)
+
+
+# ====== Update configure.ac ================================================
+elif autoconfVersionString != None:
+   autoconfFileNew = open(autoconfFileName + '.new', 'w', encoding='utf-8')
+
+   updatedMajor = False
+   updatedMinor = False
+   updatedPatch = False
+   for line in autoconfFileContents:
+      match = re_autoconffile_version.match(line)
+      if match != None:
+         autoconfFileNew.write('AC_INIT([' + match.group(1) + '], ' +
+                               '[' + str(versionMajor) + '.' + str(versionMinor) + '.' + str(versionPatch) + versionExtra + '], ' +
+                               '[' + match.group(6) + '])\n')
+         updated = True
+      else:
+         autoconfFileNew.write(line)
+
+   autoconfFileNew.close()
+   if (updated == False):
+      sys.stderr.write('ERROR: ' + autoconfFileName + ' update failed! Check entries!\n')
+      sys.exit(1)
 
 
 # ====== Update debian/changelog ============================================
@@ -403,7 +477,11 @@ if freeBSDVersionString != None:
 
 
 # ====== Check result =======================================================
-colorDiff(cmakeFileName, cmakeFileName + '.new')
+if cmakeVersionString != None:
+   colorDiff(cmakeFileName, cmakeFileName + '.new')
+elif autoconfVersionString != None:
+   colorDiff(autoconfFileName, autoconfFileName + '.new')
+
 if debianVersionString != None:
    colorDiff(debianChangeLogFileName, debianChangeLogFileName + '.new')
 if rpmVersionString != None:
@@ -418,7 +496,11 @@ if ((applyChanges != 'yes') and (applyChanges != 'y')):
    sys.exit(0)
 
 # ------ Update files -------------------------------------------------------
-applyUpdate(cmakeFileName + '.new', cmakeFileName)
+if cmakeVersionString != None:
+   applyUpdate(cmakeFileName + '.new', cmakeFileName)
+elif autoconfVersionString != None:
+   applyUpdate(autoconfFileName + '.new', autoconfFileName)
+
 if debianVersionString != None:
    applyUpdate(debianChangeLogFileName + '.new', debianChangeLogFileName)
 if rpmVersionString != None:
