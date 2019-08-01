@@ -227,8 +227,7 @@ if rpmVersionString != None:
 if freeBSDVersionString != None:
    sys.stdout.write('Version from FreeBSD ports Makefile: ' + freeBSDVersionString + '   (in ' + freeBSDMakefileName + ')\n')
    if freeBSDVersionString != cmakeVersionString:
-      sys.stderr.write('ERROR: FreeBSD ports version does not match CMakeFile.txt version!\n')
-      sys.exit(1)
+      sys.stderr.write('WARNING: FreeBSD ports version does not match CMakeFile.txt version!\n')
 
 
 # ====== Version bump =======================================================
@@ -424,6 +423,8 @@ if debianVersionString != None:
    applyUpdate(debianChangeLogFileName + '.new', debianChangeLogFileName)
 if rpmVersionString != None:
    applyUpdate(rpmSpecFileName + '.new', rpmSpecFileName)
+if freeBSDVersionString != None:
+   applyUpdate(freeBSDMakefileName + '.new', freeBSDMakefileName)
 sys.stdout.write('Done!\n')
 
 # ------ Release version ----------------------------------------------------
