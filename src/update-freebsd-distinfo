@@ -18,6 +18,19 @@
 #
 # Contact: dreibh@iem.uni-due.de
 
+
+# ====== Check for location of distinfo files ===============================
+DISTINFO=`find freebsd/ -name "distinfo"`
+if [ "${DISTINFO}" == "" ] ; then
+   echo >&2 "ERROR: distinfo not found in freebsd/ subdirectory!"
+   exit 1
+fi
+DISTINFO_DIRECTORY=`dirname "${DISTINFO}"`
+
+cd "${DISTINFO_DIRECTORY}"
+
+
+# ====== Extract package information ========================================
 PORTNAME=`grep "PORTNAME=" Makefile | awk '{ print $2 }'`
 PORTVERSION=`grep "PORTVERSION=" Makefile | awk '{ print $2 }'`
 LOCATION=`grep "MASTER_SITES=" Makefile | awk '{ print $2 }'`
@@ -31,15 +44,38 @@ echo "PORTVERSION : ${PORTVERSION}"
 echo "LOCATION:     ${LOCATION}"
 echo "EXTRACT_SUFX: ${EXTRACT_SUFX}"
 
-if [ ! -e "/usr/ports/distfiles/${PORTNAME}-${PORTVERSION}.${EXTRACT_SUFX}" ] ; then   
-   echo "Downloading ${LOCATION}/${PORTNAME}-${PORTVERSION}.${EXTRACT_SUFX}"
-   rm -f ${PORTNAME}-${PORTVERSION}.${EXTRACT_SUFX}
-   wget "${LOCATION}/${PORTNAME}-${PORTVERSION}.${EXTRACT_SUFX}"
-   echo "Copying ${PORTNAME}-${PORTVERSION}.${EXTRACT_SUFX} to /usr/ports/distfiles/ ..."
-   sudo mv "${PORTNAME}-${PORTVERSION}.${EXTRACT_SUFX}" /usr/ports/distfiles/
+
+# ====== Check for sources tarball ==========================================
+if [ ! -e "${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}" ] ; then
+   echo "Downloading ${LOCATION}/${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}"
+   wget "${LOCATION}/${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}"
 fi
 
-echo "Updating checksum ..."
-make makesum
+
+# ====== Copy sources tarball to /usr/ports/distinfo (FreeBSD) ==============
+if [ -e "/usr/ports/distfiles/" ] ; then
+   if [ ! -e "/usr/ports/distfiles/${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}" ] ; then
+      echo "Copying ${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX} to /usr/ports/distfiles/ ..."
+      sudo cp "${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}" /usr/ports/distfiles/
+   fi
+fi
+
+
+# ====== Update distinfo ====================================================
+echo "Updating distinfo ..."
+(
+   echo "TIMESTAMP = `date +%s`"
+   sha256sum --tag ${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}
+   echo "SIZE (${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}) = `wc --bytes ${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX} | awk '{ print $1 }'`"
+) >distinfo.new
+
+echo "Update:"
+colordiff distinfo distinfo.new || true
+
+echo -en "\x1b[34mRun: Apply update? [yes/no]?\x1b[0m "
+read -er applyChanges
+if [ "$applyChanges" == "yes" -o "$applyChanges" == "y" ] ; then
+   mv distinfo.new distinfo
+fi
 
 echo "Done!"
