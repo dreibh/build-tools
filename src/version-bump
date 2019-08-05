@@ -174,9 +174,9 @@ cmakeVersionExtra  = None
 cmakeVersionString = None
 
 if os.path.isfile(cmakeFileName):
-   re_cmakefile_major = re.compile(r'^SET\(BUILD_MAJOR[ \t]*"(\d+)"[ \t]*\)')
-   re_cmakefile_minor = re.compile(r'^SET\(BUILD_MINOR[ \t]*"(\d+)"[ \t]*\)')
-   re_cmakefile_patch = re.compile(r'^SET\(BUILD_PATCH[ \t]*"(\d+)(~[a-zA-Z0-9\.+]+|)"[ \t]*\)')
+   re_cmakefile_major = re.compile(r'^[Ss][Ee][Tt]\(BUILD_MAJOR[ \t]*"(\d+)"[ \t]*\)')
+   re_cmakefile_minor = re.compile(r'^[Ss][Ee][Tt]\(BUILD_MINOR[ \t]*"(\d+)"[ \t]*\)')
+   re_cmakefile_patch = re.compile(r'^[Ss][Ee][Tt]\(BUILD_PATCH[ \t]*"(\d+)(~[a-zA-Z0-9\.+]+|)"[ \t]*\)')
    try:
       cmakeFile = open(cmakeFileName, 'r', encoding='utf-8')
       cmakeFileContents = cmakeFile.readlines()
