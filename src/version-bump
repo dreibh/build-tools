@@ -115,11 +115,7 @@ if os.path.isfile(debianChangeLogFileName):
    try:
       debianControlFile = open(debianControlFileName, 'r', encoding='utf-8')
       debianControlFileContents = debianControlFile.readlines()
-      n = 0
       for line in debianControlFileContents:
-         n = n + 1
-         if n > 1:
-            break
          match = re_debian_standards_version.match(line)
          if match != None:
             debianStandardsVersion = match.group(1)
@@ -444,7 +440,8 @@ if debianVersionString != None:
             now = time.strftime('%a, %d %b %Y %H:%M:%S %z', time.localtime())
             debianNewChangeLogFile.write('\n')
             debianNewChangeLogFile.write('  * New upstream release.\n')
-            if debianStandardsVersion != DEBIAN_STANDARDS_VERSION:
+            if ((debianStandardsVersion != None) and
+                (debianStandardsVersion != DEBIAN_STANDARDS_VERSION)):
                debianNewChangeLogFile.write('  * debian/control: Updated standards version to ' + DEBIAN_STANDARDS_VERSION + '.\n')
             debianNewChangeLogFile.write('\n')
             debianNewChangeLogFile.write(' -- ' + packageMaintainer + '  ' + now + '\n\n')
@@ -467,7 +464,8 @@ if debianVersionString != None:
    debianNewChangeLogFile.close()
 
    # ------ Update standards version in debian/control ----------------------
-   if debianStandardsVersion != DEBIAN_STANDARDS_VERSION:
+   if ((debianStandardsVersion != None) and
+       (debianStandardsVersion != DEBIAN_STANDARDS_VERSION)):
 
       debianNewControlFile = open(debianControlFileName + '.new', 'w', encoding='utf-8')
 
