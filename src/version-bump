@@ -447,7 +447,7 @@ if debianVersionString != None:
             if debianStandardsVersion != DEBIAN_STANDARDS_VERSION:
                debianNewChangeLogFile.write('  * debian/control: Updated standards version to ' + DEBIAN_STANDARDS_VERSION + '.\n')
             debianNewChangeLogFile.write('\n')
-            debianNewChangeLogFile.write('-- ' + packageMaintainer + '  ' + now + '\n\n')
+            debianNewChangeLogFile.write(' -- ' + packageMaintainer + '  ' + now + '\n\n')
             inFirstEntry = False
 
 
