@@ -28,6 +28,11 @@ import sys
 import time
 
 
+# Set current Debian standards version here
+# (See https://www.debian.org/doc/debian-policy/ for latest version!)
+DEBIAN_STANDARDS_VERSION="4.4.0.1"
+
+
 # ###### Show differences ###################################################
 def colorDiff(old, new):
    h = '====== Updates for ' + old + ': '
@@ -74,7 +79,9 @@ elif packageMakeDist == None:
 
 # ====== Read Debian configuration ==========================================
 debianChangeLogFileName = 'debian/changelog'
+debianControlFileName   = 'debian/control'
 debianVersionString     = None
+debianStandardsVersion  = None
 
 if os.path.isfile(debianChangeLogFileName):
    re_debian_version = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+:|)(\d+)\.(\d+)\.(\d+)(.*|)-(\d[a-zA-Z-+]+\d)\)[ \t]*([a-zA-Z-+]+)[ \t]*;')
@@ -102,6 +109,23 @@ if os.path.isfile(debianChangeLogFileName):
       debianChangeLogFile.close()
    except Exception as e:
       sys.stderr.write('ERROR: Unable to read ' + debianChangeLogFileName + ': ' + str(e) + '\n')
+      sys.exit(1)
+
+   re_debian_standards_version = re.compile(r'^Standards-Version:[ \t]*([0-9\.]*)[ \t]*$')
+   try:
+      debianControlFile = open(debianControlFileName, 'r', encoding='utf-8')
+      debianControlFileContents = debianControlFile.readlines()
+      n = 0
+      for line in debianControlFileContents:
+         n = n + 1
+         if n > 1:
+            break
+         match = re_debian_standards_version.match(line)
+         if match != None:
+            debianStandardsVersion = match.group(1)
+      debianControlFile.close()
+   except Exception as e:
+      sys.stderr.write('ERROR: Unable to read ' + debianControlFileName + ': ' + str(e) + '\n')
       sys.exit(1)
 
 
@@ -418,7 +442,12 @@ if debianVersionString != None:
          # ------ Create new entry ------------------------------------------
          if debianNewChangeLogEntry == True:
             now = time.strftime('%a, %d %b %Y %H:%M:%S %z', time.localtime())
-            debianNewChangeLogFile.write('\n  * New upstream release.\n\n -- ' + packageMaintainer + '  ' + now + '\n\n')
+            debianNewChangeLogFile.write('\n')
+            debianNewChangeLogFile.write('  * New upstream release.\n')
+            if debianStandardsVersion != DEBIAN_STANDARDS_VERSION:
+               debianNewChangeLogFile.write('  * debian/control: Updated standards version to ' + DEBIAN_STANDARDS_VERSION + '\n')
+            debianNewChangeLogFile.write('\n')
+            debianNewChangeLogFile.write('-- ' + packageMaintainer + '  ' + now + '\n\n')
             inFirstEntry = False
 
 
@@ -436,6 +465,20 @@ if debianVersionString != None:
          debianNewChangeLogFile.write(line)
 
    debianNewChangeLogFile.close()
+
+   # ------ Update standards version in debian/control ----------------------
+   if debianStandardsVersion != DEBIAN_STANDARDS_VERSION:
+
+      debianNewControlFile = open(debianControlFileName + '.new', 'w', encoding='utf-8')
+
+      for line in debianControlFileContents:
+         match = re_debian_standards_version.match(line)
+         if match != None:
+            debianNewControlFile.write('Standards-Version: ' + DEBIAN_STANDARDS_VERSION + '\n')
+         else:
+            debianNewControlFile.write(line)
+
+      debianNewControlFile.close()
 
 
 # ====== Update RPM spec file ===============================================
@@ -500,6 +543,8 @@ elif autoconfVersionString != None:
 
 if debianVersionString != None:
    colorDiff(debianChangeLogFileName, debianChangeLogFileName + '.new')
+   if debianStandardsVersion != DEBIAN_STANDARDS_VERSION:
+      colorDiff(debianControlFileName, debianControlFileName + '.new')
 if rpmVersionString != None:
    colorDiff(rpmSpecFileName, rpmSpecFileName + '.new')
 if freeBSDVersionString != None:
