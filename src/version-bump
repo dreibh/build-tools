@@ -405,22 +405,34 @@ if debianVersionString != None:
    debianNewChangeLogFile = open(debianChangeLogFileName + '.new', 'w', encoding='utf-8')
 
    n = 0
+   inFirstEntry = True
+   re_end_of_entry = re.compile(r'^ -- .* +[\d][\d][\d][\d]')
    for line in debianChangeLogFileContents:
       n = n + 1
 
-       # ------ Update existing entry ------------------------------------------
+       # ------ Update existing entry ---------------------------------------
       if n == 1:
          debianNewChangeLogFile.write(debianPackage + ' (' + debianVersionPrefix + versionString + '-1ubuntu1) ' + \
                                       debianDistribution + '; urgency=medium\n')
 
-         # ------ Create new entry ---------------------------------------------
+         # ------ Create new entry ------------------------------------------
          if debianNewChangeLogEntry == True:
             now = time.strftime('%a, %d %b %Y %H:%M:%S %z', time.localtime())
             debianNewChangeLogFile.write('\n  * New upstream release.\n\n -- ' + packageMaintainer + '  ' + now + '\n\n')
+            inFirstEntry = False
 
 
       if ((n > 1) or (debianNewChangeLogEntry == True)):
-         # ------ Copy line from original file ---------------------------------
+         # ------ Not a new entry: update maintainer and time ---------------
+         if ((inFirstEntry == True) and (debianNewChangeLogEntry == False)):
+            match = re_end_of_entry.match(line)
+            if match != None:
+               now = time.strftime('%a, %d %b %Y %H:%M:%S %z', time.localtime())
+               debianNewChangeLogFile.write(' -- ' + packageMaintainer + '  ' + now + '\n')
+               inFirstEntry = False
+               continue
+
+         # ------ Else: just copy existing line -----------------------------
          debianNewChangeLogFile.write(line)
 
    debianNewChangeLogFile.close()
