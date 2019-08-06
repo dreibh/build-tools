@@ -562,6 +562,8 @@ elif autoconfVersionString != None:
 
 if debianVersionString != None:
    applyUpdate(debianChangeLogFileName + '.new', debianChangeLogFileName)
+   if debianStandardsVersion != DEBIAN_STANDARDS_VERSION:
+      applyUpdate(debianControlFileName + '.new', debianControlFileName)
 if rpmVersionString != None:
    applyUpdate(rpmSpecFileName + '.new', rpmSpecFileName)
 if freeBSDVersionString != None:
