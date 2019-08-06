@@ -401,7 +401,7 @@ elif autoconfVersionString != None:
 
 # ====== Update debian/changelog ============================================
 if debianVersionString != None:
-   debianNewChangeLogEntry = (cmakeVersionExtra == '')
+   debianNewChangeLogEntry = (cmakeVersionExtra == '') or (autoconfVersionExtra == '')
    debianNewChangeLogFile = open(debianChangeLogFileName + '.new', 'w', encoding='utf-8')
 
    n = 0
