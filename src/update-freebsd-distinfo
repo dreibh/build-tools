@@ -19,24 +19,36 @@
 # Contact: dreibh@iem.uni-due.de
 
 
-# ====== Check for location of distinfo files ===============================
-DISTINFO=`find freebsd/ -name "distinfo"`
+# ====== Check for location of distinfo file ================================
+DISTINFO=`find ./ -maxdepth 1 -name "distinfo" ; if [ -d freebsd/ ] ; then find freebsd/ -mindepth 2 -maxdepth 2 -name "distinfo" ; fi`
 if [ "${DISTINFO}" == "" ] ; then
-   echo >&2 "ERROR: distinfo not found in freebsd/ subdirectory!"
+   echo >&2 "ERROR: distinfo not found in ./ or freebsd/*/ directory!"
    exit 1
 fi
-DISTINFO_DIRECTORY=`dirname "${DISTINFO}"`
-
+DISTINFO_DIRECTORY=`dirname "${DISTINFO}" | xargs realpath`
 cd "${DISTINFO_DIRECTORY}"
+
+# ====== Check for location of package base directory =======================
+cd ../..
+if [ ! -e "packaging.conf" ] ; then
+   echo >&2 "ERROR: packaging.conf not found in `pwd`!"
+   exit 1
+fi
 
 
 # ====== Extract package information ========================================
-PORTNAME=`grep "PORTNAME=" Makefile | awk '{ print $2 }'`
-PORTVERSION=`grep "PORTVERSION=" Makefile | awk '{ print $2 }'`
-LOCATION=`grep "MASTER_SITES=" Makefile | awk '{ print $2 }'`
-EXTRACT_SUFX=`grep "EXTRACT_SUFX=" Makefile | awk '{ print $2 }'`
+PORTNAME=`grep "PORTNAME=" ${DISTINFO_DIRECTORY}/Makefile | awk '{ print $2 }'`
+PORTVERSION=`grep "PORTVERSION=" ${DISTINFO_DIRECTORY}/Makefile | awk '{ print $2 }'`
+LOCATION=`grep "MASTER_SITES=" ${DISTINFO_DIRECTORY}/Makefile | awk '{ print $2 }'`
+EXTRACT_SUFX=`grep "EXTRACT_SUFX=" ${DISTINFO_DIRECTORY}/Makefile | awk '{ print $2 }'`
 if [ "${EXTRACT_SUFX}" == "" ] ; then
-   EXTRACT_SUFX=".tar.gz"
+   if grep "USES=" ${DISTINFO_DIRECTORY}/Makefile | grep -q "tar:xz" ; then
+      EXTRACT_SUFX=".tar.xz"
+   elif grep "USES=" ${DISTINFO_DIRECTORY}/Makefile | grep -q "tar:bz2" ; then
+      EXTRACT_SUFX=".tar.bz2"
+   else
+      EXTRACT_SUFX=".tar.gz"
+   fi
 fi
 
 echo "PORTNAME:     ${PORTNAME}"
@@ -47,8 +59,14 @@ echo "EXTRACT_SUFX: ${EXTRACT_SUFX}"
 
 # ====== Check for sources tarball ==========================================
 if [ ! -e "${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}" ] ; then
-   echo "Downloading ${LOCATION}/${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}"
-   wget "${LOCATION}/${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}"
+   echo -en "\x1b[34m${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX} does not exist -> Try to download it from ${LOCATION}?  [yes/no]?\x1b[0m "
+   read -er applyChanges
+   if [ "$applyChanges" == "yes" -o "$applyChanges" == "y" ] ; then
+      echo "Downloading ${LOCATION}/${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}"
+      wget "${LOCATION}/${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}"
+   else
+      exit 1
+   fi
 fi
 
 
@@ -57,6 +75,15 @@ if [ -e "/usr/ports/distfiles/" ] ; then
    if [ ! -e "/usr/ports/distfiles/${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}" ] ; then
       echo "Copying ${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX} to /usr/ports/distfiles/ ..."
       sudo cp "${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}" /usr/ports/distfiles/
+   elif [ -e "${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}" ] ; then
+      if ! diff "${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}" "/usr/ports/distfiles/${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}" ; then
+         echo -en "\x1b[34m${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX} differs from /usr/ports/distfiles/${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}! Replace version in /usr/ports/distfiles?  [yes/no]?\x1b[0m "
+         read -er applyChanges
+         if [ "$applyChanges" == "yes" -o "$applyChanges" == "y" ] ; then
+            echo "Copying ${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX} to /usr/ports/distfiles/ ..."
+            sudo cp "${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}" /usr/ports/distfiles/
+         fi
+      fi
    fi
 fi
 
@@ -65,17 +92,22 @@ fi
 echo "Updating distinfo ..."
 (
    echo "TIMESTAMP = `date +%s`"
-   sha256sum --tag ${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}
-   echo "SIZE (${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}) = `wc --bytes ${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX} | awk '{ print $1 }'`"
-) >distinfo.new
+   if [ -x "$(command -v sha256sum)" ] ; then
+      sha256sum --tag ${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}
+   else
+      sha256 ${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}
+   fi
+   echo "SIZE (${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}) = `wc -c ${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX} | awk '{ print $1 }'`"
+) >${DISTINFO_DIRECTORY}/distinfo.new
 
 echo "Update:"
-colordiff distinfo distinfo.new || true
-
-echo -en "\x1b[34mRun: Apply update? [yes/no]?\x1b[0m "
-read -er applyChanges
-if [ "$applyChanges" == "yes" -o "$applyChanges" == "y" ] ; then
-   mv distinfo.new distinfo
+if ! colordiff -I '^TIMESTAMP.*$' ${DISTINFO_DIRECTORY}/distinfo ${DISTINFO_DIRECTORY}/distinfo.new ; then
+   echo -en "\x1b[34mRun: Apply update? [yes/no]?\x1b[0m "
+   read -er applyChanges
+   if [ "$applyChanges" == "yes" -o "$applyChanges" == "y" ] ; then
+      mv ${DISTINFO_DIRECTORY}/distinfo.new ${DISTINFO_DIRECTORY}/distinfo
+   fi
+   echo "Done!"
+else
+   echo "No change -> exiting."   
 fi
-
-echo "Done!"
