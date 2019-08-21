@@ -36,7 +36,7 @@ while [ $# -gt 0 ] ; do
       #    -e "1s@#\!/bin/bash -@#\!/usr/bin/env bash\nset +@g" \
       #    -i "$1"
 
-      awk '
+      gawk -i inplace '
          BEGIN {
             in_header=0
          }
@@ -56,8 +56,7 @@ while [ $# -gt 0 ] ; do
          NR>1 {
             print $0
          }
-      ' "$1" >"$1.new"
-      mv "$1.new" "$1"
+      ' "$1"
    fi
 
    shift
