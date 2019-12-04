@@ -430,7 +430,9 @@ if debianVersionString != None:
    debianNewChangeLogFile = open(debianChangeLogFileName + '.new', 'w', encoding='utf-8')
 
    n = 0
+   e = 0
    inFirstEntry = True
+   re_empty_line   = re.compile(r'^[\s]*$')
    re_end_of_entry = re.compile(r'^ -- .* +[\d][\d][\d][\d]')
    for line in debianChangeLogFileContents:
       n = n + 1
@@ -456,6 +458,13 @@ if debianVersionString != None:
       if ((n > 1) or (debianNewChangeLogEntry == True)):
          # ------ Not a new entry: update maintainer and time ---------------
          if ((inFirstEntry == True) and (debianNewChangeLogEntry == False)):
+            match = re_empty_line.match(line)
+            if match != None:
+              e = e + 1
+              if ((e == 2) and
+                  (debianStandardsVersion != None) and
+                  (debianStandardsVersion != DEBIAN_STANDARDS_VERSION)):
+                 debianNewChangeLogFile.write('  * debian/control: Updated standards version to ' + DEBIAN_STANDARDS_VERSION + '.\n')
             match = re_end_of_entry.match(line)
             if match != None:
                now = time.strftime('%a, %d %b %Y %H:%M:%S %z', time.localtime())
