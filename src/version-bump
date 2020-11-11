@@ -240,7 +240,7 @@ for autoconfFileName in [ 'configure.ac', 'configure.in' ]:
       break
 
 if os.path.isfile(autoconfFileName):
-   re_autoconffile_version = re.compile(r'^AC_INIT\([ \t]*\[(.*)\][ \t]*,[ \t]*\[(\d).(\d).(\d+)(~[a-zA-Z0-9\.+]+|)\][ \t]*,[ \t]*\[(.*)\][ \t]*\)')
+   re_autoconffile_version = re.compile(r'^AC_INIT\([ \t]*\[(.*)\][ \t]*,[ \t]*\[(\d).(\d).(\d+)([~+][a-zA-Z0-9\.+]+|)\][ \t]*,[ \t]*\[(.*)\][ \t]*\)')
    try:
       autoconfFile = open(autoconfFileName, 'r', encoding='utf-8')
       autoconfFileContents = autoconfFile.readlines()
@@ -320,16 +320,19 @@ for i in range(1, len(sys.argv)):
       versionExtra = ""
 
    elif (sys.argv[i] == '-e') or (sys.argv[i] == '--extra') or (sys.argv[i][0:8] == '--extra='):
-      if versionExtra == '':
+      if ((versionExtra == '') or (sys.argv[i][8:] != '')):
          if sys.argv[i][8:] == '':
             versionExtra = '~alpha1.0'
          else:
-            versionExtra = '~' + sys.argv[i][8:]
-            match = re.match(r'^(~.*)(\d+)$', versionExtra)
+            if ((sys.argv[i][8:9] == '~') or (sys.argv[i][8:9] == '+')):
+               versionExtra = sys.argv[i][8:]
+            else:
+               versionExtra = '~' + sys.argv[i][8:]
+            match = re.match(r'^([~+].*)(\d+)$', versionExtra)
             if match == None:
                versionExtra = versionExtra + '0'
       else:
-         match = re.match(r'^(~.*[^\d])(\d+)$', versionExtra)
+         match = re.match(r'^([~+].*[^\d])(\d+)$', versionExtra)
          if match != None:
             e = int(match.group(2)) + 1
             versionExtra = match.group(1) + str(e)
