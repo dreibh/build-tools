@@ -30,7 +30,7 @@ import time
 
 # Set current Debian standards version here
 # (See https://www.debian.org/doc/debian-policy/ for latest version!)
-DEBIAN_STANDARDS_VERSION="4.5.0.3"
+DEBIAN_STANDARDS_VERSION="4.5.1.0"
 
 
 # ###### Show differences ###################################################
