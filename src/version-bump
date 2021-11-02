@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Packaging Scripts
-# Copyright (C) 2018-2021 by Thomas Dreibholz
+# Copyright (C) 2018-2022 by Thomas Dreibholz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -80,6 +80,7 @@ elif packageMakeDist == None:
 # ====== Read Debian configuration ==========================================
 debianChangeLogFileName = 'debian/changelog'
 debianControlFileName   = 'debian/control'
+debianPackage           = None
 debianVersionString     = None
 debianStandardsVersion  = None
 debianDistribution      = None
@@ -128,12 +129,14 @@ if os.path.isfile(debianChangeLogFileName):
 
 # ====== Read RPM configuration =============================================
 rpmSpecFileName  = None
+rpmPackage       = None
 rpmVersionString = None
 
 rpmSpecFileNames = glob.glob('rpm/*.spec')
 if len(rpmSpecFileNames) > 0:
    rpmSpecFileName     = rpmSpecFileNames[0]
    rpmVersionPackaging = None
+   re_rpm_name    = re.compile(r'^(Name:[ \t]*)(\S+)')
    re_rpm_version = re.compile(r'^(Version:[ \t]*)(\d+)\.(\d+)\.(\d+)(.*|)')
    re_rpm_release = re.compile(r'^(Release:[ \t]*)(\d+)')
    try:
@@ -153,6 +156,10 @@ if len(rpmSpecFileNames) > 0:
             match = re_rpm_release.match(line)
             if match != None:
                rpmVersionPackaging = int(match.group(2))
+            else:
+               match = re_rpm_name.match(line)
+               if match != None:
+                  rpmPackage = match.group(2)
       rpmSpecFile.close()
    except Exception as e:
       sys.stderr.write('ERROR: Unable to read ' + rpmSpecFileName + ': ' + str(e) + '\n')
@@ -188,6 +195,7 @@ if len(freeBSDMakefileNames) > 0:
 # ====== Read CMakeLists.txt configuration ==================================
 cmakeFileName      = 'CMakeLists.txt'
 cmakeFoundVersion  = False
+cmakePackage       = None
 cmakeVersionMajor  = None
 cmakeVersionMinor  = None
 cmakeVersionPatch  = None
@@ -195,6 +203,7 @@ cmakeVersionExtra  = None
 cmakeVersionString = None
 
 if os.path.isfile(cmakeFileName):
+   re_cmake_project   = re.compile(r'[ \t]*PROJECT[ \t]*\(([a-zA-Z0-9-+]+)')
    re_cmakefile_major = re.compile(r'^[Ss][Ee][Tt]\(BUILD_MAJOR[ \t]*"(\d+)"[ \t]*\)')
    re_cmakefile_minor = re.compile(r'^[Ss][Ee][Tt]\(BUILD_MINOR[ \t]*"(\d+)"[ \t]*\)')
    re_cmakefile_patch = re.compile(r'^[Ss][Ee][Tt]\(BUILD_PATCH[ \t]*"(\d+)(~[a-zA-Z0-9\.+]+|)"[ \t]*\)')
@@ -214,6 +223,10 @@ if os.path.isfile(cmakeFileName):
                if match != None:
                   cmakeVersionPatch = int(match.group(1))
                   cmakeVersionExtra = match.group(2)
+               else:
+                  match = re_cmake_project.match(line)
+                  if match != None:
+                     cmakePackage = match.group(1)
       cmakeFile.close()
       if (cmakeVersionMajor != None) and \
          (cmakeVersionMinor != None) and \
@@ -229,6 +242,7 @@ if os.path.isfile(cmakeFileName):
 
 # ====== Read configure.ac configuration ====================================
 autoconfFoundVersion  = False
+autoconfPackage       = None
 autoconfVersionMajor  = None
 autoconfVersionMinor  = None
 autoconfVersionPatch  = None
@@ -247,6 +261,7 @@ if os.path.isfile(autoconfFileName):
       for line in autoconfFileContents:
          match = re_autoconffile_version.match(line)
          if match != None:
+            autoconfPackage      = match.group(1)
             autoconfVersionMajor = int(match.group(2))
             autoconfVersionMinor = int(match.group(3))
             autoconfVersionPatch = int(match.group(4))
@@ -261,21 +276,65 @@ if os.path.isfile(autoconfFileName):
       sys.exit(1)
 
 
+# ====== Read configure.ac configuration ====================================
+otherFoundVersion  = False
+otherPackage       = None
+otherVersionMajor  = None
+otherVersionMinor  = None
+otherVersionPatch  = None
+otherVersionExtra  = None
+otherVersionString = None
+
+for otherFileName in [ 'version' ]:
+   if os.path.isfile(otherFileName):
+      break
+
+if os.path.isfile(otherFileName):
+   re_otherfile_version = re.compile(r'(\S+) (\d).(\d).(\d+)([~+][a-zA-Z0-9\.+]+|)')
+   try:
+      otherFile = open(otherFileName, 'r', encoding='utf-8')
+      otherFileContents = otherFile.readlines()
+      line = otherFileContents[0]
+      match = re_otherfile_version.match(line)
+      if match != None:
+         otherPackage      = match.group(1)
+         otherVersionMajor = int(match.group(2))
+         otherVersionMinor = int(match.group(3))
+         otherVersionPatch = int(match.group(4))
+         otherVersionExtra = match.group(5)
+         otherVersionString = str(otherVersionMajor) + '.' + \
+                                 str(otherVersionMinor) + '.' + \
+                                 str(otherVersionPatch) + otherVersionExtra
+      otherFile.close()
+   except Exception as e:
+      sys.stderr.write('ERROR: Unable to read ' + otherFileName + ': ' + str(e) + '\n')
+      sys.exit(1)
+print(otherVersionString)
+
 # ====== Check versions =====================================================
 if cmakeVersionString != None:
+   package       = cmakePackage
    versionString = cmakeVersionString
    versionMajor  = cmakeVersionMajor
    versionMinor  = cmakeVersionMinor
    versionPatch  = cmakeVersionPatch
    versionExtra  = cmakeVersionExtra
 elif autoconfVersionString != None:
+   package       = autoconfPackage
    versionString = autoconfVersionString
    versionMajor  = autoconfVersionMajor
    versionMinor  = autoconfVersionMinor
    versionPatch  = autoconfVersionPatch
    versionExtra  = autoconfVersionExtra
+elif otherVersionString != None:
+   package       = otherPackage
+   versionString = otherVersionString
+   versionMajor  = otherVersionMajor
+   versionMinor  = otherVersionMinor
+   versionPatch  = otherVersionPatch
+   versionExtra  = otherVersionExtra
 else:
-   sys.stderr.write('ERROR: Unable to find version in ' + cmakeFileName + ' or ' + autoconfFileName + '!\n')
+   sys.stderr.write('ERROR: Unable to find version in ' + cmakeFileName + ', ' + autoconfFileName + ' or ' + otherFileName + '!\n')
    sys.exit(1)
 
 if cmakeVersionString != None:
@@ -299,6 +358,15 @@ if freeBSDVersionString != None:
    sys.stdout.write('Version from FreeBSD ports Makefile: ' + freeBSDVersionString + '   (in ' + freeBSDMakefileName + ')\n')
    if freeBSDVersionString != versionString:
       sys.stderr.write('WARNING: FreeBSD ports version does not match build version!\n')
+
+if package == None:
+   if debianPackage != None:
+      package = debianPackage
+   elif rpmPackage != None:
+      package = rpmPackage
+   else:
+      sys.stderr.write('ERROR: Unable to find package name!\n')
+      sys.exit(1)
 
 
 # ====== Version bump =======================================================
@@ -549,6 +617,13 @@ if freeBSDVersionString != None:
    freeBSDMakefileFileNew.close()
 
 
+# ====== Update version file ================================================
+if otherVersionString != None:
+   otherFileNew = open(otherFileName + '.new', 'w', encoding='utf-8')
+   otherFileNew.write(otherPackage + ' ' +
+                      str(versionMajor) + '.' + str(versionMinor) + '.' + str(versionPatch) + versionExtra + '\n')
+   otherFileNew.close()
+
 
 # ====== Check result =======================================================
 if cmakeVersionString != None:
@@ -585,6 +660,8 @@ if rpmVersionString != None:
    applyUpdate(rpmSpecFileName + '.new', rpmSpecFileName)
 if freeBSDVersionString != None:
    applyUpdate(freeBSDMakefileName + '.new', freeBSDMakefileName)
+if otherVersionString != None:
+   applyUpdate(otherFileName + '.new', otherFileName)
 sys.stdout.write('Done!\n')
 
 # ------ Release version ----------------------------------------------------
@@ -598,7 +675,7 @@ if versionExtra == '':
       subprocess.call([ pathname + '/update-changelog' ])
 
    # ------ Create Git tag --------------------------------------------------
-   newGitTag = debianPackage + '-' + versionString
+   newGitTag = package + '-' + versionString
    applyChanges = input('\x1b[34mCommit and create signed Git tag ' + newGitTag + '? [yes/no]?\x1b[0m ')
    if ((applyChanges == 'yes') or (applyChanges == 'y')):
       subprocess.call([ 'git', 'clean', '-df' ])
