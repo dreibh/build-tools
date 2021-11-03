@@ -477,6 +477,8 @@ if debianITP != None:
          # => Package is and was not in Debian!
          sys.stdout.write('NO -> ITP\n')
          debianPackageStatus = 'ITP'
+elif debianPackage != None:
+   sys.stdout.write('No Debian ITP found.\n')
 
 
 # ====== Update CMakeLists.txt ==============================================
