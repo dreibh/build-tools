@@ -26,6 +26,8 @@ import re
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.request
 
 
 # Set current Debian standards version here
@@ -84,30 +86,41 @@ debianPackage           = None
 debianVersionString     = None
 debianStandardsVersion  = None
 debianDistribution      = None
+debianITP               = None
+debianPackageStatus     = None
 
 if os.path.isfile(debianChangeLogFileName):
    re_debian_version = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+:|)(\d+)\.(\d+)\.(\d+)(.*|)-(\d[a-zA-Z-+]+\d)\)[ \t]*([a-zA-Z-+]+)[ \t]*;')
+   re_debian_itp1    = re.compile(r'^ * .*ITP.*Closes: #([0-9]+).*$')
+   re_debian_itp2    = re.compile(r'^ * .*Closes: #([0-9]+).*ITP.*$')
    try:
       debianChangeLogFile = open(debianChangeLogFileName, 'r', encoding='utf-8')
       debianChangeLogFileContents = debianChangeLogFile.readlines()
       n = 0
       for line in debianChangeLogFileContents:
          n = n + 1
-         if n > 1:
-            break
-         match = re_debian_version.match(line)
-         if match != None:
-            debianPackage          = match.group(1)
-            debianVersionPrefix    = match.group(2)
-            debianVersionMajor     = int(match.group(3))
-            debianVersionMinor     = int(match.group(4))
-            debianVersionPatch     = int(match.group(5))
-            debianVersionExtra     = match.group(6)
-            debianVersionPackaging = match.group(7)
-            debianDistribution     = match.group(8)
-            debianVersionString    = str(debianVersionMajor) + '.' + \
-                                     str(debianVersionMinor) + '.' + \
-                                     str(debianVersionPatch) + debianVersionExtra
+         if n == 1:
+            match = re_debian_version.match(line)
+            if match != None:
+                debianPackage          = match.group(1)
+                debianVersionPrefix    = match.group(2)
+                debianVersionMajor     = int(match.group(3))
+                debianVersionMinor     = int(match.group(4))
+                debianVersionPatch     = int(match.group(5))
+                debianVersionExtra     = match.group(6)
+                debianVersionPackaging = match.group(7)
+                debianDistribution     = match.group(8)
+                debianVersionString    = str(debianVersionMajor) + '.' + \
+                                        str(debianVersionMinor) + '.' + \
+                                        str(debianVersionPatch) + debianVersionExtra
+         elif n > 1:
+            match = re_debian_itp1.match(line)
+            if match == None:
+               match = re_debian_itp2.match(line)
+            if match != None:
+               # print('ITP: ' + line)
+               debianITP = int(match.group(1))
+               break
       debianChangeLogFile.close()
    except Exception as e:
       sys.stderr.write('ERROR: Unable to read ' + debianChangeLogFileName + ': ' + str(e) + '\n')
@@ -309,7 +322,7 @@ if os.path.isfile(otherFileName):
    except Exception as e:
       sys.stderr.write('ERROR: Unable to read ' + otherFileName + ': ' + str(e) + '\n')
       sys.exit(1)
-print(otherVersionString)
+
 
 # ====== Check versions =====================================================
 if cmakeVersionString != None:
@@ -441,6 +454,31 @@ elif autoconfVersionString != None:
       sys.exit(1)
 
 
+# ====== Check, whether ITP has been fulfilled  =============================
+if debianITP != None:
+   sys.stdout.write('Searching package in Debian (ITP #' + str(debianITP) + ') ... ')
+   try:
+      webFile = urllib.request.urlopen('https://tracker.debian.org/pkg/' + debianPackage)
+      webFileContents = webFile.read().decode('utf-8')
+      webFile.close()
+      # Package *is* or *was* in Debian?
+
+      if re.search('package is gone', webFileContents):
+         # Package was in Debian => There is need for a new ITP entry!
+         debianPackageStatus = 'GONE'
+         sys.stdout.write('GONE!\n')
+      else:
+         # Package is still in Debian!
+         debianPackageStatus = 'EXISTING'
+         debianITP           = None   # No need to move the ITP entry!
+         sys.stdout.write('YES -> nothing to do\n')
+   except urllib.error.HTTPError as e:
+      if e.code == 404:
+         # => Package is and was not in Debian!
+         sys.stdout.write('NO -> ITP\n')
+         debianPackageStatus = 'ITP'
+
+
 # ====== Update CMakeLists.txt ==============================================
 if cmakeVersionString != None:
    cmakeFileNew = open(cmakeFileName + '.new', 'w', encoding='utf-8')
@@ -518,6 +556,8 @@ if debianVersionString != None:
             now = time.strftime('%a, %d %b %Y %H:%M:%S %z', time.localtime())
             debianNewChangeLogFile.write('\n')
             debianNewChangeLogFile.write('  * New upstream release.\n')
+            if debianITP != None:
+               debianNewChangeLogFile.write('  * Closes: #' + str(debianITP) + ' (ITP).\n')
             if ((debianStandardsVersion != None) and
                 (debianStandardsVersion != DEBIAN_STANDARDS_VERSION)):
                debianNewChangeLogFile.write('  * debian/control: Updated standards version to ' + DEBIAN_STANDARDS_VERSION + '.\n')
@@ -531,16 +571,28 @@ if debianVersionString != None:
          if ((inFirstEntry == True) and (debianNewChangeLogEntry == False)):
             match = re_empty_line.match(line)
             if match != None:
-              e = e + 1
-              if ((e == 2) and
-                  (debianStandardsVersion != None) and
-                  (debianStandardsVersion != DEBIAN_STANDARDS_VERSION)):
-                 debianNewChangeLogFile.write('  * debian/control: Updated standards version to ' + DEBIAN_STANDARDS_VERSION + '.\n')
+               e = e + 1
+               if (e == 2) and (debianITP != None):
+                  debianNewChangeLogFile.write('  * Closes: #' + str(debianITP) + ' (ITP).\n')
+               if ((e == 2) and
+                   (debianStandardsVersion != None) and
+                   (debianStandardsVersion != DEBIAN_STANDARDS_VERSION)):
+                  debianNewChangeLogFile.write('  * debian/control: Updated standards version to ' + DEBIAN_STANDARDS_VERSION + '.\n')
             match = re_end_of_entry.match(line)
             if match != None:
                now = time.strftime('%a, %d %b %Y %H:%M:%S %z', time.localtime())
                debianNewChangeLogFile.write(' -- ' + packageMaintainer + '  ' + now + '\n')
                inFirstEntry = False
+               continue
+
+         # ------ Is there is an existing ITP entry, do not add it ----------
+         # The new ITP entry has been written above!
+         if debianITP != None:
+            match = re_debian_itp1.match(line)
+            if match == None:
+               match = re_debian_itp2.match(line)
+            if match != None:
+               # Drop old ITP line. Only the latest entry should contain an ITP!
                continue
 
          # ------ Else: just copy existing line -----------------------------
