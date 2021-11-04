@@ -48,8 +48,9 @@ re_entry_footer = re.compile(r'^ -- .*')
 re_empty        = re.compile(r'^\S*$')
 
 topics = [
-   { 'regexp': re.compile(r'^  \* .*ew upstream (version|release).*$'), 'count': 0 },
-   { 'regexp': re.compile(r'^  \* .*standards version.*$'), 'count': 0 }
+   { 'regexp': re.compile(r'^  \* .*ew upstream (version|release).*$'), 'count': 0, 'max': 1 },
+   { 'regexp': re.compile(r'^  \* .*standards version.*$'),             'count': 0, 'max': 1 },
+   { 'regexp': re.compile(r'^  \* .*debian/compat:.*$'),                'count': 0, 'max': 0 }
 ]
 
 # ------ Get latest entry from distribution changelog -----------------------
@@ -101,7 +102,7 @@ for line in changelogContentsPPA:
       match = topic['regexp'].match(line)
       if match != None:
          topic['count'] = topic['count'] + 1
-         if topic['count'] > 1:
+         if topic['count'] > topic['max']:
             skip = True
             break
    if skip == True:
