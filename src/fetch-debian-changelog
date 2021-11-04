@@ -86,8 +86,6 @@ except urllib.error.HTTPError as e:
 
 if (debianVersion == None) or (debianArchive == None):
    sys.stderr.write('not found!\n')
-   print(debianVersion)
-   print(debianArchive)
    sys.exit(1)
 
 sys.stderr.write('Version in ' + debianDistribution + ' is ' + debianVersion + '\n')
