@@ -52,8 +52,6 @@ topics = [
    { 'regexp': re.compile(r'^  \* .*standards version.*$'), 'count': 0 }
 ]
 
-#re_topic_new_release = re.compile(r'^ \* .*upstream release.*$')
-
 # ------ Get latest entry from distribution changelog -----------------------
 match = re_entry_header.match(changelogContentsDistribution[0])
 if match == None:
@@ -67,14 +65,22 @@ result = []
 entries                           = 0
 insideEntry                       = False
 foundLatestDistributionEntryInPPA = False
+firstFooter                       = None
 for line in changelogContentsPPA:
    # ------ Begin of an entry -----------------------------------------------
    match = re_entry_header.match(line)
    if match != None:
+
       entries = entries + 1
       if entries == 1:
          result.append(line)
          result.append('\n')
+
+      # ------ Done? --------------------------------------------------------
+      elif line[0:len(latestDistributionEntry)] == latestDistributionEntry:
+         foundLatestDistributionEntryInPPA = True
+         break
+
       continue
 
    # ------ Empty line ------------------------------------------------------
@@ -85,15 +91,9 @@ for line in changelogContentsPPA:
    # ------ End of an entry -------------------------------------------------
    match = re_entry_footer.match(line)
    if match != None:
-      #if entries == 1:
-         #result.append(line)
-         #print(line)
+      if entries == 1:
+         firstFooter = line
       continue
-
-   # ------ Done? -----------------------------------------------------------
-   if line[0:len(latestDistributionEntry)] == latestDistributionEntry:
-      foundLatestDistributionEntryInPPA = True
-      break
 
    # ------ Topics ----------------------------------------------------------
    skip = False
@@ -110,8 +110,16 @@ for line in changelogContentsPPA:
    # ------ Add line to output ----------------------------------------------
    result.append(line)
 
+result.append('\n')
+result.append(firstFooter)
+
+
+if foundLatestDistributionEntryInPPA == False:
+   sys.stderr.write('ERROR: Did not found the latest distribution entry in the PPA changelog!\n')
+   sys.exit(1)
+
 
 for line in result:
    sys.stdout.write(line)
 
-print(topics)
+# print(topics)
