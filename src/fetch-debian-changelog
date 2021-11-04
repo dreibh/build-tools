@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Packaging Scripts
-# Copyright (C) 2018-2022 by Thomas Dreibholz
+# Copyright (C) 2021-2022 by Thomas Dreibholz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,32 +34,42 @@ import urllib.request
 
 #  ====== Handle arguments ==================================================
 if len(sys.argv) < 2:
-  sys.stderr.write('Usage: ' + sys.argv[0] + ' package\n')
+  sys.stderr.write('Usage: ' + sys.argv[0] + ' package [distribution]\n')
   sys.exit(1)
 
 debianPackage       = sys.argv[1]
-debianDistribution  = 'unstable'
+if len(sys.argv) == 2:
+   debianDistribution  = 'unstable'
+else:
+   debianDistribution  = sys.argv[2]
+if debianDistribution in [ 'unstable', 'testing', 'stable', 'oldstable' ]:
+   # Debian
+   statusPageURL = 'https://packages.debian.org/source/' + debianDistribution + '/' + debianPackage
+else:
+   # Ubuntu
+   statusPageURL = 'https://packages.ubuntu.com/source/' + debianDistribution + '/' + debianPackage
+
 debianVersion       = None
+debianLocation      = None
 debianArchive       = None
 debianArchiveFormat = None
 
 
 # ====== Get package status =================================================
-webFileContents = None
-webFileURL      = 'https://packages.debian.org/source/' + debianDistribution + '/' + debianPackage
-sys.stderr.write('Looking for package status on ' + webFileURL + ' ... ')
+statusPageContents = None
+sys.stderr.write('Looking for package status on ' + statusPageURL + ' ... ')
 sys.stderr.flush()
 try:
-   webFile = urllib.request.urlopen(webFileURL)
-   webFileContents = webFile.readlines()
-   webFile.close()
+   statusPage = urllib.request.urlopen(statusPageURL)
+   statusPageContents = statusPage.readlines()
+   statusPage.close()
 
-   re_debian_package = re.compile(r'.*Source Package: ' + debianPackage + ' \(([0-9-+~\.]+)\)')
-   re_debian_archive = re.compile(r'.*href="(http|https)://deb\.debian\.org/debian/pool/main/' + \
+   re_debian_package = re.compile(r'.*Source Package: ' + debianPackage + ' \(([0-9-+~\.a-z]+)\)')
+   re_debian_archive = re.compile(r'.*href="((http|https)://[a-zA-Z0-9\./+-]+/' + \
                                      debianPackage[0:1] + '/' + \
                                      debianPackage + '/' + \
-                                     r'(' + debianPackage + r'_[0-9-+~\.]+\.debian\.tar\.[a-zA-Z]+)"')
-   for line in webFileContents:
+                                     r')(' + debianPackage + r'_[0-9-+~\.a-z]+\.debian\.tar\.[a-zA-Z]+)"')
+   for line in statusPageContents:
       line = line.decode('utf-8')
       match = re_debian_package.match(line)
       if match != None:
@@ -67,7 +77,8 @@ try:
       else:
          match = re_debian_archive.match(line)
          if match != None:
-            debianArchive = match.group(2)
+            debianLocation = match.group(1)
+            debianArchive  = match.group(3)
 
 except urllib.error.HTTPError as e:
    sys.stderr.write('not found (HTTP ' + str(e.code) + ')!\n')
@@ -75,6 +86,8 @@ except urllib.error.HTTPError as e:
 
 if (debianVersion == None) or (debianArchive == None):
    sys.stderr.write('not found!\n')
+   print(debianVersion)
+   print(debianArchive)
    sys.exit(1)
 
 sys.stderr.write('Version in ' + debianDistribution + ' is ' + debianVersion + '\n')
@@ -92,18 +105,15 @@ elif debianArchiveFormat == 'xz':
 
 
 # ====== Fetch debian archive ===============================================
-webFileURL    = 'http://deb.debian.org/debian/pool/main/' + \
-                   debianPackage[0:1] + '/' + \
-                   debianPackage + '/' + \
-                   debianArchive
-sys.stderr.write('Looking for \"debian\" archive at ' + webFileURL + ' ... ')
+archiveFileURL =  debianLocation + debianArchive
+sys.stderr.write('Looking for \"debian\" archive at ' + archiveFileURL + ' ... ')
 sys.stderr.flush()
 try:
-   webFile = urllib.request.urlopen(webFileURL)
+   archiveFile = urllib.request.urlopen(archiveFileURL)
    debianArchiveFile = tempfile.NamedTemporaryFile(delete=False)
-   shutil.copyfileobj(webFile, debianArchiveFile)
+   shutil.copyfileobj(archiveFile, debianArchiveFile)
    debianArchiveFile.close()
-   webFile.close()
+   archiveFile.close()
    sys.stderr.write('found!\n')
 
    try:
