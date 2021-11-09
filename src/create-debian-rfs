@@ -1,0 +1,241 @@
+#!/usr/bin/env bash
+#
+# Debian/Ubuntu Packaging Scripts
+# Copyright (C) 2017-2022 by Thomas Dreibholz
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Contact: dreibh@iem.uni-due.de
+
+# Bash options:
+set -e
+
+
+# ====== Handle arguments ===================================================
+TYPE="RFS"
+while [ $# -gt 0 ] ; do
+   if [ "$1" == "-itp" -o "$1" == "--itp" ] ; then
+      TYPE="ITP"
+   else
+      echo >&2 "ERROR: Bad argument $1!"
+      exit 1
+   fi
+   shift
+done
+
+
+# ====== Get package configuration ==========================================
+if [ ! -e ./packaging.conf ] ; then
+   echo >&2 "ERROR: packaging.conf not found!"
+   exit 1
+fi
+. ./packaging.conf
+CHANGELOG_HEADER="`head -n1 debian/changelog`"
+
+# The package name, e.g. MyApplication
+PACKAGE=`echo ${CHANGELOG_HEADER} | sed -e "s/(.*//" -e "s/ //g"`
+# The package distribution, e.g. precise, raring, ...
+PACKAGE_DISTRIBUTION=`echo ${CHANGELOG_HEADER} | sed -e "s/[^)]*)//" -e "s/;.*//g" -e "s/ //g"`
+# The package's version, e.g. 1.2.3-1ubuntu1
+PACKAGE_VERSION=`echo ${CHANGELOG_HEADER} | sed -e "s/.*(//" -e "s/).*//" -e "s/ //g" -e "s/ //g" -e "s/^[0-9]://g"`
+# The package's output version, e.g. 1.2.3-1ubuntu
+OUTPUT_VERSION=`echo ${PACKAGE_VERSION}   | sed -e "s/\(ubuntu\|ppa\)[0-9]*$/\1/"`
+# The package's Debian version, e.g. 1.2.3-1
+DEBIAN_VERSION=`echo ${OUTPUT_VERSION}    | sed -e "s/\(ubuntu\|ppa\)$//1"`
+# The package's upstream version, e.g. 1.2.3
+UPSTREAM_VERSION=`echo ${DEBIAN_VERSION}  | sed -e "s/-[0-9]*$//"`
+# The package's plain upstream version, e.g. 1.2.3 (without e.g. ~svn<xxxx>)
+PLAIN_VERSION=`echo ${UPSTREAM_VERSION}   | sed -e "s/\([0-9\.]*\)[-+~].*$/\1/"`
+
+
+echo -e "\x1b[34m######################################################################\x1b[0m"
+echo -e "\x1b[34mCHANGELOG_HEADER:     ${CHANGELOG_HEADER}\x1b[0m"
+echo -e "\x1b[34mPACKAGE:              ${PACKAGE}\x1b[0m"
+echo -e "\x1b[34mPACKAGE_DISTRIBUTION: ${PACKAGE_DISTRIBUTION}\x1b[0m"
+echo -e "\x1b[34mPACKAGE_VERSION       ${PACKAGE_VERSION}\x1b[0m"
+echo -e "\x1b[34mOUTPUT_VERSION:       ${OUTPUT_VERSION}\x1b[0m"
+echo -e "\x1b[34mDEBIAN_VERSION:       ${DEBIAN_VERSION}\x1b[0m"
+echo -e "\x1b[34mUPSTREAM_VERSION:     ${UPSTREAM_VERSION}\x1b[0m"
+echo -e "\x1b[34mPLAIN_VERSION:        ${PLAIN_VERSION}\x1b[0m"
+echo -e "\x1b[34m######################################################################\x1b[0m"
+
+
+# ====== Prepare additional information =====================================
+PACKAGE_FIRST_LETTER=`echo "${PACKAGE}" | sed -e "s/^\([a-zA-Z0-9]\)\(.*\)$/\1/g"`
+DSC_URL="https://mentors.debian.net/debian/pool/main/${PACKAGE_FIRST_LETTER}/${PACKAGE}/${PACKAGE}_${DEBIAN_VERSION}.dsc"
+CONTACT=`cat debian/copyright | grep "Upstream-Contact:" |  sed -e "s/[^:]*:[[:space:]]*//g" -e "s#<\(.*\)>#\&lt;<a href=\"mailto:\1\">\1</a>\&gt;#g" | sort -u | xargs`
+URL=`cat debian/copyright | grep "Source:" | awk '{ print $2 }' | sort -u | xargs`
+LICENSES=`cat debian/copyright | grep "License:" | awk '{ print $2 "," }' | xargs | sort -u | sed -e "s/,$//g"`
+SECTION=`cat debian/control | grep "Section:" | awk '{ print $2 }' | head -n1`
+
+BINARY_PACKAGES=`
+cat debian/control | (
+   package=""
+   description=""
+   while read line ; do
+      if [[ "${line}" =~ ^(Package:[[:space:]]*)(.*)$ ]] ; then
+         package=${BASH_REMATCH[2]}
+      elif [[ "${line}" =~ ^(Description:[[:space:]]*)(.*)$ ]] ; then
+         description=${BASH_REMATCH[2]}
+         echo "<li>${package} - ${description}</li>"
+      fi
+   done
+) | sort
+`
+
+DESCRIPTION=`
+cat ${PACKAGE}.lsm | (
+   in_description=0
+   IFS=""   # Keep leading spaces!
+   while read line ; do
+      if [ $in_description -eq 0 ] ; then
+         if [[ "${line}" =~ ^(Description:[[:space:]]*)(.*)$ ]] ; then
+            in_description=1
+            echo "<p>"
+            echo "${BASH_REMATCH[2]}"
+         fi
+      else
+         if [[ "${line}" =~ ^([[:space:]][[:space:]]*)(.*)$ ]] ; then
+            echo "${BASH_REMATCH[2]}"
+         else
+            echo "</p>"
+            in_description=0
+            break
+         fi
+      fi
+   done
+)
+`
+
+MOST_RECENT_CHANGELOG_ENTRY=`
+cat debian/changelog | (
+   open_p=0
+   open_li=0
+   IFS=""   # Keep leading spaces!
+   while read line ; do
+      if [[ "${line}" =~ ^(  \*[[:space:]]*)(.*)$ ]] ; then
+         if [ $open_li -eq 1 ] ; then
+            echo "</li>"
+         fi
+         echo -n "<li>${BASH_REMATCH[2]}"
+         open_li=1
+      elif [[ "${line}" =~ ^( --) ]] ; then
+         if [ $open_li -eq 1 ] ; then
+            echo "</li>"
+         fi
+         open_li=0
+         echo "</ul>"
+         echo "<p>\`echo "${line}" | sed -e "s#<\(.*\)>#\&lt;<a href=\"mailto:\1\">\1</a>\&gt;#g"\`</p>"
+         break
+      elif [[ ! "${line}" =~ ^([[:space:]]*)$ ]] ; then
+         echo "<p>${line}</p>"
+         echo "<ul>"
+      fi
+   done
+)
+`
+
+
+# ====== Create Debian ITP ==================================================
+RFS_TO="submit@bugs.debian.org"
+
+if [ "${TYPE}" == "RFS" ] ; then
+   RFS_SUBJECT="RFS: ${PACKAGE}/${DEBIAN_VERSION}"
+   RFS_PACKAGE="sponsorship-requests"
+elif [ "${TYPE}" == "ITP" ] ; then
+   RFS_SUBJECT="ITP: ${PACKAGE}/${DEBIAN_VERSION}"
+   RFS_PACKAGE="wnpp"
+else
+   echo >&2 "ERROR: Invalid type ${TYPE}!"
+   exit 1
+fi
+
+RFS_CONTENT="<?xml version=\"1.0\" encoding=\"utf-8\" ?>
+<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" \"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">
+<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\">
+<head>
+<title>${RFS_SUBJECT}</title>
+</head>
+<body>
+<p>
+Package: ${RFS_PACKAGE}<br/>
+Severity: normal<br/>
+</p>"
+
+if [ "${TYPE}" == "RFS" ] ; then
+   RFS_CONTENT="${RFS_CONTENT}
+<p>
+Dear mentors,<br/><br/>
+I am looking for a sponsor for my package \"<a href="${URL}">${PACKAGE}</a>\":
+</p>"
+fi
+
+RFS_CONTENT="${RFS_CONTENT}
+<ul>
+<li>Package name: ${PACKAGE}<br/>
+    Version: ${DEBIAN_VERSION}<br/>
+    Upstream Author: ${CONTACT}
+</li>
+<li>URL: <a href="${URL}">${URL}</a></li>
+<li>License: ${LICENSES}</li>
+<li>Section: ${SECTION}</li>
+</ul>
+${DESCRIPTION}"
+
+if [ "${TYPE}" == "RFS" ] ; then
+   RFS_CONTENT="${RFS_CONTENT}
+<p>
+\"<a href="${URL}">${PACKAGE}</a>\" builds these binary packages:
+</p>
+<ul>
+${BINARY_PACKAGES}
+</ul>
+<p>
+To access further information about this package, please visit the following URL:<br/>
+<a href="https://mentors.debian.net/package/${PACKAGE}">https://mentors.debian.net/package/${PACKAGE}</a>.
+</p>
+<p>
+Alternatively, one can download the package with dget using this command:
+</p>
+<pre>dget -x <a href="${DSC_URL}">${DSC_URL}</a></pre>
+<p>
+More information about \"<a href="${URL}">${PACKAGE}</a>\" can be obtained from
+<a href="${URL}">${URL}</a>.
+</p>
+<p>
+Most recent changelog entry:
+</p>
+${MOST_RECENT_CHANGELOG_ENTRY}"
+fi
+
+RFS_CONTENT="${RFS_CONTENT}
+<!--
+<p>
+Regards,<br/><br/>
+&nbsp;&nbsp;${CONTACT}
+</p>
+-->
+</body>
+</html>"
+
+echo "${RFS_CONTENT}" >RFS-${PACKAGE}.html
+tidy -o /dev/null -q RFS-${PACKAGE}.html
+
+
+# ====== Apply changes ======================================================
+echo -en "\x1b[34mRun: Is this correct? [yes/no]?\x1b[0m "
+read -er applyChanges
+if [ "$applyChanges" == "yes" -o "$applyChanges" == "y" ] ; then
+   thunderbird -compose "from=${MAINTAINER},to=submit@bugs.debian.org,subject=${RFS_SUBJECT},format=1,message=`pwd`/RFS-${PACKAGE}.html" || true &
+fi
