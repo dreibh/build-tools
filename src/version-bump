@@ -90,7 +90,7 @@ debianITP               = None
 debianPackageStatus     = None
 
 if os.path.isfile(debianChangeLogFileName):
-   re_debian_version = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+:|)(\d+)\.(\d+)\.(\d+)(.*|)-(\d[a-zA-Z-+]+\d)\)[ \t]*([a-zA-Z-+]+)[ \t]*;')
+   re_debian_version = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+:|)(\d+)\.(\d+)\.(\d+)(.*|)-(\d|\d[a-zA-Z-+~]+\d|)\)[ \t]*([a-zA-Z-+]+)[ \t]*;')
    re_debian_itp1    = re.compile(r'^ * .*ITP.*Closes: #([0-9]+).*$')
    re_debian_itp2    = re.compile(r'^ * .*Closes: #([0-9]+).*ITP.*$')
    try:
@@ -124,6 +124,10 @@ if os.path.isfile(debianChangeLogFileName):
       debianChangeLogFile.close()
    except Exception as e:
       sys.stderr.write('ERROR: Unable to read ' + debianChangeLogFileName + ': ' + str(e) + '\n')
+      sys.exit(1)
+
+   if debianPackage == None:
+      sys.stderr.write('ERROR: Cannot find required package versioning details in ' + debianChangeLogFileName + '!\n')
       sys.exit(1)
 
    re_debian_standards_version = re.compile(r'^Standards-Version:[ \t]*([0-9\.]*)[ \t]*$')
@@ -550,7 +554,12 @@ if debianVersionString != None:
 
        # ------ Update existing entry ---------------------------------------
       if n == 1:
-         debianNewChangeLogFile.write(debianPackage + ' (' + debianVersionPrefix + versionString + '-1ubuntu1) ' + \
+         match = re.search('[a-zA-Z-+~]+', debianVersionPackaging)
+         if match != None:
+            newVersionPackaging = '1' + match.group(0) + '1'
+         else:
+            newVersionPackaging = '1'
+         debianNewChangeLogFile.write(debianPackage + ' (' + debianVersionPrefix + versionString + '-' + newVersionPackaging + ') ' + \
                                       debianDistribution + '; urgency=medium\n')
 
          # ------ Create new entry ------------------------------------------
