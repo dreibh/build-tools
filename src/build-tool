@@ -1189,14 +1189,17 @@ def filterDebianChangelog(changeLogContents, re_last_entry = None):
       # ====== Begin of entry ===============================================
       if entryContentLines == 0:
          if re_begin_of_entry.match(line):
-            entryContent      = line
+            if entries == 0:
+               entryContent = line
+            else:
+               entryContent = '\n' + line
             entryContentLines = 1
 
       # ====== Within entry =================================================
       else:
          # ------ End of entry ----------------------------------------------
          if re_end_of_entry.match(line):
-            entryContent   = entryContent + line + '\n'
+            entryContent = entryContent + line
             if entryContentLines > 1:
                entries = entries + 1
 
@@ -1218,8 +1221,8 @@ def filterDebianChangelog(changeLogContents, re_last_entry = None):
                         resultingChangelog.append(itpLine)
                   break   # ITP -> done!
 
-               entryContent   = ''
-               entryIsITP = False
+               entryContent = ''
+               entryIsITP   = False
 
             # ------ Check for match with last entry regexp in argument -----
             if re_last_entry != None:
