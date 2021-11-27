@@ -65,6 +65,7 @@ DebianCodenames = [
    'squeeze-backports-sloppy',
 ]
 
+DebhelperLatestVersion = 13
 
 
 # ###########################################################################
@@ -269,13 +270,17 @@ def readDebianPackagingInformation():
    # ====== Process changelog file ==========================================
    debianChangelogName = 'debian/changelog'
    debianControlName   = 'debian/control'
-   if os.path.isfile(debianChangelogName):
+   debianRulesName     = 'debian/rules'
+   if ( (os.path.isfile(debianChangelogName)) and
+        (os.path.isfile(debianControlName)) and
+        (os.path.isfile(debianRulesName)) ):
       re_debian_version = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+:|)(\d+)\.(\d+)\.(\d+)(.*|)-(\d|\d[a-zA-Z-+~]+\d|)\)[ \t]*([a-zA-Z-+]+)[ \t]*;(.*)$')
       re_debian_itp1    = re.compile(r'^ * .*ITP.*Closes: #([0-9]+).*$')
       re_debian_itp2    = re.compile(r'^ * .*Closes: #([0-9]+).*ITP.*$')
 
       packageInfo['debian_changelog_name']    = debianChangelogName
       packageInfo['debian_control_name']      = debianControlName
+      packageInfo['debian_rules_name']        = debianRulesName
       packageInfo['debian_package_name']      = None
       packageInfo['debian_version_string']    = None
       packageInfo['debian_standards_version'] = None
@@ -697,6 +702,8 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
          pass
 
    for codename in codenames:
+      updatedDebhelperVersion = False
+
       printSubsection('Creating source Debian package for ' + codename)
 
       # ====== Prepare work directory =======================================
@@ -736,6 +743,8 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
       # ====== Adapt packaging ==============================================
 
       changeLogContents = readTextFile(packageInfo['debian_changelog_name'])
+      controlContents   = readTextFile(packageInfo['debian_control_name'])
+      rulesContents     = readTextFile(packageInfo['debian_rules_name'])
 
       # ------- Debian ------------------------------------------------------
       if codename in DebianCodenames:
@@ -743,8 +752,7 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
          # ------ Update changelog ------------------------------------------
          # Update codename and package versioning:
          # Drop Ubuntu packaging version:
-         re_packaging_version      = re.compile(r'(ubuntu|ppa)[0-9]')
-         newDebianVersionPackaging = re.sub(re_packaging_version, '',
+         newDebianVersionPackaging = re.sub(r'(ubuntu|ppa)[0-9]', '',
                                             packageInfo['debian_version_packaging'])
          changeLogContents[0] = \
             packageInfo['debian_package_name'] + \
@@ -765,6 +773,28 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
             # the distributor's changelog with the rest:
             changeLogContents = mergeDebianChangelogs(changeLogContents, distributorChangelogContents)
 
+         # ------ Use latest Debhelper for Debian ----------------------------
+         if codename in [ 'unstable', 'testing', 'stable', 'oldstable' ]:
+            # Update debhelper version:
+            re_debhelper = re.compile(r'debhelper \(.* [0-9]+\)')
+            for i in range(0, len(controlContents)):
+               controlContents[i] = re.sub(re_debhelper,
+                                          'debhelper-compat (= ' + str(DebhelperLatestVersion) + ')',
+                                          controlContents[i])
+
+            # There is no need for debian/compat any more:
+            try:
+               os.unlink(upstreamSourceDir + '/debian/compat')
+            except FileNotFoundError:
+               pass
+
+            # Newer debhelper does not need "--parallel" for building:
+            re_parallel = re.compile(r' --parallel')
+            for i in range(0, len(rulesContents)):
+               rulesContents[i] = re.sub(re_parallel, '', rulesContents[i])
+
+            updatedDebhelperVersion = True
+
 
       # ------- Ubuntu ------------------------------------------------------
       else:
@@ -773,8 +803,7 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
          # ------ Update changelog ------------------------------------------
          # Update codename and package versioning:
          # Drop Ubuntu packaging version:
-         re_packaging_version      = re.compile(r'[0-9]+$')
-         newDebianVersionPackaging = re.sub(re_packaging_version, '~' + codename + '1',
+         newDebianVersionPackaging = re.sub(r'[0-9]+$', '~' + codename + '1',
                                             packageInfo['debian_version_packaging'])
          print(newDebianVersionPackaging)
          changeLogContents[0] = \
@@ -790,13 +819,24 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
          # re_launchpad = re.compile(r'^.*\(Closes: #[0-9]+')
          # changeLogContents = [ line for line in changeLogContents if not re_launchpad.match(line) ]
 
+         # ------ Update control --------------------------------------------
+         for i in range(0, len(controlContents)):
+            # FIXME: Is this still necessary for Ubuntu?
+            controlContents[i] = re.sub(r'^Maintainer:', 'Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>\nXSBC-Original-Maintainer:', controlContents[i])
+
 
       # ------ Clean up empty lines -----------------------------------------
       changeLogContents = filterDebianChangelog(changeLogContents, None)
       writeTextFile(upstreamSourceDir + '/debian/changelog', changeLogContents)
+      writeTextFile(upstreamSourceDir + '/debian/control',   controlContents)
+      writeTextFile(upstreamSourceDir + '/debian/rules',     rulesContents)
 
       sys.stdout.write('Updated Debian changelog:\n')
       showDiff(packageInfo['debian_changelog_name'], upstreamSourceDir + '/debian/changelog')
+      sys.stdout.write('Updated Debian control:\n')
+      showDiff(packageInfo['debian_control_name'], upstreamSourceDir + '/debian/control')
+      sys.stdout.write('Updated Debian rules:\n')
+      showDiff(packageInfo['debian_rules_name'], upstreamSourceDir + '/debian/rules')
 
 
       # ====== Build source Debian package ==================================
@@ -805,11 +845,13 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
          if packageInfo['packaging_maintainer_key'] == None:
             sys.stderr.write('ERROR: No MAINTAINER_KEY in ' + packageInfo['packaging_config_name'] + '\n')
             sys.exit(1)
-         subprocess.run([ 'debuild', '--no-check-builddeps', '-sa', '-S', '-k' + packageInfo['packaging_maintainer_key'], '-i' ],
-                        cwd = upstreamSourceDir)
+         debuild = [ 'debuild', '--no-check-builddeps', '-sa', '-S', '-k' + packageInfo['packaging_maintainer_key'], '-i' ]
       else:
          # Build source package without signature:
-         subprocess.run([ 'debuild', '--no-check-builddeps', '-us', '-uc', '-S', '-i' ], cwd = upstreamSourceDir)
+         debuild = [ 'debuild', '--no-check-builddeps', '-us', '-uc', '-S', '-i' ]
+      if updatedDebhelperVersion == True:
+         debuild.append('--no-check-builddeps')
+      subprocess.run(debuild, cwd = upstreamSourceDir)
 
 
       # ====== Check description file =======================================
