@@ -562,6 +562,12 @@ def makeSourceTarball(packageInfo, skipPackageSigning):
       sys.stderr.write('ERROR: Unable to find source tarball!\n')
 
    # ====== Sign tarball ====================================================
+   # The source tarball is new, i.e. an existing signature is obsolete and
+   # must be deleted.
+   try:
+      os.unlink(sourcePackageInfo['source_tarball_name'] + '.asc')
+   except FileNotFoundError:
+      pass
    if skipPackageSigning == False:
       result = os.system('gpg --sign --armor --detach-sign ' + \
                          sourcePackageInfo['source_tarball_name'])
@@ -573,6 +579,7 @@ def makeSourceTarball(packageInfo, skipPackageSigning):
            (not 'source_tarball_name' in sourcePackageInfo) ):
          sys.stderr.write('ERROR: Unable to find signature of source tarball!\n')
 
+   packageInfo.update(sourcePackageInfo)
    return True
 
 
@@ -590,8 +597,6 @@ def buildDeb(packageInfo, skipPackageSigning):
    if not hasPackagingFor(packageInfo, 'debian'):
       sys.stderr.write('ERROR: Cannot find required Debian packaging information!\n')
       sys.exit(1)
-
-
 
 
 
