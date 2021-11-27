@@ -1,0 +1,198 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Unified Build Tool
+# Copyright (C) 2021-2022 by Thomas Dreibholz
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Contact: dreibh@iem.uni-due.de
+
+import glob
+import os
+import re
+import sys
+import pprint
+
+
+# ###########################################################################
+# #### Packaging                                                         ####
+# ###########################################################################
+
+
+# ###### Read packaging configuration from packaging.conf ###################
+def readPackagingConfiguration():
+
+   # ====== Initialise ======================================================
+   packageInfo = {}
+   packageInfo['maintainer']            = None
+   packageInfo['packaging_make_dist']   = None
+   packageInfo['packaging_config_name'] = 'packaging.conf'
+
+   # ====== Obtain package configuration ====================================
+   re_package_maintainer = re.compile(r'^(MAINTAINER=\")(.*)(\".*$)')
+   re_package_makedist   = re.compile(r'^(MAKE_DIST=\")(.*)(\".*$)')
+   try:
+      packagingConfFile = open(packageInfo['packaging_config_name'], 'r', encoding='utf-8')
+      packagingConfFileContents = packagingConfFile.readlines()
+      for line in packagingConfFileContents:
+         match = re_package_maintainer.match(line)
+         if match != None:
+            packageInfo['maintainer'] = match.group(2)
+         else:
+            match = re_package_makedist.match(line)
+            if match != None:
+               packageInfo['packaging_make_dist'] = match.group(2)
+      packagingConfFile.close()
+   except Exception as e:
+      sys.stderr.write('ERROR: Unable to read ' + packageInfo['packaging_config_name'] + ': ' + str(e) + '\n')
+      sys.exit(1)
+   if packageInfo['maintainer'] == None:
+      sys.stderr.write('ERROR: Unable to find MAINTAINER in ' + packageInfo['packaging_config_name'] + ': ' + str(e) + '\n')
+      sys.exit(1)
+   elif packageInfo['packaging_make_dist'] == None:
+      sys.stderr.write('ERROR: Unable to find MAKE_DIST in ' + packageInfo['packaging_config_name'] + ': ' + str(e) + '\n')
+      sys.exit(1)
+
+   print(packageInfo)
+   return packageInfo
+
+
+# ###### Read Debian packaging information ##################################
+def readDebianPackagingInformation():
+   return None
+
+
+# ###### Read RPM packaging information #####################################
+def readRPMPackagingInformation():
+
+   packageInfo = {}
+   packageInfo['rpm_spec_file_name'] = None
+   packageInfo['rpm_package']        = None
+   packageInfo['rpm_version_string'] = None
+   packageInfo['rpm_spec_file_name'] = glob.glob('rpm/*.spec')
+
+   if len(packageInfo['rpm_spec_file_name']) > 0:
+      packageInfo['rpm_spec_file_name']     = packageInfo['rpm_spec_file_name'][0]
+      packageInfo['rpm_version_packaging'] = None
+      re_rpm_name    = re.compile(r'^(Name:[ \t]*)(\S+)')
+      re_rpm_version = re.compile(r'^(Version:[ \t]*)(\d+)\.(\d+)\.(\d+)(.*|)')
+      re_rpm_release = re.compile(r'^(Release:[ \t]*)(\d+)')
+      try:
+         rpmSpecFile = open(packageInfo['rpm_spec_file_name'], 'r', encoding='utf-8')
+         rpmSpecFileContents = rpmSpecFile.readlines()
+         for line in rpmSpecFileContents:
+            match = re_rpm_version.match(line)
+            if match != None:
+               packageInfo['rpm_version_major'] = int(match.group(2))
+               packageInfo['rpm_version_minor'] = int(match.group(3))
+               packageInfo['rpm_version_patch'] = int(match.group(4))
+               packageInfo['rpm_version_extra'] = match.group(5)
+               packageInfo['rpm_version_string'] = str(packageInfo['rpm_version_major']) + '.' + \
+                                 str(packageInfo['rpm_version_minor']) + '.' + \
+                                 str(packageInfo['rpm_version_patch']) + packageInfo['rpm_version_extra']
+            else:
+               match = re_rpm_release.match(line)
+               if match != None:
+                  packageInfo['rpm_version_packaging'] = int(match.group(2))
+               else:
+                  match = re_rpm_name.match(line)
+                  if match != None:
+                     packageInfo['rpm_package'] = match.group(2)
+         rpmSpecFile.close()
+      except Exception as e:
+         sys.stderr.write('ERROR: Unable to read ' + packageInfo['rpm_spec_file_name'] + ': ' + str(e) + '\n')
+         sys.exit(1)
+
+   print(packageInfo)
+   return packageInfo
+
+
+# ###### Read FreeBSD packaging information #################################
+def readFreeBSDPackagingInformation():
+   return None
+
+
+# ###### Read other packaging information ###################################
+def readOtherPackagingInformation():
+   return None
+
+
+# ###### Read packaging information #########################################
+def readPackagingInformation():
+   packageInfo = readPackagingConfiguration()
+
+   debianPackageInfo = readDebianPackagingInformation()
+   if debianPackageInfo != None:
+      packageInfo.update(debianPackageInfo)
+
+   rpmPackageInfo = readRPMPackagingInformation()
+   if rpmPackageInfo != None:
+      packageInfo.update(rpmPackageInfo)
+
+   freeBSDPackageInfo = readFreeBSDPackagingInformation()
+   if freeBSDPackageInfo != None:
+      packageInfo.update(freeBSDPackageInfo)
+
+   otherPackageInfo = readOtherPackagingInformation()
+   if otherPackageInfo != None:
+      packageInfo.update(otherPackageInfo)
+
+   pprint.pprint(packageInfo)
+   return packageInfo
+
+
+
+# ###########################################################################
+# #### Tools                                                             ####
+# ###########################################################################
+
+
+# ###### Show package information ###########################################
+def showInformation(packageInfo):
+   True
+
+
+# ###### Make source tarball ################################################
+def makeSourceTarball(packageInfo):
+   True
+
+
+# ###### Make source Debian file ############################################
+def makeSourceDeb(packageInfo):
+   True
+
+
+# ###########################################################################
+# #### Main Program                                                      ####
+# ###########################################################################
+
+# ====== Check arguments ====================================================
+if len(sys.argv) < 2:
+   sys.stderr.write('Usage: ' + sys.argv[0] + ' info|make-source-tarball|make-source-deb|make-source-rpm|build-deb|build-rpm ...\n')
+   sys.exit(1)
+
+
+packageInfo = readPackagingInformation()
+
+tool = sys.argv[1]
+if tool == 'info':
+   showInformation(packageInfo)
+elif tool == 'make-source-package':
+   makeSourceTarball(packageInfo)
+elif tool == 'make-source-deb':
+   makeSourceDeb(packageInfo)
+else:
+   sys.stderr.write('ERROR: Invalid tool "' + tool + '"\n')
+   sys.exit(1)
