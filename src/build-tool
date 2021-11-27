@@ -492,14 +492,15 @@ def readPackagingInformation():
 
 
 # ###### Find source tarball ################################################
-def findSourceTarball(packageInfo):
+def findSourceTarball(packageInfo, quiet = False):
 
    # ====== Initialise ======================================================
    sourceInfo = {}
 
    # ====== Obtain package configuration ====================================
    tarballPattern = packageInfo['master_package'] + '-' + packageInfo['master_version_string'] + '.tar.*'
-   sys.stdout.write('Looking for tarball ' + tarballPattern + ' ... ')
+   if not quiet:
+      sys.stdout.write('Looking for tarball ' + tarballPattern + ' ... ')
    tarballs = glob.glob(tarballPattern)   # NOTE: This will also find .tar.xz.asc, etc.!
    for tarball in tarballs:
       extension = os.path.splitext(tarball)[1][1:]
@@ -512,16 +513,18 @@ def findSourceTarball(packageInfo):
          if os.path.isfile(signature):
             sourceInfo['source_tarball_signature'] = signature
 
-         sys.stdout.write('Found ' + sourceInfo['source_tarball_name'] + \
-                        ' (format is ' + sourceInfo['source_tarball_format'] + ', signature ')
-         if 'source_tarball_signature' in sourceInfo:
-            sys.stdout.write(sourceInfo['source_tarball_signature'] + ').\n')
-         else:
-            sys.stdout.write('MISSING!).\n')
+         if not quiet:
+            sys.stdout.write('Found ' + sourceInfo['source_tarball_name'] + \
+                           ' (format is ' + sourceInfo['source_tarball_format'] + ', signature in ')
+            if 'source_tarball_signature' in sourceInfo:
+               sys.stdout.write(sourceInfo['source_tarball_signature'] + ').\n')
+            else:
+               sys.stdout.write('MISSING!).\n')
 
          return sourceInfo
 
-   sys.stdout.write('not found!\n')
+   if not quiet:
+      sys.stdout.write('not found!\n')
    return None
 
 
@@ -548,10 +551,27 @@ def makeSourceTarball(packageInfo, skipPackageSigning):
 
    printSection('Creating source tarball')
    print(packageInfo['packaging_make_dist'])
+
+   # ====== Make tarball ====================================================
    result = os.system(packageInfo['packaging_make_dist'])
    if result != 0:
       sys.stderr.write('ERROR: Unable to create source tarball!\n')
       return False
+   sourcePackageInfo = findSourceTarball(packageInfo, quiet=(not skipPackageSigning))
+   if sourcePackageInfo == None:
+      sys.stderr.write('ERROR: Unable to find source tarball!\n')
+
+   # ====== Sign tarball ====================================================
+   if skipPackageSigning == False:
+      result = os.system('gpg --sign --armor --detach-sign ' + \
+                         sourcePackageInfo['source_tarball_name'])
+      if result != 0:
+         sys.stderr.write('ERROR: Unable to sign source tarball!\n')
+         return False
+      sourcePackageInfo = findSourceTarball(packageInfo)
+      if ( (sourcePackageInfo == None) or
+           (not 'source_tarball_name' in sourcePackageInfo) ):
+         sys.stderr.write('ERROR: Unable to find signature of source tarball!\n')
 
    return True
 
@@ -602,7 +622,7 @@ elif tool == 'make-source-tarball':
    skipPackageSigning = False
    for i in range(2, len(sys.argv)):
       if sys.argv[i] == '--skip-signing':
-         unsigned = True
+         skipPackageSigning = True
       else:
          sys.stderr.write('ERROR: Bad parameter ' + sys.argv[i] + '!\n')
          sys.exit(1)
@@ -615,7 +635,7 @@ elif tool == 'make-source-deb':
    skipPackageSigning = False
    for i in range(2, len(sys.argv)):
       if sys.argv[i] == '--skip-signing':
-         unsigned = True
+         skipPackageSigning = True
       else:
          sys.stderr.write('ERROR: Bad parameter ' + sys.argv[i] + '!\n')
          sys.exit(1)
