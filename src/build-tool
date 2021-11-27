@@ -23,6 +23,7 @@ import glob
 import os
 import pprint
 import re
+import shutil
 import sys
 import time
 
@@ -54,6 +55,12 @@ Systems = [
 def printSection(title):
    now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
    sys.stdout.write('\n\x1b[34m' + (now + ' ====== ' + title + ' ').ljust(132, '=') + '\x1b[0m\n\n')
+
+
+# ###### Print subsection header ############################################
+def printSubsection(title):
+   now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+   sys.stdout.write('\n\x1b[34m' + (now + ' ------ ' + title + ' ').ljust(132, '-') + '\x1b[0m\n')
 
 
 
@@ -603,11 +610,36 @@ def makeSourceTarball(packageInfo, skipPackageSigning):
 
 
 # ###### Make Debian source package #########################################
-def makeSourceDeb(packageInfo, skipPackageSigning):
+def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
 
-   if not hasPackagingFor(packageInfo, 'debian'):
-      sys.stderr.write('ERROR: Cannot find required Debian packaging information!\n')
-      sys.exit(1)
+   # ====== Make sure that the source tarball is available ==================
+   if makeSourceTarball(packageInfo, skipPackageSigning) == False:
+      return False
+   if len(codenames) == 0:
+      codenames = [ packageInfo['debian_codename'] ]
+
+   printSection('Creating source Debian packages')
+
+   # ====== Build for each distribution codename ============================
+   for codename in codenames:
+      printSubsection('Creating source Debian package for ' + codename)
+
+      # ====== Prepare work directory =======================================
+      workdir = '/tmp/packaging-' + \
+         codename + '-' + \
+         packageInfo['debian_package_name'] + '-' + packageInfo['debian_version_string'] + '-' + \
+         packageInfo['debian_version_packaging']
+      sys.stdout.write('Preparing work directory ' + workdir + ' ...\n')
+
+      shutil.rmtree(workdir, ignore_errors = True)
+      os.makedirs(workdir, exist_ok = True)
+      shutil.copy(packageInfo['source_tarball_name'], workdir)
+      if skipPackageSigning == False:
+         shutil.copy(packageInfo['source_tarball_signature'], workdir)
+
+      os.system('ls -l ' + workdir)
+
+   return True
 
 
 # ###### Build Debian binary package ########################################
@@ -628,7 +660,7 @@ if len(sys.argv) < 2:
    sys.stderr.write('Usage: ' + sys.argv[0] + ' tool [options ...]\n')
    sys.stderr.write('* ' + sys.argv[0] + ' info\n')
    sys.stderr.write('* ' + sys.argv[0] + ' make-source-tarball [--skip-signing]\n')
-   sys.stderr.write('* ' + sys.argv[0] + ' make-source-deb [--skip-signing]\n')
+   sys.stderr.write('* ' + sys.argv[0] + ' make-source-deb  [codename ...] [--skip-signing]\n')
    # |make-source-tarball|make-source-deb|make-source-rpm|build-deb|build-rpm ...\n')
    sys.exit(1)
 
@@ -657,13 +689,16 @@ elif tool == 'make-source-tarball':
 # ====== Make source deb file ===============================================
 elif tool == 'make-source-deb':
    skipPackageSigning = False
+   codenames          = []
    for i in range(2, len(sys.argv)):
-      if sys.argv[i] == '--skip-signing':
+      if sys.argv[i][0] != '-':
+         codenames.append(sys.argv[i])
+      elif sys.argv[i] == '--skip-signing':
          skipPackageSigning = True
       else:
          sys.stderr.write('ERROR: Bad parameter ' + sys.argv[i] + '!\n')
          sys.exit(1)
-   makeSourceDeb(packageInfo, skipPackageSigning)
+   makeSourceDeb(packageInfo, codenames, skipPackageSigning)
 
 # ====== Build deb file =====================================================
 elif tool == 'build-deb':
