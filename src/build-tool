@@ -84,6 +84,12 @@ def printSubsection(title):
    sys.stdout.write('\n\x1b[34m' + (now + ' ------ ' + title + ' ').ljust(132, '-') + '\x1b[0m\n')
 
 
+# ###### Show difference between two files ##################################
+def showDiff(a, b):
+   if subprocess.run( [ 'colordiff', a, b ] ) != 0:
+      subprocess.run( [ 'diff', a, b ] )
+
+
 
 # ###########################################################################
 # #### Packaging                                                         ####
@@ -734,7 +740,11 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
             # FIXME! APPLY
             True
 
-         filterDebianChangelog(changeLogContents, upstreamSourceDir + '/debian/changelog')
+         changeLogContents = filterDebianChangelog(changeLogContents, None)
+         writeDebianChangelog(changeLogContents, upstreamSourceDir + '/debian/changelog')
+
+         sys.stdout.write('Updated Debian changelog:\n')
+         showDiff(packageInfo['debian_changelog_name'], upstreamSourceDir + '/debian/changelog')
 
 
       # ------- Ubuntu ------------------------------------------------------
@@ -792,6 +802,15 @@ def readDebianChangelog(packageInfo):
    changelogFile.close()
 
    return changelogContents
+
+
+# ###### Write Debian changelog file ########################################
+def writeDebianChangelog(changeLogContents, changelogName):
+
+   changelogFile = open(changelogName, 'w', encoding='utf-8')
+   for line in changeLogContents:
+      changelogFile.write(line)
+      sys.stdout.write(line)
 
 
 # ###### Fetch Debian changelog file ########################################
@@ -882,6 +901,81 @@ def fetchDebianChangelog(packageInfo, codename = 'unstable'):
       return None
 
    return result
+
+
+# ###### Filter Debian changelog ############################################
+# This function filters debian/changelog entries:
+# regexp_for_last_entry: None (no filtering), 1 (first entry), RegExp
+# * Empty entries get dropped.
+# * Stop, if entry matches regexp_for_last_entry argument.
+# * Stop after first entry, if regexp_for_last_entry = 1.
+def filterDebianChangelog(changeLogContents, re_last_entry = None):
+
+   re_begin_of_entry = re.compile(r'^[a-zA-Z].*$')
+   re_end_of_entry   = re.compile(r'^ --.*$')
+   re_empty          = re.compile(r'^$')
+   re_item           = re.compile(r'^ *')
+   re_item_is_itp    = re.compile(r'^(.*Closes:.*ITP.*|.*ITP.*Closes:.*)$')
+
+   resultingChangelog = []
+   entries            = 0
+   entryContentLines  = 0
+   entryContent       = ''
+   entryIsITP         = False
+
+   for line in changeLogContents:
+
+      # ====== Begin of entry ==================================================
+      if entryContentLines == 0:
+         if re_begin_of_entry.match(line):
+            entryContent      = line
+            entryContentLines = 1
+
+      # ====== Within entry ====================================================
+      else:
+         # ------ End of entry -------------------------------------------------
+         if re_end_of_entry.match(line):
+            entryContent   = entryContent + line + '\n'
+            if entryContentLines > 1:
+               entries = entries + 1
+
+               # ------ Print entry --------------------------------------------
+               if not entryIsITP:
+                  resultingChangelog.append(entryContent)
+
+               # ------ Print entry with ITP -----------------------------------
+               # Special case: The ITP package for Debian must only contain the
+               #               ITP entry with ITP item and nothing else!
+               else:
+                  splittedITPEntry = entryContent.splitlines()
+                  i = 0
+                  for itpLine in splittedITPEntry:
+                     i = i + 1
+                     if (i <= 2) or (i >= len(splittedITPEntry) - 2):
+                        resultingChangelog.append(itpLine)
+                     elif re_item_is_itp.match(itpLine) != None:
+                        resultingChangelog.append(itpLine)
+                  break   # ITP -> done!
+
+               entryContent   = ''
+               entryIsITP = False
+
+            # ------ Check for match with last entry regexp in argument --------
+            if re_last_entry != None:
+               if re_last_entry.match(line) != None:
+                  break
+
+            entryContentLines = 0
+
+         # ------ Part of entry ------------------------------------------------
+         else:
+            if re_item.match(line):
+               entryContent      = entryContent + line
+               entryContentLines = entryContentLines + 1
+               if re_item_is_itp.match(line):
+                  entryIsITP = True
+
+   return resultingChangelog
 
 
 
