@@ -673,6 +673,74 @@ def makeSourceTarball(packageInfo, skipPackageSigning):
    return True
 
 
+# ###### Get modified debian packaging version for given codename ###########
+def modifyDebianVersionPackaging(packageInfo, codename):
+   # ------- Debian ------------------------------------------------------
+   if codename in DebianCodenames:
+      # Update codename and package versioning:
+      # Drop Ubuntu packaging version:
+      newDebianVersionPackaging = re.sub(r'(ubuntu|ppa)[0-9]', '',
+                                          packageInfo['debian_version_packaging'])
+
+   # ------- Ubuntu ------------------------------------------------------
+   else:
+      # Update codename and package versioning:
+      # Drop Ubuntu packaging version:
+      newDebianVersionPackaging = re.sub(r'[0-9]+$', '~' + codename + '1',
+                                          packageInfo['debian_version_packaging'])
+
+   return newDebianVersionPackaging
+
+
+# ###### Get name of Debian DSC file name ###################################
+def getDebianDscName(packageInfo, debianVersionPackaging = None):
+
+   if debianVersionPackaging == None:
+      packageInfo['debian_version_packaging']
+   dscFileName = packageInfo['debian_package_name'] + '_' + \
+                    packageInfo['debian_version_string'] + '-' + \
+                    debianVersionPackaging + '.dsc'
+   return dscFileName
+
+
+# ###### Get name of Debian source buildinfo name ###########################
+def getDebianBuildinfoName(packageInfo, debianVersionPackaging = None,
+                           architecture = 'source'):
+
+   if debianVersionPackaging == None:
+      packageInfo['debian_version_packaging']
+   sourceBuildInfoFileName = packageInfo['debian_package_name'] + '_' + \
+                                packageInfo['debian_version_string'] + '-' + \
+                                debianVersionPackaging + '_' +  \
+                                architecture + '.buildinfo'
+   return sourceBuildInfoFileName
+
+
+# ###### Get name of Debian source buildinfo name ###########################
+def getDebianChangesName(packageInfo, debianVersionPackaging = None,
+                         architecture = 'source'):
+
+   if debianVersionPackaging == None:
+      packageInfo['debian_version_packaging']
+   sourceChangesFileName = packageInfo['debian_package_name'] + '_' + \
+                              packageInfo['debian_version_string'] + '-' + \
+                              debianVersionPackaging + '_' + \
+                              architecture + '.changes'
+   return sourceChangesFileName
+
+
+# ###### Get name of Debian control tarball name ############################
+def getDebianControlTarballName(packageInfo, debianVersionPackaging = None):
+
+   if debianVersionPackaging == None:
+      packageInfo['debian_version_packaging']
+   controlTarballFileName = packageInfo['debian_package_name'] + '_' + \
+                               packageInfo['debian_version_string'] + '-' + \
+                               debianVersionPackaging + '.debian.tar.' + \
+                               packageInfo['source_tarball_format']
+   return controlTarballFileName
+
+
 # ###### Make Debian source package #########################################
 def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
 
@@ -684,6 +752,8 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
 
 
    # ====== Build for each distribution codename ============================
+   dscFiles = {}
+
    printSection('Creating source Debian packages')
 
    # Make sure to have the original packages with their Debian names:
@@ -746,21 +816,22 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
       controlContents   = readTextFile(packageInfo['debian_control_name'])
       rulesContents     = readTextFile(packageInfo['debian_rules_name'])
 
+      newDebianVersionPackaging = modifyDebianVersionPackaging(packageInfo, codename)
+      sys.stdout.write('Modifying packaging version from ' + \
+                       packageInfo['debian_version_packaging'] + \
+                       ' to ' + newDebianVersionPackaging + '!\n')
+
       # ------- Debian ------------------------------------------------------
       if codename in DebianCodenames:
 
          # ------ Update changelog ------------------------------------------
-         # Update codename and package versioning:
-         # Drop Ubuntu packaging version:
-         newDebianVersionPackaging = re.sub(r'(ubuntu|ppa)[0-9]', '',
-                                            packageInfo['debian_version_packaging'])
          changeLogContents[0] = \
             packageInfo['debian_package_name'] + \
             ' (' + packageInfo['debian_version_string'] + '-' + newDebianVersionPackaging + ') ' + \
             codename + '; ' + \
             'urgency=' + packageInfo['debian_urgency'] + \
             '\n'
-         sys.stdout.write('Updating changelog header: ' + changeLogContents[0] + '\n')
+         sys.stdout.write('Updating changelog header: ' + changeLogContents[0])
 
          # Remove Launchpad entries:
          re_launchpad = re.compile(r'^.*\(LP: #[0-9]+')
@@ -798,21 +869,15 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
 
       # ------- Ubuntu ------------------------------------------------------
       else:
-         print(packageInfo['debian_codename'])
 
          # ------ Update changelog ------------------------------------------
-         # Update codename and package versioning:
-         # Drop Ubuntu packaging version:
-         newDebianVersionPackaging = re.sub(r'[0-9]+$', '~' + codename + '1',
-                                            packageInfo['debian_version_packaging'])
-         print(newDebianVersionPackaging)
          changeLogContents[0] = \
             packageInfo['debian_package_name'] + \
             ' (' + packageInfo['debian_version_string'] + '-' + newDebianVersionPackaging + ') ' + \
             codename + '; ' + \
             'urgency=' + packageInfo['debian_urgency'] + \
             '\n'
-         sys.stdout.write('Updating changelog header: ' + changeLogContents[0] + '\n')
+         sys.stdout.write('Updating changelog header: ' + changeLogContents[0])
 
          # Remove Debian Bug entries:
          # FIXME: Is this still useful, since Ubuntu is based on Debian?
@@ -854,15 +919,69 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
       subprocess.run(debuild, cwd = upstreamSourceDir)
 
 
-      # ====== Check description file =======================================
-      dscFile = packageInfo['debian_package_name'] + '_' + \
-                   packageInfo['debian_version_string'] + '-' + \
-                   newDebianVersionPackaging + '.dsc'
-      if not os.path.isfile(workdir + '/' + dscFile):
+      # ====== Check results ================================================
+      sys.stdout.write('Checking results:\n')
+      dscFileName        = getDebianDscName(packageInfo,             newDebianVersionPackaging)
+      buildinfoName      = getDebianBuildinfoName(packageInfo, newDebianVersionPackaging)
+      changesName        = getDebianChangesName(packageInfo,   newDebianVersionPackaging)
+      controlTarballName = getDebianControlTarballName(packageInfo,  newDebianVersionPackaging)
+      if os.path.isfile(workdir + '/' + dscFileName):
+         sys.stdout.write('* DSC file is ' + dscFileName + '.\n')
+         dscFiles[codename] = dscFileName
+      else:
          sys.stderr.write('ERROR: DSC file not found at expected location ' + workdir + '/' + dscFile + '!\n')
          sys.exit(1)
+
+      if os.path.isfile(workdir + '/' + buildinfoName):
+         sys.stdout.write('* Buildinfo file is ' + buildinfoName + '.\n')
       else:
-         sys.stdout.write('DSC file is ' + workdir + '/' + dscFile + '.\n')
+         sys.stderr.write('ERROR: Buildinfo file not found at expected location ' + workdir + '/' + buildinfoName + '!\n')
+         sys.exit(1)
+      if os.path.isfile(workdir + '/' + changesName):
+         sys.stdout.write('* Changes file is ' + changesName + '.\n')
+      else:
+         sys.stderr.write('ERROR: Changes file not found at expected location ' + workdir + '/' + changesName + '!\n')
+         sys.exit(1)
+      if os.path.isfile(workdir + '/' + controlTarballName):
+         sys.stdout.write('* Control tarball file is ' + controlTarballName + '.\n')
+      else:
+         sys.stderr.write('ERROR: Control tarball file not found at expected location ' + workdir + '/' + controlTarballName + '!\n')
+         sys.exit(1)
+
+      # Copy results to main directory.
+      # NOTE: The original tarball and signature are already there (symlinked)!
+      for fileName in [ dscFileName, buildinfoName, changesName, controlTarballName ] :
+         shutil.copyfile(workdir + '/' + fileName, fileName)
+
+
+   # ====== Print overview ==================================================
+   printSection('Debian source package overview')
+
+   sys.stdout.write('\x1b[34mUpload to PPA:\x1b[0m\n')
+   for codename in sorted(dscFiles.keys()):
+      changesName = getDebianChangesName(packageInfo, newDebianVersionPackaging)
+      if codename in DebianCodenames:
+         ppa = 'mentors'
+      else:
+         ppa = 'ppa'
+      sys.stdout.write('\x1b[34m   dput ' + ppa + ' ' + changesName + '\x1b[0m\n')
+   sys.stdout.write('\n')
+
+   sys.stdout.write('\x1b[34mBuild Test Commands:\x1b[0m\n')
+   for codename in sorted(dscFiles.keys()):
+      changesFilesPattern = getDebianChangesName(packageInfo, newDebianVersionPackaging,
+                                                 'amd64')   # FIXME: dpkg --print-architecture
+      if codename in DebianCodenames:
+         lintianProfile = 'debian'
+      else:
+         lintianProfile = 'ubuntu'
+      sys.stdout.write('\x1b[34m   ' + \
+                       'sudo pbuilder build ' + dscFiles[codename] + ' && ' + \
+                       'lintian -iIEv --profile ' + lintianProfile + \
+                        ' --pedantic /var/cache/pbuilder/result/*/' + \
+                        changesFilesPattern + \
+                       '\x1b[0m\n')
+   sys.stdout.write('\n')
 
    return True
 
