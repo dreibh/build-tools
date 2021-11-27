@@ -54,8 +54,15 @@ Systems = [
 ]
 
 DebianCodenames = [
-   'unstable', 'testing', 'stable', 'oldstable',
-   'buster', 'bullseye', 'bookworm'
+   'unstable', 'testing', 'stable', 'oldstable', 'sid',
+   'bookworm', 'bullseye', 'buster', 'stretch', 'jessie', 'wheezy', 'squeeze',
+
+   'bookworm-backports', 'bullseye-backports', 'buster-backports', 'stretch-backports',
+   'jessie-backports', 'wheezy-backports', 'squeeze-backports',
+
+   'bookworm-backports-sloppy', 'bullseye-backports-sloppy', 'buster-backports-sloppy',
+   'stretch-backports-sloppy', 'jessie-backports-sloppy', 'wheezy-backports-sloppy',
+   'squeeze-backports-sloppy',
 ]
 
 
@@ -698,7 +705,37 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
 
       # ------- Debian ------------------------------------------------------
       if codename in DebianCodenames:
-         True
+
+         changeLogContents = readDebianChangelog(packageInfo)
+
+         # ------ Update changelog ------------------------------------------
+         # Update codename:
+         changeLogContents[0] = re.sub(' ' + packageInfo['debian_codename'] + ';',
+                                       ' ' + codename + ';',
+                                       changeLogContents[0])
+         # Drop Ubuntu packaging version:
+         changeLogContents[0] = re.sub('(ubuntu|ppa)[0-9]', '',
+                                       changeLogContents[0])
+         # Remove Launchpad entries:
+         re_launchpad = re.compile(r'^.*\(LP: #[0-9]+')
+         changeLogContents = [ line for line in changeLogContents if not re_launchpad.match(line) ]
+
+         # ------ Fetch distributor's latest changelog ----------------------
+         uploadedChangelogContents = fetchDebianChangelog(packageInfo, codename)
+         if uploadedChangelogContents != None:
+
+            ## Fetch debian/changelog from Debian, if available.
+            ## If there is a Debian changelog, merge new entries.
+            #if ../fetch-debian-changelog ${PACKAGE} ${DISTRIBUTION} >debian/changelog.dist ; then
+               #../merge-debian-changelogs debian/changelog debian/changelog.dist >debian/changelog.merged && \
+                  #mv debian/changelog.merged debian/changelog
+            #fi
+            changeLogContents = mergeDebianChangelogs(originalChangeLogContents, uploadedChangelogContents)
+            # FIXME! APPLY
+            True
+
+         filterDebianChangelog(changeLogContents, upstreamSourceDir + '/debian/changelog')
+
 
       # ------- Ubuntu ------------------------------------------------------
       else:
@@ -708,6 +745,7 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
              #-e "/(Closes: #/D" \
              #<debian/changelog | ../filter-debian-changelog "${UBUNTU_LAST_ENTRY}" >debian/changelog.new
          True
+
 
       # ====== Build source Debian package ==================================
       if skipPackageSigning == False:
@@ -805,7 +843,7 @@ def fetchDebianChangelog(packageInfo, codename = 'unstable'):
 
    if (debianVersion == None) or (debianArchive == None):
       sys.stderr.write('not found!\n')
-      sys.exit(1)
+      return None
 
    sys.stderr.write('Version in ' + codename + ' is ' + debianVersion + '\n')
 
@@ -841,7 +879,7 @@ def fetchDebianChangelog(packageInfo, codename = 'unstable'):
 
    except urllib.error.HTTPError as e:
       sys.stderr.write('not found (HTTP ' + str(e.code) + ')!\n')
-      sys.exit(1)
+      return None
 
    return result
 
