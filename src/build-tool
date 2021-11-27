@@ -134,14 +134,6 @@ def readAutoConfPackagingInformation():
    packageInfo = {}
 
    # ====== Obtain package configuration ====================================
-   autoconfFoundVersion  = False
-   packageInfo['autoconf_package']        = None
-   packageInfo['autoconf_version_major']  = None
-   packageInfo['autoconf_version_minor']  = None
-   packageInfo['autoconf_version_patch']  = None
-   packageInfo['autoconf_version_extra']  = None
-   packageInfo['autoconf_version_string'] = None
-
    for autoconfConfigName in [ 'configure.ac', 'configure.in' ]:
       if os.path.isfile(autoconfConfigName):
          break
@@ -155,7 +147,7 @@ def readAutoConfPackagingInformation():
          for line in autoconfFileContents:
             match = re_autoconffile_version.match(line)
             if match != None:
-               packageInfo['autoconf_package']      = match.group(1)
+               packageInfo['autoconf_package']       = match.group(1)
                packageInfo['autoconf_version_major'] = int(match.group(2))
                packageInfo['autoconf_version_minor'] = int(match.group(3))
                packageInfo['autoconf_version_patch'] = int(match.group(4))
@@ -360,7 +352,6 @@ def readOtherPackagingInformation():
 
    # ====== Initialise ======================================================
    packageInfo = {}
-   packageInfo['other_package'] = None
 
    # ====== Obtain package configuration ====================================
    for otherFileName in [ 'version' ]:
@@ -401,6 +392,8 @@ def readOtherPackagingInformation():
 
 # ###### Read packaging information #########################################
 def readPackagingInformation():
+
+   # ====== Read information from different packaging system files ==========
    packageInfo = readPackagingConfiguration()
 
    cmakePackageInfo = readCMakePackagingInformation()
@@ -426,6 +419,47 @@ def readPackagingInformation():
    otherPackageInfo = readOtherPackagingInformation()
    if otherPackageInfo != None:
       packageInfo.update(otherPackageInfo)
+
+
+   # ====== Obtain master packaging information =============================
+   systems = [
+      # Prefix       System Name         Configuration File
+      [ 'cmake',    'CMake',             'cmake_lists_name'      ],
+      [ 'autoconf', 'AutoConf/AutoMake', 'autoconf_config_name'  ],
+      [ 'other',    'Version File',      'other_file_name'       ],
+      [ 'rpm',      'RPM Spec',          'rpm_spec_name'         ],
+      [ 'debian',   'Debian Changelog',  'debian_changelog_name' ],
+      [ 'port',     'Port Makefile',     'port_makefile_name'    ]
+   ]
+
+   for system in systems:
+      systemPrefix     = system[0]
+      systemName       = system[1]
+      systemConfigFile = system[2]
+      if hasPackagingFor(packageInfo, systemPrefix):
+         sys.stdout.write('Using master versioning from ' + systemName + '.\n')
+         for entry in [ 'package', 'version_string',  'version_major',  'version_minor',  'version_patch',  'version_extra' ]:
+            packageInfo['master_' + entry] = packageInfo[systemPrefix + '_' + entry]
+         break
+   if not hasPackagingFor(packageInfo, 'master'):
+      sys.stderr.write('ERROR: Unable to obtain master packaging information!\n')
+      sys.exit(1)
+
+
+   # ====== Check master packaging information ==============================
+   for system in systems:
+      systemPrefix     = system[0]
+      systemName       = system[1]
+      systemConfigFile = system[2]
+      if hasPackagingFor(packageInfo, systemPrefix):
+         sys.stdout.write(('Version from ' + systemName + ': ').ljust(32, ' ') + \
+                          packageInfo[systemPrefix + '_version_string'] + \
+                          ' (from ' + packageInfo[systemConfigFile] + ')\n')
+         if packageInfo[systemPrefix + '_version_string'] != packageInfo['master_version_string']:
+            sys.stderr.write('ERROR: ' + systemName + ' version ' + \
+                             packageInfo[systemPrefix + '_version_string'] + ' does not match master version ' + \
+                             packageInfo['master_version_string'] + '!\n')
+            sys.exit(1)
 
    return packageInfo
 
