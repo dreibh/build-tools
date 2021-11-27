@@ -24,6 +24,7 @@ import os
 import pprint
 import re
 import shutil
+import subprocess
 import sys
 import time
 
@@ -33,6 +34,11 @@ import time
 # ###########################################################################
 
 TarballFormats = [ 'xz', 'bz2', 'gz' ]
+TarOptions = {
+   'xz':  'J',
+   'bz2': 'j',
+   'gz':  'z'
+}
 
 Systems = [
    # Prefix       System Name         Configuration File
@@ -42,6 +48,11 @@ Systems = [
    [ 'rpm',      'RPM Spec',          'rpm_spec_name'         ],
    [ 'debian',   'Debian Changelog',  'debian_changelog_name' ],
    [ 'port',     'Port Makefile',     'port_makefile_name'    ]
+]
+
+DebianCodenames = [
+   'unstable', 'testing', 'stable', 'oldstable',
+   'buster', 'bullseye', 'bookworm'
 ]
 
 
@@ -74,13 +85,15 @@ def readPackagingConfiguration():
 
    # ====== Initialise ======================================================
    packageInfo = {}
-   packageInfo['packaging_maintainer']  = None
-   packageInfo['packaging_make_dist']   = None
-   packageInfo['packaging_config_name'] = 'packaging.conf'
+   packageInfo['packaging_maintainer']      = None
+   packageInfo['packaging_maintainer_key']  = None
+   packageInfo['packaging_make_dist']       = None
+   packageInfo['packaging_config_name']     = 'packaging.conf'
 
    # ====== Obtain package configuration ====================================
-   re_package_maintainer = re.compile(r'^(MAINTAINER=\")(.*)(\".*$)')
-   re_package_makedist   = re.compile(r'^(MAKE_DIST=\")(.*)(\".*$)')
+   re_package_maintainer     = re.compile(r'^(MAINTAINER=\")(.*)(\".*$)')
+   re_package_maintainer_key = re.compile(r'^(MAINTAINER_KEY=\")(.*)(\".*$)')
+   re_package_makedist       = re.compile(r'^(MAKE_DIST=\")(.*)(\".*$)')
    try:
       packagingConfFile = open(packageInfo['packaging_config_name'], 'r', encoding='utf-8')
       packagingConfFileContents = packagingConfFile.readlines()
@@ -89,19 +102,23 @@ def readPackagingConfiguration():
          if match != None:
             packageInfo['packaging_maintainer'] = match.group(2)
          else:
-            match = re_package_makedist.match(line)
+            match = re_package_maintainer_key.match(line)
             if match != None:
-               packageInfo['packaging_make_dist'] = match.group(2)
+               packageInfo['packaging_maintainer_key'] = match.group(2)
+            else:
+               match = re_package_makedist.match(line)
+               if match != None:
+                  packageInfo['packaging_make_dist'] = match.group(2)
       packagingConfFile.close()
    except Exception as e:
       sys.stderr.write('ERROR: Unable to read ' + packageInfo['packaging_config_name'] + ': ' + str(e) + '\n')
       sys.exit(1)
 
    if packageInfo['packaging_maintainer'] == None:
-      sys.stderr.write('ERROR: Unable to find MAINTAINER in ' + packageInfo['packaging_config_name'] + ': ' + str(e) + '\n')
+      sys.stderr.write('ERROR: Unable to find MAINTAINER in ' + packageInfo['packaging_config_name'] + '!\n')
       sys.exit(1)
    elif packageInfo['packaging_make_dist'] == None:
-      sys.stderr.write('ERROR: Unable to find MAKE_DIST in ' + packageInfo['packaging_config_name'] + ': ' + str(e) + '\n')
+      sys.stderr.write('ERROR: Unable to find MAKE_DIST in ' + packageInfo['packaging_config_name'] + '!\n')
       sys.exit(1)
 
    return packageInfo
@@ -618,26 +635,99 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
    if len(codenames) == 0:
       codenames = [ packageInfo['debian_codename'] ]
 
-   printSection('Creating source Debian packages')
 
    # ====== Build for each distribution codename ============================
+   printSection('Creating source Debian packages')
+
+   # Make sure to have the original packages with their Debian names:
+   originalTarball = packageInfo['debian_package_name'] + '_' + \
+                        packageInfo['debian_version_string'] + '.orig.tar.' + \
+                        packageInfo['source_tarball_format']
+   originalSignature = originalTarball + '.asc'
+   try:
+      os.link(packageInfo['source_tarball_name'], originalTarball)
+   except FileExistsError:
+      pass
+   if skipPackageSigning == False:
+      try:
+         os.link(packageInfo['source_tarball_signature'], originalSignature)
+      except FileExistsError:
+         pass
+
    for codename in codenames:
       printSubsection('Creating source Debian package for ' + codename)
 
       # ====== Prepare work directory =======================================
       workdir = '/tmp/packaging-' + \
          codename + '-' + \
-         packageInfo['debian_package_name'] + '-' + packageInfo['debian_version_string'] + '-' + \
+         packageInfo['debian_package_name'] + '-' + \
+         packageInfo['debian_version_string'] + '-' + \
          packageInfo['debian_version_packaging']
       sys.stdout.write('Preparing work directory ' + workdir + ' ...\n')
 
       shutil.rmtree(workdir, ignore_errors = True)
       os.makedirs(workdir, exist_ok = True)
-      shutil.copy(packageInfo['source_tarball_name'], workdir)
-      if skipPackageSigning == False:
-         shutil.copy(packageInfo['source_tarball_signature'], workdir)
 
-      os.system('ls -l ' + workdir)
+      # !!! Using *symlink* below! !!!
+      # shutil.copyfile(originalTarball, workdir + '/' + originalTarball)
+      # if skipPackageSigning == False:
+          #shutil.copyfile(originalSignature, workdir + '/' + originalSignature)
+      os.symlink(os.path.abspath(packageInfo['source_tarball_name']), workdir + '/' + originalTarball)
+      if skipPackageSigning == False:
+         os.symlink(os.path.abspath(packageInfo['source_tarball_signature']), workdir + '/' + originalSignature)
+
+
+      # ====== Unpack the sources ===========================================
+      compressionOption = TarOptions[packageInfo['source_tarball_format']]
+      try:
+         subprocess.run([ 'tar', 'x' + compressionOption + 'f', originalTarball ], cwd = workdir)
+      except Exception as e:
+         sys.stderr.write('ERROR: Unable to uncompress upstream source tarball ' + originalTarball + ': ' + str(e) + '\n')
+         sys.exit(1)
+
+      upstreamSourceDir = workdir + '/' + packageInfo['debian_package_name'] + '-' + packageInfo['debian_version_string']
+      if not os.path.isdir(upstreamSourceDir):
+         sys.stderr.write('ERROR: Sources are not in the expected directory ' + upstreamSourceDir + '!\n')
+         sys.exit(1)
+
+
+      # ====== Adapt packaging ==============================================
+
+      # ------- Debian ------------------------------------------------------
+      if codename in DebianCodenames:
+         True
+
+      # ------- Ubuntu ------------------------------------------------------
+      else:
+         print(packageInfo['debian_codename'])
+         #sed -e "s/${PACKAGE_DISTRIBUTION};/${DISTRIBUTION};/1" \
+             #-e "s/${PACKAGE_VERSION}/${OUTPUT_VERSION}~${DISTRIBUTION}1/1" \
+             #-e "/(Closes: #/D" \
+             #<debian/changelog | ../filter-debian-changelog "${UBUNTU_LAST_ENTRY}" >debian/changelog.new
+         True
+
+      # ====== Build source Debian package ==================================
+      if skipPackageSigning == False:
+         # Build source package including signature:
+         if packageInfo['packaging_maintainer_key'] == None:
+            sys.stderr.write('ERROR: No MAINTAINER_KEY in ' + packageInfo['packaging_config_name'] + '\n')
+            sys.exit(1)
+         subprocess.run([ 'debuild', '--no-check-builddeps', '-sa', '-S', '-k' + packageInfo['packaging_maintainer_key'], '-i' ],
+                        cwd = upstreamSourceDir)
+      else:
+         # Build source package without signature:
+         subprocess.run([ 'debuild', '--no-check-builddeps', '-us', '-uc', '-S', '-i' ], cwd = upstreamSourceDir)
+
+
+      # ====== Check description file =======================================
+      dscFile = packageInfo['debian_package_name'] + '_' + \
+                   packageInfo['debian_version_string'] + '-' + \
+                   packageInfo['debian_version_packaging'] + '.dsc'
+      if not os.path.isfile(workdir + '/' + dscFile):
+         sys.stderr.write('ERROR: DSC file not found at expected location ' + workdir + '/' + dscFile + '!\n')
+         sys.exit(1)
+      else:
+         sys.stdout.write('DSC file is ' + workdir + '/' + dscFile + '.\n')
 
    return True
 
