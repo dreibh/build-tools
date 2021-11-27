@@ -53,7 +53,7 @@ Systems = [
 # ###### Print section header ###############################################
 def printSection(title):
    now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
-   sys.stdout.write('\n\x1b[34m' + (now + ' ====== ' + title + ' ').ljust(78, '=') + '\x1b[0m\n')
+   sys.stdout.write('\n\x1b[34m' + (now + ' ====== ' + title + ' ').ljust(132, '=') + '\x1b[0m\n\n')
 
 
 
@@ -550,34 +550,53 @@ def showInformation(packageInfo):
 def makeSourceTarball(packageInfo, skipPackageSigning):
 
    printSection('Creating source tarball')
-   print(packageInfo['packaging_make_dist'])
 
-   # ====== Make tarball ====================================================
-   result = os.system(packageInfo['packaging_make_dist'])
-   if result != 0:
-      sys.stderr.write('ERROR: Unable to create source tarball!\n')
-      return False
-   sourcePackageInfo = findSourceTarball(packageInfo, quiet=(not skipPackageSigning))
-   if sourcePackageInfo == None:
-      sys.stderr.write('ERROR: Unable to find source tarball!\n')
+   # ====== Make source tarball =============================================
+   if 'source_tarball_name' in packageInfo:
+      sourcePackageInfo = findSourceTarball(packageInfo, quiet=True)
+      sys.stdout.write('Tarball is already there: ' + packageInfo['source_tarball_name'] + \
+                       ' (format is ' + packageInfo['source_tarball_format'] + ')\n')
+   else:
+      print(packageInfo['packaging_make_dist'])
+      result = os.system(packageInfo['packaging_make_dist'])
+      if result != 0:
+         sys.stderr.write('ERROR: Unable to create source tarball!\n')
+         return False
+      sourcePackageInfo = findSourceTarball(packageInfo, quiet=(not skipPackageSigning))
+      if sourcePackageInfo == None:
+         sys.stderr.write('ERROR: Unable to find source tarball!\n')
+         return False
+      # The source tarball is new, i.e. an existing signature is obsolete and
+      # must be deleted.
+      try:
+         os.unlink(sourcePackageInfo['source_tarball_name'] + '.asc')
+      except FileNotFoundError:
+         pass
 
    # ====== Sign tarball ====================================================
-   # The source tarball is new, i.e. an existing signature is obsolete and
-   # must be deleted.
-   try:
-      os.unlink(sourcePackageInfo['source_tarball_name'] + '.asc')
-   except FileNotFoundError:
-      pass
    if skipPackageSigning == False:
-      result = os.system('gpg --sign --armor --detach-sign ' + \
-                         sourcePackageInfo['source_tarball_name'])
-      if result != 0:
-         sys.stderr.write('ERROR: Unable to sign source tarball!\n')
+      if 'source_tarball_signature' in sourcePackageInfo:
+         sys.stdout.write('Signature is already there: ' + sourcePackageInfo['source_tarball_signature'] + '\n')
+
+      else:
+         result = os.system('gpg --sign --armor --detach-sign ' + \
+                           sourcePackageInfo['source_tarball_name'])
+         if result != 0:
+            sys.stderr.write('ERROR: Unable to sign source tarball!\n')
+            return False
+         sourcePackageInfo = findSourceTarball(packageInfo)
+         if ( (sourcePackageInfo == None) or
+            (not 'source_tarball_name' in sourcePackageInfo) ):
+            sys.stderr.write('ERROR: Unable to find signature of source tarball!\n')
+
+      result = os.system('gpg --verify ' + \
+                           sourcePackageInfo['source_tarball_signature'] + ' ' + \
+                           sourcePackageInfo['source_tarball_name'])
+      if result == 0:
+         sys.stderr.write('Signature verified.\n')
+      else:
+         sys.stderr.write('ERROR: Bad signature! Something is wrong!\n')
          return False
-      sourcePackageInfo = findSourceTarball(packageInfo)
-      if ( (sourcePackageInfo == None) or
-           (not 'source_tarball_name' in sourcePackageInfo) ):
-         sys.stderr.write('ERROR: Unable to find signature of source tarball!\n')
 
    packageInfo.update(sourcePackageInfo)
    return True
