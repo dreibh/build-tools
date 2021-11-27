@@ -86,8 +86,25 @@ def printSubsection(title):
 
 # ###### Show difference between two files ##################################
 def showDiff(a, b):
-   if subprocess.run( [ 'colordiff', a, b ] ) != 0:
-      subprocess.run( [ 'diff', a, b ] )
+   subprocess.run( [ 'diff', '--color', a, b ] )
+
+
+# ###### Read file and return list of lines #################################
+def readTextFile(inputName):
+
+   inputFile = open(inputName, 'r', encoding='utf-8')
+   contents = inputFile.readlines()
+   inputFile.close()
+
+   return contents
+
+
+# ###### Write file by list of lines ########################################
+def writeTextFile(outputName, contents):
+
+   outputFile = open(outputName, 'w', encoding='utf-8')
+   for line in contents:
+      outputFile.write(line)
 
 
 
@@ -253,7 +270,7 @@ def readDebianPackagingInformation():
    debianChangelogName = 'debian/changelog'
    debianControlName   = 'debian/control'
    if os.path.isfile(debianChangelogName):
-      re_debian_version = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+:|)(\d+)\.(\d+)\.(\d+)(.*|)-(\d|\d[a-zA-Z-+~]+\d|)\)[ \t]*([a-zA-Z-+]+)[ \t]*;')
+      re_debian_version = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+:|)(\d+)\.(\d+)\.(\d+)(.*|)-(\d|\d[a-zA-Z-+~]+\d|)\)[ \t]*([a-zA-Z-+]+)[ \t]*;(.*)$')
       re_debian_itp1    = re.compile(r'^ * .*ITP.*Closes: #([0-9]+).*$')
       re_debian_itp2    = re.compile(r'^ * .*Closes: #([0-9]+).*ITP.*$')
 
@@ -287,6 +304,15 @@ def readDebianPackagingInformation():
                      str(packageInfo['debian_version_major']) + '.' + \
                      str(packageInfo['debian_version_minor']) + '.' + \
                      str(packageInfo['debian_version_patch']) + packageInfo['debian_version_extra']
+                  packageInfo['debian_urgency'] = 'low'
+
+                  options = match.group(9).split(';')
+                  for option in options:
+                     option = option.strip().split('=')
+                     if len(option) == 2:
+                        if option[0].strip() == 'urgency':
+                           packageInfo['debian_urgency'] = option[1].strip()
+
             elif n > 1:
                match = re_debian_itp1.match(line)
                if match == None:
@@ -709,52 +735,68 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
 
       # ====== Adapt packaging ==============================================
 
+      changeLogContents = readTextFile(packageInfo['debian_changelog_name'])
+
       # ------- Debian ------------------------------------------------------
       if codename in DebianCodenames:
 
-         changeLogContents = readDebianChangelog(packageInfo)
-
          # ------ Update changelog ------------------------------------------
-         # Update codename:
-         changeLogContents[0] = re.sub(' ' + packageInfo['debian_codename'] + ';',
-                                       ' ' + codename + ';',
-                                       changeLogContents[0])
+         # Update codename and package versioning:
          # Drop Ubuntu packaging version:
-         changeLogContents[0] = re.sub('(ubuntu|ppa)[0-9]', '',
-                                       changeLogContents[0])
+         re_packaging_version      = re.compile(r'(ubuntu|ppa)[0-9]')
+         newDebianVersionPackaging = re.sub(re_packaging_version, '',
+                                            packageInfo['debian_version_packaging'])
+         changeLogContents[0] = \
+            packageInfo['debian_package_name'] + \
+            ' (' + packageInfo['debian_version_string'] + '-' + newDebianVersionPackaging + ') ' + \
+            codename + '; ' + \
+            'urgency=' + packageInfo['debian_urgency'] + \
+            '\n'
+         sys.stdout.write('Updating changelog header: ' + changeLogContents[0] + '\n')
+
          # Remove Launchpad entries:
          re_launchpad = re.compile(r'^.*\(LP: #[0-9]+')
          changeLogContents = [ line for line in changeLogContents if not re_launchpad.match(line) ]
 
          # ------ Fetch distributor's latest changelog ----------------------
-         uploadedChangelogContents = fetchDebianChangelog(packageInfo, codename)
-         if uploadedChangelogContents != None:
-
-            ## Fetch debian/changelog from Debian, if available.
-            ## If there is a Debian changelog, merge new entries.
-            #if ../fetch-debian-changelog ${PACKAGE} ${DISTRIBUTION} >debian/changelog.dist ; then
-               #../merge-debian-changelogs debian/changelog debian/changelog.dist >debian/changelog.merged && \
-                  #mv debian/changelog.merged debian/changelog
-            #fi
-            changeLogContents = mergeDebianChangelogs(originalChangeLogContents, uploadedChangelogContents)
-            # FIXME! APPLY
-            True
-
-         changeLogContents = filterDebianChangelog(changeLogContents, None)
-         writeDebianChangelog(changeLogContents, upstreamSourceDir + '/debian/changelog')
-
-         sys.stdout.write('Updated Debian changelog:\n')
-         showDiff(packageInfo['debian_changelog_name'], upstreamSourceDir + '/debian/changelog')
+         distributorChangelogContents = fetchDebianChangelog(packageInfo, codename)
+         if distributorChangelogContents != None:
+            # Merge new entries from changelog into a single entry, and append
+            # the distributor's changelog with the rest:
+            changeLogContents = mergeDebianChangelogs(changeLogContents, distributorChangelogContents)
 
 
       # ------- Ubuntu ------------------------------------------------------
       else:
          print(packageInfo['debian_codename'])
-         #sed -e "s/${PACKAGE_DISTRIBUTION};/${DISTRIBUTION};/1" \
-             #-e "s/${PACKAGE_VERSION}/${OUTPUT_VERSION}~${DISTRIBUTION}1/1" \
-             #-e "/(Closes: #/D" \
-             #<debian/changelog | ../filter-debian-changelog "${UBUNTU_LAST_ENTRY}" >debian/changelog.new
-         True
+
+         # ------ Update changelog ------------------------------------------
+         # Update codename and package versioning:
+         # Drop Ubuntu packaging version:
+         re_packaging_version      = re.compile(r'[0-9]+$')
+         newDebianVersionPackaging = re.sub(re_packaging_version, '~' + codename + '1',
+                                            packageInfo['debian_version_packaging'])
+         print(newDebianVersionPackaging)
+         changeLogContents[0] = \
+            packageInfo['debian_package_name'] + \
+            ' (' + packageInfo['debian_version_string'] + '-' + newDebianVersionPackaging + ') ' + \
+            codename + '; ' + \
+            'urgency=' + packageInfo['debian_urgency'] + \
+            '\n'
+         sys.stdout.write('Updating changelog header: ' + changeLogContents[0] + '\n')
+
+         # Remove Debian Bug entries:
+         # FIXME: Is this still useful, since Ubuntu is based on Debian?
+         # re_launchpad = re.compile(r'^.*\(Closes: #[0-9]+')
+         # changeLogContents = [ line for line in changeLogContents if not re_launchpad.match(line) ]
+
+
+      # ------ Clean up empty lines -----------------------------------------
+      changeLogContents = filterDebianChangelog(changeLogContents, None)
+      writeTextFile(upstreamSourceDir + '/debian/changelog', changeLogContents)
+
+      sys.stdout.write('Updated Debian changelog:\n')
+      showDiff(packageInfo['debian_changelog_name'], upstreamSourceDir + '/debian/changelog')
 
 
       # ====== Build source Debian package ==================================
@@ -773,7 +815,7 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
       # ====== Check description file =======================================
       dscFile = packageInfo['debian_package_name'] + '_' + \
                    packageInfo['debian_version_string'] + '-' + \
-                   packageInfo['debian_version_packaging'] + '.dsc'
+                   newDebianVersionPackaging + '.dsc'
       if not os.path.isfile(workdir + '/' + dscFile):
          sys.stderr.write('ERROR: DSC file not found at expected location ' + workdir + '/' + dscFile + '!\n')
          sys.exit(1)
@@ -789,28 +831,6 @@ def buildDeb(packageInfo, skipPackageSigning):
    if not hasPackagingFor(packageInfo, 'debian'):
       sys.stderr.write('ERROR: Cannot find required Debian packaging information!\n')
       sys.exit(1)
-
-
-# ###### Read Debian changelog file #########################################
-def readDebianChangelog(packageInfo):
-   if not hasPackagingFor(packageInfo, 'debian'):
-      sys.stderr.write('ERROR: Cannot find required Debian packaging information!\n')
-      sys.exit(1)
-
-   changelogFile = open(packageInfo['debian_changelog_name'], 'r', encoding='utf-8')
-   changelogContents = changelogFile.readlines()
-   changelogFile.close()
-
-   return changelogContents
-
-
-# ###### Write Debian changelog file ########################################
-def writeDebianChangelog(changeLogContents, changelogName):
-
-   changelogFile = open(changelogName, 'w', encoding='utf-8')
-   for line in changeLogContents:
-      changelogFile.write(line)
-      sys.stdout.write(line)
 
 
 # ###### Fetch Debian changelog file ########################################
@@ -925,25 +945,25 @@ def filterDebianChangelog(changeLogContents, re_last_entry = None):
 
    for line in changeLogContents:
 
-      # ====== Begin of entry ==================================================
+      # ====== Begin of entry ===============================================
       if entryContentLines == 0:
          if re_begin_of_entry.match(line):
             entryContent      = line
             entryContentLines = 1
 
-      # ====== Within entry ====================================================
+      # ====== Within entry =================================================
       else:
-         # ------ End of entry -------------------------------------------------
+         # ------ End of entry ----------------------------------------------
          if re_end_of_entry.match(line):
             entryContent   = entryContent + line + '\n'
             if entryContentLines > 1:
                entries = entries + 1
 
-               # ------ Print entry --------------------------------------------
+               # ------ Print entry -----------------------------------------
                if not entryIsITP:
                   resultingChangelog.append(entryContent)
 
-               # ------ Print entry with ITP -----------------------------------
+               # ------ Print entry with ITP --------------------------------
                # Special case: The ITP package for Debian must only contain the
                #               ITP entry with ITP item and nothing else!
                else:
@@ -960,14 +980,14 @@ def filterDebianChangelog(changeLogContents, re_last_entry = None):
                entryContent   = ''
                entryIsITP = False
 
-            # ------ Check for match with last entry regexp in argument --------
+            # ------ Check for match with last entry regexp in argument -----
             if re_last_entry != None:
                if re_last_entry.match(line) != None:
                   break
 
             entryContentLines = 0
 
-         # ------ Part of entry ------------------------------------------------
+         # ------ Part of entry ---------------------------------------------
          else:
             if re_item.match(line):
                entryContent      = entryContent + line
@@ -976,6 +996,110 @@ def filterDebianChangelog(changeLogContents, re_last_entry = None):
                   entryIsITP = True
 
    return resultingChangelog
+
+
+# ###### Merge Debian changelogs ###########################################
+# This function merges debian/changelog entries.
+# 1. Import old entries from distributor's changelog
+# 2a. Get all newer entries from PPA changelog
+# 2b. Merge newer entries into a single entry
+def mergeDebianChangelogs(ppaChangelogContents, distributorChangelogContents):
+
+   # ====== Merge changelogs ================================================
+   re_entry_header = re.compile(r'^([a-zA-Z0-9-]+ \([0-9a-zA-Z\.~+]+-[0-9]*)')
+   re_entry_footer = re.compile(r'^ -- .*')
+   re_empty        = re.compile(r'^\S*$')
+
+   topics = [
+      { 'regexp': re.compile(r'^  \* .*ew upstream (version|release).*$'), 'count': 0, 'max': 1 },
+      { 'regexp': re.compile(r'^  \* .*standards version.*$'),             'count': 0, 'max': 1 },
+      { 'regexp': re.compile(r'^  \* .*debian/compat:.*$'),                'count': 0, 'max': 0 }
+   ]
+
+   # ------ Get latest entry from distribution changelog --------------------
+   latestDistributionEntry = distributorChangelogContents[0]
+   match = re_entry_header.match(latestDistributionEntry)
+   if match == None:
+      sys.stderr.write('ERROR: Bad header in ' + changelogNameDistribution + '!\n')
+      sys.exit(1)
+
+   # ------ Join all new entries from PPA changelog -------------------------
+   resultingChangelogContents        = []
+   entries                           = 0
+   insideEntry                       = False
+   foundLatestDistributionEntryInPPA = False
+   firstFooter                       = None
+
+   for line in ppaChangelogContents:
+
+      # ------ Begin of an entry --------------------------------------------
+      match = re_entry_header.match(line)
+      if match != None:
+
+         entries = entries + 1
+         if entries == 1:
+            resultingChangelogContents.append(line)
+            resultingChangelogContents.append('\n')
+
+         # ------ Done? -----------------------------------------------------
+         elif line == latestDistributionEntry:
+            foundLatestDistributionEntryInPPA = True
+            break
+
+         continue
+
+      # ------ Empty line ---------------------------------------------------
+      match = re_empty.match(line)
+      if match != None:
+         continue
+
+      # ------ End of an entry ----------------------------------------------
+      match = re_entry_footer.match(line)
+      if match != None:
+         if entries == 1:
+            firstFooter = line
+         continue
+
+      # ------ Topics -------------------------------------------------------
+      skip = False
+      for topic in topics:
+         match = topic['regexp'].match(line)
+         if match != None:
+            topic['count'] = topic['count'] + 1
+            if topic['count'] > topic['max']:
+               skip = True
+               break
+      if skip == True:
+         continue
+
+      # ------ Add line to output -------------------------------------------
+      if line[0] == ' ':
+         resultingChangelogContents.append(line)
+         continue
+
+      # ------ Something is wrong -------------------------------------------
+      sys.stderr.write('ERROR: Unexpected line: ' + line + '!\n')
+      sys.exit(1)
+
+
+   resultingChangelogContents.append('\n')
+   resultingChangelogContents.append(firstFooter)
+
+   if foundLatestDistributionEntryInPPA == False:
+      # Distributor changelog is equal to PPA changelog?
+      if distributorChangelogContents[0] != ppaChangelogContents[0]:
+         sys.stderr.write('ERROR: Did not found the latest distribution entry in the PPA changelog!\n')
+         sys.stderr.write('Looked for:      "' + latestDistributionEntry + '"\n')
+         sys.stderr.write('First PPA entry: "' + distributorChangelogContents[0] + '"\n')
+         sys.exit(1)
+
+   for line in distributorChangelogContents:
+      resultingChangelogContents.append(line)
+
+   #for line in resultingChangelogContents:
+      #sys.stdout.write(line)
+
+   return resultingChangelogContents
 
 
 
@@ -1043,14 +1167,6 @@ elif tool == 'fetch-debian-changelog':
    sys.stdout.write('\n')
    for line in result:
       sys.stdout.write(line)
-
-# ====== Show Debian changelog file ========================================0
-elif tool == 'show-debian-changelog':
-   result = readDebianChangelog(packageInfo)
-   sys.stdout.write('\n')
-   for line in result:
-      sys.stdout.write(line)
-
 
 # ====== Invalid tool =======================================================
 else:
