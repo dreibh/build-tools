@@ -87,7 +87,11 @@ def printSubsection(title):
 
 # ###### Show difference between two files ##################################
 def showDiff(a, b):
-   subprocess.run( [ 'diff', '--color', a, b ] )
+   try:
+      subprocess.run( [ 'diff', '--color', a, b ] )
+   except Exception as e:
+      sys.stderr.write('ERROR: Diff run failed: ' + str(e) + '\n')
+      sys.exit(1)
 
 
 # ###### Read file and return list of lines #################################
@@ -692,6 +696,18 @@ def modifyDebianVersionPackaging(packageInfo, codename):
    return newDebianVersionPackaging
 
 
+# ###### Get Debian default architecture ####################################
+def getDebianDefaultArchitecture():
+   try:
+      process = subprocess.Popen([ 'dpkg', '--print-architecture'],
+                                 stdout=subprocess.PIPE, universal_newlines=True)
+      result = process.stdout.readlines()[0].strip()
+   except Exception as e:
+      sys.stderr.write('ERROR: Unable to obtain Debian default architecture: ' + str(e) + '\n')
+      sys.exit(1)
+   return result
+
+
 # ###### Get name of Debian DSC file name ###################################
 def getDebianDscName(packageInfo, debianVersionPackaging = None):
 
@@ -722,11 +738,11 @@ def getDebianChangesName(packageInfo, debianVersionPackaging = None,
 
    if debianVersionPackaging == None:
       packageInfo['debian_version_packaging']
-   sourceChangesFileName = packageInfo['debian_package_name'] + '_' + \
-                              packageInfo['debian_version_string'] + '-' + \
-                              debianVersionPackaging + '_' + \
-                              architecture + '.changes'
-   return sourceChangesFileName
+   changesFileName = packageInfo['debian_package_name'] + '_' + \
+                        packageInfo['debian_version_string'] + '-' + \
+                        debianVersionPackaging + '_' + \
+                        architecture + '.changes'
+   return changesFileName
 
 
 # ###### Get name of Debian control tarball name ############################
@@ -799,7 +815,7 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
       # ====== Unpack the sources ===========================================
       compressionOption = TarOptions[packageInfo['source_tarball_format']]
       try:
-         subprocess.run([ 'tar', 'x' + compressionOption + 'f', originalTarball ], cwd = workdir)
+         subprocess.run([ 'tar', 'x' + compressionOption + 'f', originalTarball ], cwd = workdir, check = True)
       except Exception as e:
          sys.stderr.write('ERROR: Unable to uncompress upstream source tarball ' + originalTarball + ': ' + str(e) + '\n')
          sys.exit(1)
@@ -916,15 +932,19 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
          debuild = [ 'debuild', '--no-check-builddeps', '-us', '-uc', '-S', '-i' ]
       if updatedDebhelperVersion == True:
          debuild.append('--no-check-builddeps')
-      subprocess.run(debuild, cwd = upstreamSourceDir)
+      try:
+         subprocess.run(debuild, cwd = upstreamSourceDir, check = True)
+      except Exception as e:
+         sys.stderr.write('ERROR: Debuild run failed: ' + str(e) + '\n')
+         sys.exit(1)
 
 
       # ====== Check results ================================================
       sys.stdout.write('Checking results:\n')
-      dscFileName        = getDebianDscName(packageInfo,             newDebianVersionPackaging)
-      buildinfoName      = getDebianBuildinfoName(packageInfo, newDebianVersionPackaging)
-      changesName        = getDebianChangesName(packageInfo,   newDebianVersionPackaging)
-      controlTarballName = getDebianControlTarballName(packageInfo,  newDebianVersionPackaging)
+      dscFileName        = getDebianDscName(packageInfo,            newDebianVersionPackaging)
+      buildinfoName      = getDebianBuildinfoName(packageInfo,      newDebianVersionPackaging)
+      changesName        = getDebianChangesName(packageInfo,        newDebianVersionPackaging)
+      controlTarballName = getDebianControlTarballName(packageInfo, newDebianVersionPackaging)
       if os.path.isfile(workdir + '/' + dscFileName):
          sys.stdout.write('* DSC file is ' + dscFileName + '.\n')
          dscFiles[codename] = dscFileName
@@ -969,8 +989,8 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
 
    sys.stdout.write('\x1b[34mBuild Test Commands:\x1b[0m\n')
    for codename in sorted(dscFiles.keys()):
-      changesFilesPattern = getDebianChangesName(packageInfo, newDebianVersionPackaging,
-                                                 'amd64')   # FIXME: dpkg --print-architecture
+      changesFileName = getDebianChangesName(packageInfo, newDebianVersionPackaging,
+                                             getDebianDefaultArchitecture())
       if codename in DebianCodenames:
          lintianProfile = 'debian'
       else:
@@ -979,7 +999,7 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
                        'sudo pbuilder build ' + dscFiles[codename] + ' && ' + \
                        'lintian -iIEv --profile ' + lintianProfile + \
                         ' --pedantic /var/cache/pbuilder/result/*/' + \
-                        changesFilesPattern + \
+                        changesFileName + \
                        '\x1b[0m\n')
    sys.stdout.write('\n')
 
@@ -987,11 +1007,72 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
 
 
 # ###### Build Debian binary package ########################################
-def buildDeb(packageInfo, skipPackageSigning):
+def buildDeb(packageInfo, codenames, skipPackageSigning):
 
-   if not hasPackagingFor(packageInfo, 'debian'):
-      sys.stderr.write('ERROR: Cannot find required Debian packaging information!\n')
-      sys.exit(1)
+   # ====== Make sure that the source Debian files are available ============
+   makeSourceDeb(packageInfo, codenames, skipPackageSigning)
+
+   # ====== Build for each distribution codename ============================
+   printSection('Creating binary Debian packages')
+
+   for codename in codenames:
+      newDebianVersionPackaging = modifyDebianVersionPackaging(packageInfo, codename)
+
+      printSubsection('Creating binary Debian package for ' + codename)
+
+      dscFileName = getDebianDscName(packageInfo, newDebianVersionPackaging)
+      if not os.path.isfile(dscFileName):
+         sys.stderr.write('ERROR: DSC file ' + dscFileName + ' does not exist!\n')
+         sys.exit(1)
+
+      buildArchitecture = getDebianDefaultArchitecture()
+      buildDistribution = codename
+      if codename in DebianCodenames:
+         buildSystem    = 'debian'
+         lintianProfile = 'debian'
+      else:
+         buildSystem    = 'ubuntu'
+         lintianProfile = 'ubuntu'
+
+      # ====== Run pbuilder =================================================
+      pbuilderCommand = [ 'sudo',
+                             'OS='   + buildSystem,
+                             'DIST=' + buildDistribution,
+                             'ARCH=' + buildArchitecture,
+                          'pbuilder', 'build',
+                          '--distribution', buildDistribution,
+                          '--architecture', buildArchitecture,
+                          dscFileName ]
+      print(pbuilderCommand)
+      try:
+         subprocess.run(pbuilderCommand, check=True)
+      except Exception as e:
+         sys.stderr.write('ERROR: PBuilder run failed: ' + str(e) + '\n')
+         sys.exit(1)
+
+      # ====== Run Lintian ==================================================
+      changesFileName = getDebianChangesName(packageInfo, newDebianVersionPackaging,
+                                             buildArchitecture)
+      foundChangesFiles = glob.glob('/var/cache/pbuilder/result/*/' + changesFileName)
+      if len(foundChangesFiles) != 1:
+         sys.stderr.write('ERROR: Unable to locate the changes file!\n')
+         sys.stderr.write('foundChangesFiles = ' + str(foundChangesFiles) + '\n')
+         sys.exit(1)
+
+      lintianCommand = [ 'lintian',
+                            '-iIEv',
+                            '--profile', lintianProfile,
+                            '--pedantic',
+                            foundChangesFiles[0] ]
+      print(lintianCommand)
+      try:
+         subprocess.run(lintianCommand, check=True)
+      except Exception as e:
+         sys.stderr.write('ERROR: Lintian run failed: ' + str(e) + '\n')
+         sys.exit(1)
+
+   return True
+
 
 
 # ###### Fetch Debian changelog file ########################################
@@ -1067,7 +1148,6 @@ def fetchDebianChangelog(packageInfo, codename = 'unstable'):
       sys.stderr.write('found!\n')
 
       try:
-
          process = subprocess.Popen([ 'tar', 'x' + tarCompressionOption + 'fO', debianArchiveFile.name, 'debian/changelog'],
                                     stdout=subprocess.PIPE, universal_newlines=True)
          result = process.stdout.readlines()
@@ -1316,7 +1396,17 @@ elif tool == 'make-source-deb':
 
 # ====== Build deb file =====================================================
 elif tool == 'build-deb':
-   True # buildDeb(packageInfo)
+   skipPackageSigning = False
+   codenames          = []
+   for i in range(2, len(sys.argv)):
+      if sys.argv[i][0] != '-':
+         codenames.append(sys.argv[i])
+      elif sys.argv[i] == '--skip-signing':
+         skipPackageSigning = True
+      else:
+         sys.stderr.write('ERROR: Bad parameter ' + sys.argv[i] + '!\n')
+         sys.exit(1)
+   buildDeb(packageInfo, codenames, skipPackageSigning)
 
 # ====== Fetch Debian changelog file ========================================
 elif tool == 'fetch-debian-changelog':
