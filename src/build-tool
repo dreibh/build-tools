@@ -36,7 +36,7 @@ def readPackagingConfiguration():
 
    # ====== Initialise ======================================================
    packageInfo = {}
-   packageInfo['maintainer']            = None
+   packageInfo['packaging_maintainer']  = None
    packageInfo['packaging_make_dist']   = None
    packageInfo['packaging_config_name'] = 'packaging.conf'
 
@@ -49,7 +49,7 @@ def readPackagingConfiguration():
       for line in packagingConfFileContents:
          match = re_package_maintainer.match(line)
          if match != None:
-            packageInfo['maintainer'] = match.group(2)
+            packageInfo['packaging_maintainer'] = match.group(2)
          else:
             match = re_package_makedist.match(line)
             if match != None:
@@ -58,50 +58,128 @@ def readPackagingConfiguration():
    except Exception as e:
       sys.stderr.write('ERROR: Unable to read ' + packageInfo['packaging_config_name'] + ': ' + str(e) + '\n')
       sys.exit(1)
-   if packageInfo['maintainer'] == None:
+
+   if packageInfo['packaging_maintainer'] == None:
       sys.stderr.write('ERROR: Unable to find MAINTAINER in ' + packageInfo['packaging_config_name'] + ': ' + str(e) + '\n')
       sys.exit(1)
    elif packageInfo['packaging_make_dist'] == None:
       sys.stderr.write('ERROR: Unable to find MAKE_DIST in ' + packageInfo['packaging_config_name'] + ': ' + str(e) + '\n')
       sys.exit(1)
 
-   print(packageInfo)
    return packageInfo
 
 
 # ###### Read Debian packaging information ##################################
 def readDebianPackagingInformation():
-   return None
+
+   # ====== Initialise ======================================================
+   packageInfo = {}
+
+   # ====== Process changelog file ==========================================
+   debianChangelogName = 'debian/changelog'
+   debianControlName   = 'debian/control'
+   if os.path.isfile(debianChangelogName):
+      re_debian_version = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+:|)(\d+)\.(\d+)\.(\d+)(.*|)-(\d|\d[a-zA-Z-+~]+\d|)\)[ \t]*([a-zA-Z-+]+)[ \t]*;')
+      re_debian_itp1    = re.compile(r'^ * .*ITP.*Closes: #([0-9]+).*$')
+      re_debian_itp2    = re.compile(r'^ * .*Closes: #([0-9]+).*ITP.*$')
+
+      packageInfo['debian_package_name']      = None
+      packageInfo['debian_version_string']    = None
+      packageInfo['debian_standards_version'] = None
+      packageInfo['debian_codename']          = None
+      packageInfo['debian_itp']               = None
+      packageInfo['debian_status']            = None
+
+      try:
+         debianChangeLogFile = open(debianChangelogName, 'r', encoding='utf-8')
+         debianChangeLogFileContents = debianChangeLogFile.readlines()
+         n = 0
+         for line in debianChangeLogFileContents:
+            n = n + 1
+            if n == 1:
+               match = re_debian_version.match(line)
+               if match != None:
+                  packageInfo['debian_package_name']      = match.group(1)
+                  packageInfo['debian_version_prefix']    = match.group(2)
+                  packageInfo['debian_version_major']     = int(match.group(3))
+                  packageInfo['debian_version_minor']     = int(match.group(4))
+                  packageInfo['debian_version_patch']     = int(match.group(5))
+                  packageInfo['debian_version_extra']     = match.group(6)
+                  packageInfo['debian_version_packaging'] = match.group(7)
+                  packageInfo['debian_codename']          = match.group(8)
+                  packageInfo['debian_version_string']    = \
+                     str(packageInfo['debian_version_major']) + '.' + \
+                     str(packageInfo['debian_version_minor']) + '.' + \
+                     str(packageInfo['debian_version_patch']) + packageInfo['debian_version_extra']
+            elif n > 1:
+               match = re_debian_itp1.match(line)
+               if match == None:
+                  match = re_debian_itp2.match(line)
+               if match != None:
+                  # print('ITP: ' + line)
+                  packageInfo['debian_itp'] = int(match.group(1))
+                  break
+         debianChangeLogFile.close()
+
+      except Exception as e:
+         sys.stderr.write('ERROR: Unable to read ' + debianChangelogName + ': ' + str(e) + '\n')
+         sys.exit(1)
+
+      if packageInfo['debian_package_name'] == None:
+         sys.stderr.write('ERROR: Cannot find required package versioning details in ' + debianChangelogName + '!\n')
+         sys.exit(1)
+
+      # ====== Check whether information is complete ========================
+      if not 'debian_package_name' in packageInfo:
+         sys.stderr.write('ERROR: Cannot find required package versioning details in ' + debianChangelogName + '!\n')
+         sys.exit(1)
+
+      # ====== Process control file =========================================
+      re_debian_standards_version = re.compile(r'^Standards-Version:[ \t]*([0-9\.]*)[ \t]*$')
+      try:
+         debianControlFile = open(debianControlName, 'r', encoding='utf-8')
+         debianControlFileContents = debianControlFile.readlines()
+         for line in debianControlFileContents:
+            match = re_debian_standards_version.match(line)
+            if match != None:
+               packageInfo['debian_standards_version'] = match.group(1)
+         debianControlFile.close()
+      except Exception as e:
+         sys.stderr.write('ERROR: Unable to read ' + debianControlName + ': ' + str(e) + '\n')
+         sys.exit(1)
+
+   return packageInfo
 
 
 # ###### Read RPM packaging information #####################################
 def readRPMPackagingInformation():
 
+   # ====== Initialise ======================================================
    packageInfo = {}
-   packageInfo['rpm_spec_file_name'] = None
-   packageInfo['rpm_package']        = None
-   packageInfo['rpm_version_string'] = None
-   packageInfo['rpm_spec_file_name'] = glob.glob('rpm/*.spec')
 
-   if len(packageInfo['rpm_spec_file_name']) > 0:
-      packageInfo['rpm_spec_file_name']     = packageInfo['rpm_spec_file_name'][0]
-      packageInfo['rpm_version_packaging'] = None
+   # ====== Obtain package configuration ====================================
+   rpm_spec_names = glob.glob('rpm/*.spec')
+   if len(rpm_spec_names) > 0:
+      packageInfo['rpm_spec_name'] = rpm_spec_names[0]
+
       re_rpm_name    = re.compile(r'^(Name:[ \t]*)(\S+)')
       re_rpm_version = re.compile(r'^(Version:[ \t]*)(\d+)\.(\d+)\.(\d+)(.*|)')
       re_rpm_release = re.compile(r'^(Release:[ \t]*)(\d+)')
       try:
-         rpmSpecFile = open(packageInfo['rpm_spec_file_name'], 'r', encoding='utf-8')
+         rpmSpecFile = open(packageInfo['rpm_spec_name'], 'r', encoding='utf-8')
          rpmSpecFileContents = rpmSpecFile.readlines()
+         packageInfo['rpm_version_packaging'] = None
          for line in rpmSpecFileContents:
             match = re_rpm_version.match(line)
             if match != None:
-               packageInfo['rpm_version_major'] = int(match.group(2))
-               packageInfo['rpm_version_minor'] = int(match.group(3))
-               packageInfo['rpm_version_patch'] = int(match.group(4))
-               packageInfo['rpm_version_extra'] = match.group(5)
-               packageInfo['rpm_version_string'] = str(packageInfo['rpm_version_major']) + '.' + \
-                                 str(packageInfo['rpm_version_minor']) + '.' + \
-                                 str(packageInfo['rpm_version_patch']) + packageInfo['rpm_version_extra']
+               packageInfo['rpm_version_major']  = int(match.group(2))
+               packageInfo['rpm_version_minor']  = int(match.group(3))
+               packageInfo['rpm_version_patch']  = int(match.group(4))
+               packageInfo['rpm_version_extra']  = match.group(5)
+               packageInfo['rpm_version_string'] = \
+                  str(packageInfo['rpm_version_major']) + '.' + \
+                  str(packageInfo['rpm_version_minor']) + '.' + \
+                  str(packageInfo['rpm_version_patch']) + packageInfo['rpm_version_extra']
             else:
                match = re_rpm_release.match(line)
                if match != None:
@@ -109,24 +187,103 @@ def readRPMPackagingInformation():
                else:
                   match = re_rpm_name.match(line)
                   if match != None:
-                     packageInfo['rpm_package'] = match.group(2)
+                     packageInfo['rpm_package_name'] = match.group(2)
          rpmSpecFile.close()
+
       except Exception as e:
-         sys.stderr.write('ERROR: Unable to read ' + packageInfo['rpm_spec_file_name'] + ': ' + str(e) + '\n')
+         sys.stderr.write('ERROR: Unable to read ' + packageInfo['rpm_spec_name'] + ': ' + str(e) + '\n')
          sys.exit(1)
 
-   print(packageInfo)
+      # ====== Check whether information is complete ========================
+      if ( (not 'rpm_package_name' in packageInfo) or
+           (not 'rpm_version_packaging' in packageInfo) ):
+         sys.stderr.write('ERROR: Cannot find required package versioning details in ' + packageInfo['rpm_spec_name'] + '!\n')
+         sys.exit(1)
+
    return packageInfo
 
 
-# ###### Read FreeBSD packaging information #################################
+# ###### Read FreeBSD ports packaging information ###########################
 def readFreeBSDPackagingInformation():
-   return None
+
+   # ====== Initialise ======================================================
+   packageInfo = {}
+   port_makefile_names = glob.glob('freebsd/*/Makefile')
+
+   # ====== Obtain package configuration ====================================
+   if len(port_makefile_names) > 0:
+      packageInfo['port_makefile_name'] = port_makefile_names[0]
+      re_freebsd_version = re.compile(r'^(PORTVERSION=[ \t]*)(\d+)\.(\d+)\.(\d+)(.*|)')
+      try:
+         freeBSDMakefileFile = open(packageInfo['port_makefile_name'], 'r', encoding='utf-8')
+         freeBSDMakefileFileContents = freeBSDMakefileFile.readlines()
+         for line in freeBSDMakefileFileContents:
+            match = re_freebsd_version.match(line)
+            if match != None:
+               packageInfo['port_version_major']  = int(match.group(2))
+               packageInfo['port_version_minor']  = int(match.group(3))
+               packageInfo['port_version_patch']  = int(match.group(4))
+               packageInfo['port_version_extra']  = match.group(5)
+               packageInfo['port_version_string'] = \
+                  str(packageInfo['port_version_major']) + '.' + \
+                  str(packageInfo['port_version_minor']) + '.' + \
+                  str(packageInfo['port_version_patch']) + packageInfo['port_version_extra']
+         freeBSDMakefileFile.close()
+
+      except Exception as e:
+         sys.stderr.write('ERROR: Unable to read ' + packageInfo['port_makefile_name'] + ': ' + str(e) + '\n')
+         sys.exit(1)
+
+      # ====== Check whether information is complete ========================
+      if not 'port_version_string' in packageInfo:
+         sys.stderr.write('ERROR: Cannot find required package versioning details in ' + debianChangelogName + '!\n')
+         sys.exit(1)
+
+   return packageInfo
 
 
 # ###### Read other packaging information ###################################
 def readOtherPackagingInformation():
-   return None
+
+   # ====== Initialise ======================================================
+   packageInfo = {}
+   packageInfo['other_package'] = None
+
+   # ====== Obtain package configuration ====================================
+   for otherFileName in [ 'version' ]:
+      if os.path.isfile(otherFileName):
+         break
+
+   if os.path.isfile(otherFileName):
+      packageInfo['other_file_name'] = otherFileName
+      re_otherfile_version = re.compile(r'(\S+) (\d).(\d).(\d+)([~+][a-zA-Z0-9\.+]+|)')
+      try:
+         otherFile = open(otherFileName, 'r', encoding='utf-8')
+         otherFileContents = otherFile.readlines()
+         line = otherFileContents[0]
+         match = re_otherfile_version.match(line)
+         if match != None:
+            packageInfo['other_package']       = match.group(1)
+            packageInfo['other_version_major'] = int(match.group(2))
+            packageInfo['other_version_minor'] = int(match.group(3))
+            packageInfo['other_version_patch'] = int(match.group(4))
+            packageInfo['other_version_extra'] = match.group(5)
+            packageInfo['other_version_string'] = \
+               str(packageInfo['other_version_major']) + '.' + \
+               str(packageInfo['other_version_minor']) + '.' + \
+               str(packageInfo['other_version_patch']) + packageInfo['other_version_extra']
+         otherFile.close()
+
+      except Exception as e:
+         sys.stderr.write('ERROR: Unable to read ' + otherFileName + ': ' + str(e) + '\n')
+         sys.exit(1)
+
+      # ====== Check whether information is complete ========================
+      if not 'other_version_major' in packageInfo:
+         sys.stderr.write('ERROR: Cannot find required package versioning details in ' + debianChangelogName + '!\n')
+         sys.exit(1)
+
+   return packageInfo
 
 
 # ###### Read packaging information #########################################
@@ -149,8 +306,14 @@ def readPackagingInformation():
    if otherPackageInfo != None:
       packageInfo.update(otherPackageInfo)
 
-   pprint.pprint(packageInfo)
    return packageInfo
+
+
+# ###### Check whether specific packaging information is available ##########
+def hasPackagingFor(packageInfo, variant):
+   if variant + '_version_string' in packageInfo:
+      return True
+   return False
 
 
 
@@ -161,17 +324,29 @@ def readPackagingInformation():
 
 # ###### Show package information ###########################################
 def showInformation(packageInfo):
-   True
+   pprint.pprint(packageInfo, indent=1)
 
 
 # ###### Make source tarball ################################################
-def makeSourceTarball(packageInfo):
+def makeSourceTarball(packageInfo, skipPackageSigning):
    True
 
 
-# ###### Make source Debian file ############################################
-def makeSourceDeb(packageInfo):
-   True
+# ###### Make Debian source package #########################################
+def makeSourceDeb(packageInfo, skipPackageSigning):
+
+   if not hasPackagingFor(packageInfo, 'debian'):
+      sys.stderr.write('ERROR: Cannot find required Debian packaging information!\n')
+      sys.exit(1)
+
+
+# ###### Build Debian binary package ########################################
+def buildDeb(packageInfo, skipPackageSigning):
+
+   if not hasPackagingFor(packageInfo, 'debian'):
+      sys.stderr.write('ERROR: Cannot find required Debian packaging information!\n')
+      sys.exit(1)
+
 
 
 # ###########################################################################
@@ -180,19 +355,50 @@ def makeSourceDeb(packageInfo):
 
 # ====== Check arguments ====================================================
 if len(sys.argv) < 2:
-   sys.stderr.write('Usage: ' + sys.argv[0] + ' info|make-source-tarball|make-source-deb|make-source-rpm|build-deb|build-rpm ...\n')
+   sys.stderr.write('Usage: ' + sys.argv[0] + ' tool [options ...]\n')
+   sys.stderr.write('* ' + sys.argv[0] + ' info\n')
+   sys.stderr.write('* ' + sys.argv[0] + ' make-source-tarball [--skip-package-signing]\n')
+   sys.stderr.write('* ' + sys.argv[0] + ' make-source-deb [--skip-package-signing]\n')
+   # |make-source-tarball|make-source-deb|make-source-rpm|build-deb|build-rpm ...\n')
    sys.exit(1)
 
 
 packageInfo = readPackagingInformation()
 
 tool = sys.argv[1]
+
+# ====== Print information ==================================================
 if tool == 'info':
    showInformation(packageInfo)
+
+# ====== Make source tarball ================================================
 elif tool == 'make-source-package':
-   makeSourceTarball(packageInfo)
+   for i in range(2, len(sys.argv)):
+      if sys.argv[i] == '--skip-package-signing':
+         unsigned = True
+      else:
+         sys.stderr.write('ERROR: Bad parameter ' + sys.argv[i] + '!\n')
+         sys.exit(1)
+
+   makeSourceTarball(packageInfo, skipPackageSigning)
+
+# ====== Make source deb file ===============================================
 elif tool == 'make-source-deb':
-   makeSourceDeb(packageInfo)
+   skipPackageSigning = False
+   for i in range(2, len(sys.argv)):
+      if sys.argv[i] == '--skip-package-signing':
+         unsigned = True
+      else:
+         sys.stderr.write('ERROR: Bad parameter ' + sys.argv[i] + '!\n')
+         sys.exit(1)
+
+   makeSourceDeb(packageInfo, skipPackageSigning)
+
+# ====== Build deb file =====================================================
+elif tool == 'build-deb':
+   True # buildDeb(packageInfo)
+
+# ====== Invalid tool =======================================================
 else:
    sys.stderr.write('ERROR: Invalid tool "' + tool + '"\n')
    sys.exit(1)
