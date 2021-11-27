@@ -26,7 +26,10 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
+import urllib.error
+import urllib.request
 
 
 # ###########################################################################
@@ -740,6 +743,109 @@ def buildDeb(packageInfo, skipPackageSigning):
       sys.exit(1)
 
 
+# ###### Read Debian changelog file #########################################
+def readDebianChangelog(packageInfo):
+   if not hasPackagingFor(packageInfo, 'debian'):
+      sys.stderr.write('ERROR: Cannot find required Debian packaging information!\n')
+      sys.exit(1)
+
+   changelogFile = open(packageInfo['debian_changelog_name'], 'r', encoding='utf-8')
+   changelogContents = changelogFile.readlines()
+   changelogFile.close()
+
+   return changelogContents
+
+
+# ###### Fetch Debian changelog file ########################################
+def fetchDebianChangelog(packageInfo, codename = 'unstable'):
+   if not hasPackagingFor(packageInfo, 'debian'):
+      sys.stderr.write('ERROR: Cannot find required Debian packaging information!\n')
+      sys.exit(1)
+
+   if codename in DebianCodenames:
+      # Debian
+      statusPageURL = 'https://packages.debian.org/source/' + codename + '/' + packageInfo['debian_package_name']
+   else:
+      # Ubuntu
+      statusPageURL = 'https://packages.ubuntu.com/source/' + codename + '/' + packageInfo['debian_package_name']
+
+   debianVersion       = None
+   debianLocation      = None
+   debianArchive       = None
+   debianArchiveFormat = None
+
+   # ====== Get package status =================================================
+   statusPageContents = None
+   sys.stderr.write('Looking for package status on ' + statusPageURL + ' ... ')
+   sys.stderr.flush()
+   try:
+      statusPage = urllib.request.urlopen(statusPageURL)
+      statusPageContents = statusPage.readlines()
+      statusPage.close()
+
+      re_debian_package = re.compile(r'.*Source Package: ' + packageInfo['debian_package_name'] + ' \(([0-9-+~\.a-z]+)\)')
+      re_debian_archive = re.compile(r'.*href="((http|https)://[a-zA-Z0-9\./+-]+/' + \
+                                       packageInfo['debian_package_name'][0:1] + '/' + \
+                                       packageInfo['debian_package_name'] + '/' + \
+                                       r')(' + packageInfo['debian_package_name'] + r'_[0-9-+~\.a-z]+\.debian\.tar\.[a-zA-Z]+)"')
+      for line in statusPageContents:
+         line = line.decode('utf-8')
+         match = re_debian_package.match(line)
+         if match != None:
+            debianVersion = match.group(1)
+         else:
+            match = re_debian_archive.match(line)
+            if match != None:
+               debianLocation = match.group(1)
+               debianArchive  = match.group(3)
+
+   except urllib.error.HTTPError as e:
+      sys.stderr.write('not found (HTTP ' + str(e.code) + ')!\n')
+      sys.exit(1)
+
+   if (debianVersion == None) or (debianArchive == None):
+      sys.stderr.write('not found!\n')
+      sys.exit(1)
+
+   sys.stderr.write('Version in ' + codename + ' is ' + debianVersion + '\n')
+
+
+   # ====== Determine necessary compression option =============================
+   debianArchiveFormat  = debianArchive[len(debianArchive) - 2 : len(debianArchive)]
+   tarCompressionOption = TarOptions[debianArchiveFormat]
+
+
+   # ====== Fetch debian archive ===============================================
+   archiveFileURL =  debianLocation + debianArchive
+   sys.stderr.write('Looking for \"debian\" archive at ' + archiveFileURL + ' ... ')
+   sys.stderr.flush()
+   result = None
+   try:
+      archiveFile = urllib.request.urlopen(archiveFileURL)
+      debianArchiveFile = tempfile.NamedTemporaryFile(delete=False)
+      shutil.copyfileobj(archiveFile, debianArchiveFile)
+      debianArchiveFile.close()
+      archiveFile.close()
+      sys.stderr.write('found!\n')
+
+      try:
+
+         process = subprocess.Popen([ 'tar', 'x' + tarCompressionOption + 'fO', debianArchiveFile.name, 'debian/changelog'],
+                                    stdout=subprocess.PIPE, universal_newlines=True)
+         result = process.stdout.readlines()
+         os.unlink(debianArchiveFile.name)
+
+      except Exception as e:
+         sys.stderr.write('ERROR: Failed to extract debian/changelog from ' + debianArchiveFile.name + ': ' + str(e) + '\n')
+         sys.exit(1)
+
+   except urllib.error.HTTPError as e:
+      sys.stderr.write('not found (HTTP ' + str(e.code) + ')!\n')
+      sys.exit(1)
+
+   return result
+
+
 
 # ###########################################################################
 # #### Main Program                                                      ####
@@ -751,6 +857,7 @@ if len(sys.argv) < 2:
    sys.stderr.write('* ' + sys.argv[0] + ' info\n')
    sys.stderr.write('* ' + sys.argv[0] + ' make-source-tarball [--skip-signing]\n')
    sys.stderr.write('* ' + sys.argv[0] + ' make-source-deb  [codename ...] [--skip-signing]\n')
+   sys.stderr.write('* ' + sys.argv[0] + ' fetch-debian-changelog [codename]\n')
    # |make-source-tarball|make-source-deb|make-source-rpm|build-deb|build-rpm ...\n')
    sys.exit(1)
 
@@ -793,6 +900,25 @@ elif tool == 'make-source-deb':
 # ====== Build deb file =====================================================
 elif tool == 'build-deb':
    True # buildDeb(packageInfo)
+
+# ====== Fetch Debian changelog file ========================================
+elif tool == 'fetch-debian-changelog':
+   skipPackageSigning = False
+   codename           = 'unstable'
+   if len(sys.argv) >= 3:
+      codename = sys.argv[2]
+   result = fetchDebianChangelog(packageInfo, codename)
+   sys.stdout.write('\n')
+   for line in result:
+      sys.stdout.write(line)
+
+# ====== Show Debian changelog file ========================================0
+elif tool == 'show-debian-changelog':
+   result = readDebianChangelog(packageInfo)
+   sys.stdout.write('\n')
+   for line in result:
+      sys.stdout.write(line)
+
 
 # ====== Invalid tool =======================================================
 else:
