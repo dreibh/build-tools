@@ -21,9 +21,40 @@
 
 import glob
 import os
+import pprint
 import re
 import sys
-import pprint
+import time
+
+
+# ###########################################################################
+# #### Constants                                                         ####
+# ###########################################################################
+
+TarballFormats = [ 'xz', 'bz2', 'gz' ]
+
+Systems = [
+   # Prefix       System Name         Configuration File
+   [ 'cmake',    'CMake',             'cmake_lists_name'      ],
+   [ 'autoconf', 'AutoConf/AutoMake', 'autoconf_config_name'  ],
+   [ 'other',    'Version File',      'other_file_name'       ],
+   [ 'rpm',      'RPM Spec',          'rpm_spec_name'         ],
+   [ 'debian',   'Debian Changelog',  'debian_changelog_name' ],
+   [ 'port',     'Port Makefile',     'port_makefile_name'    ]
+]
+
+
+
+# ###########################################################################
+# #### Helper Functions                                                  ####
+# ###########################################################################
+
+
+# ###### Print section header ###############################################
+def printSection(title):
+   now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+   sys.stdout.write('\n\x1b[34m' + (now + ' ====== ' + title + ' ').ljust(78, '=') + '\x1b[0m\n')
+
 
 
 # ###########################################################################
@@ -422,17 +453,7 @@ def readPackagingInformation():
 
 
    # ====== Obtain master packaging information =============================
-   systems = [
-      # Prefix       System Name         Configuration File
-      [ 'cmake',    'CMake',             'cmake_lists_name'      ],
-      [ 'autoconf', 'AutoConf/AutoMake', 'autoconf_config_name'  ],
-      [ 'other',    'Version File',      'other_file_name'       ],
-      [ 'rpm',      'RPM Spec',          'rpm_spec_name'         ],
-      [ 'debian',   'Debian Changelog',  'debian_changelog_name' ],
-      [ 'port',     'Port Makefile',     'port_makefile_name'    ]
-   ]
-
-   for system in systems:
+   for system in Systems:
       systemPrefix     = system[0]
       systemName       = system[1]
       systemConfigFile = system[2]
@@ -447,7 +468,7 @@ def readPackagingInformation():
 
 
    # ====== Check master packaging information ==============================
-   for system in systems:
+   for system in Systems:
       systemPrefix     = system[0]
       systemName       = system[1]
       systemConfigFile = system[2]
@@ -461,7 +482,47 @@ def readPackagingInformation():
                              packageInfo['master_version_string'] + '!\n')
             sys.exit(1)
 
+
+   # ====== Look for source tarball =========================================
+   sourcePackageInfo = findSourceTarball(packageInfo)
+   if sourcePackageInfo != None:
+      packageInfo.update(sourcePackageInfo)
+
    return packageInfo
+
+
+# ###### Find source tarball ################################################
+def findSourceTarball(packageInfo):
+
+   # ====== Initialise ======================================================
+   sourceInfo = {}
+
+   # ====== Obtain package configuration ====================================
+   tarballPattern = packageInfo['master_package'] + '-' + packageInfo['master_version_string'] + '.tar.*'
+   sys.stdout.write('Looking for tarball ' + tarballPattern + ' ... ')
+   tarballs = glob.glob(tarballPattern)   # NOTE: This will also find .tar.xz.asc, etc.!
+   for tarball in tarballs:
+      extension = os.path.splitext(tarball)[1][1:]
+      if extension in TarballFormats:
+         sourceInfo['source_tarball_name']      = tarball
+         sourceInfo['source_tarball_format']    = extension
+
+         # ====== Check for signature file ==================================
+         signature = sourceInfo['source_tarball_name'] + '.asc'
+         if os.path.isfile(signature):
+            sourceInfo['source_tarball_signature'] = signature
+
+         sys.stdout.write('Found ' + sourceInfo['source_tarball_name'] + \
+                        ' (format is ' + sourceInfo['source_tarball_format'] + ', signature ')
+         if 'source_tarball_signature' in sourceInfo:
+            sys.stdout.write(sourceInfo['source_tarball_signature'] + ').\n')
+         else:
+            sys.stdout.write('MISSING!).\n')
+
+         return sourceInfo
+
+   sys.stdout.write('not found!\n')
+   return None
 
 
 # ###### Check whether specific packaging information is available ##########
@@ -484,7 +545,15 @@ def showInformation(packageInfo):
 
 # ###### Make source tarball ################################################
 def makeSourceTarball(packageInfo, skipPackageSigning):
-   True
+
+   printSection('Creating source tarball')
+   print(packageInfo['packaging_make_dist'])
+   result = os.system(packageInfo['packaging_make_dist'])
+   if result != 0:
+      sys.stderr.write('ERROR: Unable to create source tarball!\n')
+      return False
+
+   return True
 
 
 # ###### Make Debian source package #########################################
@@ -501,6 +570,8 @@ def buildDeb(packageInfo, skipPackageSigning):
    if not hasPackagingFor(packageInfo, 'debian'):
       sys.stderr.write('ERROR: Cannot find required Debian packaging information!\n')
       sys.exit(1)
+
+
 
 
 
@@ -527,15 +598,17 @@ if tool == 'info':
    showInformation(packageInfo)
 
 # ====== Make source tarball ================================================
-elif tool == 'make-source-package':
+elif tool == 'make-source-tarball':
+   skipPackageSigning = False
    for i in range(2, len(sys.argv)):
       if sys.argv[i] == '--skip-signing':
          unsigned = True
       else:
          sys.stderr.write('ERROR: Bad parameter ' + sys.argv[i] + '!\n')
          sys.exit(1)
-
-   makeSourceTarball(packageInfo, skipPackageSigning)
+   result = makeSourceTarball(packageInfo, skipPackageSigning)
+   if result == False:
+      sys.exit(1)
 
 # ====== Make source deb file ===============================================
 elif tool == 'make-source-deb':
@@ -546,7 +619,6 @@ elif tool == 'make-source-deb':
       else:
          sys.stderr.write('ERROR: Bad parameter ' + sys.argv[i] + '!\n')
          sys.exit(1)
-
    makeSourceDeb(packageInfo, skipPackageSigning)
 
 # ====== Build deb file =====================================================
