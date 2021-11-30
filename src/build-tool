@@ -97,10 +97,14 @@ def readTextFile(inputName):
 
 # ###### Write file by list of lines ########################################
 def writeTextFile(outputName, contents):
-
    outputFile = open(outputName, 'w', encoding='utf-8')
    for line in contents:
       outputFile.write(line)
+
+
+# ###### Get system architecture ############################################
+def getArchitecture():
+   return os.uname().machine
 
 
 
@@ -1474,7 +1478,7 @@ def buildRPM(packageInfo, releases, architectures, skipPackageSigning):
    if len(releases) == 0:
       releases = [ 'rawhide' ]
    if len(architectures) == 0:
-      architectures = [ getDebianDefaultArchitecture() ]  ## ???? FIXME!!!!!
+      architectures = [ getArchitecture() ]
    makeSourceRPM(packageInfo, skipPackageSigning)
 
    # ====== Build for each distribution codename ============================
