@@ -1520,7 +1520,7 @@ def buildRPM(packageInfo, releases, architectures, skipPackageSigning):
          # ------ Delete old RPM --------------------------------------------
          rpmFile = '/var/lib/mock/' + configuration + '/result/' + \
                       packageInfo['rpm_package_name'] + '-' + \
-                      packageInfo['rpm_version_string'] + '-' + str(packageInfo['rpm_version_packaging']) + '-' + \
+                      packageInfo['rpm_version_string'] + '-' + str(packageInfo['rpm_version_packaging']) + '.' + \
                       buildArchitecture + '.rpm'
          try:
             os.unlink(rpmFile)
