@@ -1467,7 +1467,7 @@ def makeSourceRPM(packageInfo, skipPackageSigning):
       try:
          subprocess.run(rpmsign, check = True)
       except Exception as e:
-         sys.stderr.write('ERROR: RPM run failed: ' + str(e) + '\n')
+         sys.stderr.write('ERROR: RPMSign run failed: ' + str(e) + '\n')
          sys.exit(1)
 
 
@@ -1511,13 +1511,13 @@ def buildRPM(packageInfo, releases, architectures, skipPackageSigning):
 
          printSubsection('Creating binary RPM package for ' + release + '/' + buildArchitecture)
 
-         # ------ Check for mock configuration file -------------------------
+         # ====== Check for mock configuration file =========================
          configuration = release + '-' + buildArchitecture
          if not os.path.isfile('/etc/mock/' + configuration + '.cfg'):
             sys.stderr.write('ERROR: Configuration ' + '/etc/mock/' + configuration + '.cfg does not exist!\n')
             #sys.exit(1)
 
-         # ------ Delete old RPM --------------------------------------------
+         # ====== Delete old RPM ============================================
          rpmFile = '/var/lib/mock/' + configuration + '/result/' + \
                       packageInfo['rpm_package_name'] + '-' + \
                       packageInfo['rpm_version_string'] + '-' + str(packageInfo['rpm_version_packaging']) + '.' + \
@@ -1527,25 +1527,38 @@ def buildRPM(packageInfo, releases, architectures, skipPackageSigning):
          except FileNotFoundError:
             pass
 
-         # ------ Run mock --------------------------------------------------
+         # ====== Run mock ==================================================
          try:
             commands = [
                   [ 'mock', '-r', configuration, '--isolation=nspawn', '--init' ],
                   [ 'mock', '-r', configuration, '--isolation=nspawn', '--installdeps', srpmFile ],
-                  [ 'mock', '-r', configuration, '--isolation=nspawn', '--install', 'openssl', 'pesign' ],
+                  # FIXME! Is this needed:
+                  # [ 'mock', '-r', configuration, '--isolation=nspawn', '--install', 'openssl', 'pesign' ],
                   [ 'mock', '-r', configuration, '--isolation=nspawn', '--rebuild', '--no-clean', srpmFile ]
                ]
             for command in commands:
                print(command)
                subprocess.run(command, check = True)
          except Exception as e:
-            sys.stderr.write('ERROR: RPMSign run failed: ' + str(e) + '\n')
+            sys.stderr.write('ERROR: Mock run failed: ' + str(e) + '\n')
             sys.exit(1)
 
-         # ------ Check resulting RPM ---------------------------------------
+         # ------ Check resulting RPM =======================================
          if not os.path.isfile(rpmFile):
             sys.stderr.write('ERROR: RPM ' + rpmFile + ' not found!\n')
             sys.exit(1)
+
+         # ====== Sign SRPM =================================================
+         if skipPackageSigning == False:
+            rpmsign = [ 'rpmsign',
+                        '--define', '_gpg_name ' + packageInfo['packaging_maintainer_key'],
+                        '--addsign', rpmFile ]
+            print(rpmsign)
+            try:
+               subprocess.run(rpmsign, check = True)
+            except Exception as e:
+               sys.stderr.write('ERROR: RPMSign run failed: ' + str(e) + '\n')
+               sys.exit(1)
 
 
 
