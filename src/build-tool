@@ -1037,7 +1037,7 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
 
 
 # ###### Build Debian binary package ########################################
-def buildDeb(packageInfo, codenames, skipPackageSigning):
+def buildDeb(packageInfo, codenames, architectures, skipPackageSigning):
 
    # ====== Make sure that the source Debian files are available ============
    if len(codenames) == 0:
@@ -1047,61 +1047,62 @@ def buildDeb(packageInfo, codenames, skipPackageSigning):
    # ====== Build for each distribution codename ============================
    printSection('Creating binary Debian packages')
 
-   defaultArchitecture = getDebianDefaultArchitecture()
-   for codename in codenames:
-      newDebianVersionPackaging = modifyDebianVersionPackaging(packageInfo, codename)
+   if len(architectures) == 0:
+      architectures = [ getDebianDefaultArchitecture() ]
+   for buildArchitecture in architectures:
+      for codename in codenames:
+         newDebianVersionPackaging = modifyDebianVersionPackaging(packageInfo, codename)
 
-      printSubsection('Creating binary Debian package for ' + codename)
+         printSubsection('Creating binary Debian package for ' + codename + '/' + buildArchitecture)
 
-      dscFileName = getDebianDscName(packageInfo, newDebianVersionPackaging)
-      if not os.path.isfile(dscFileName):
-         sys.stderr.write('ERROR: DSC file ' + dscFileName + ' does not exist!\n')
-         sys.exit(1)
+         dscFileName = getDebianDscName(packageInfo, newDebianVersionPackaging)
+         if not os.path.isfile(dscFileName):
+            sys.stderr.write('ERROR: DSC file ' + dscFileName + ' does not exist!\n')
+            sys.exit(1)
 
-      buildArchitecture = getDebianDefaultArchitecture()
-      buildDistribution = codename
-      if codename in DebianCodenames:
-         buildSystem    = 'debian'
-         lintianProfile = 'debian'
-      else:
-         buildSystem    = 'ubuntu'
-         lintianProfile = 'ubuntu'
-      basetgz = '/var/cache/pbuilder/' + buildSystem + '-' + codename + '-' + buildArchitecture + '-base.tgz'
-      if not os.path.isfile(basetgz):
-         sys.stderr.write('ERROR: Base tgz ' + basetgz + ' for pbuilder is not available!\nCheck pbuilder installation and configuration!\n')
-         sys.exit(1)
+         buildDistribution = codename
+         if codename in DebianCodenames:
+            buildSystem    = 'debian'
+            lintianProfile = 'debian'
+         else:
+            buildSystem    = 'ubuntu'
+            lintianProfile = 'ubuntu'
+         basetgz = '/var/cache/pbuilder/' + buildSystem + '-' + codename + '-' + buildArchitecture + '-base.tgz'
+         if not os.path.isfile(basetgz):
+            sys.stderr.write('ERROR: Base tgz ' + basetgz + ' for pbuilder is not available!\nCheck pbuilder installation and configuration!\n')
+            sys.exit(1)
 
-      # ====== Run pbuilder =================================================
-      pbuilderCommand = [ 'sudo', 'pbuilder', 'build', '--basetgz', basetgz,
-                          dscFileName ]
-      print(pbuilderCommand)
-      try:
-         subprocess.run(pbuilderCommand, check=True)
-      except Exception as e:
-         sys.stderr.write('ERROR: PBuilder run failed: ' + str(e) + '\n')
-         sys.exit(1)
+         # ====== Run pbuilder ==============================================
+         pbuilderCommand = [ 'sudo', 'pbuilder', 'build', '--basetgz', basetgz,
+                             dscFileName ]
+         print(pbuilderCommand)
+         try:
+            subprocess.run(pbuilderCommand, check=True)
+         except Exception as e:
+            sys.stderr.write('ERROR: PBuilder run failed: ' + str(e) + '\n')
+            sys.exit(1)
 
-      # ====== Run Lintian ==================================================
-      changesFileName = getDebianChangesName(packageInfo, newDebianVersionPackaging,
-                                             buildArchitecture)
-      foundChangesFiles = glob.glob('/var/cache/pbuilder/result/*/' + changesFileName)
-      if len(foundChangesFiles) != 1:
-         sys.stderr.write('ERROR: Unable to locate the changes file!\n')
-         sys.stderr.write('foundChangesFiles = ' + str(foundChangesFiles) + '\n')
-         sys.exit(1)
+         # ====== Run Lintian ===============================================
+         changesFileName = getDebianChangesName(packageInfo, newDebianVersionPackaging,
+                                                buildArchitecture)
+         foundChangesFiles = glob.glob('/var/cache/pbuilder/result/*/' + changesFileName)
+         if len(foundChangesFiles) != 1:
+            sys.stderr.write('ERROR: Unable to locate the changes file!\n')
+            sys.stderr.write('foundChangesFiles = ' + str(foundChangesFiles) + '\n')
+            sys.exit(1)
 
-      lintianCommand = [ 'lintian',
-                            '-iIEv',
-                            '--profile', lintianProfile,
-                            '--suppress-tags', 'malformed-deb-archive,bad-distribution-in-changes-file',
-                            '--pedantic',
-                            foundChangesFiles[0] ]
-      print(lintianCommand)
-      try:
-         subprocess.run(lintianCommand, check=True)
-      except Exception as e:
-         sys.stderr.write('ERROR: Lintian run failed: ' + str(e) + '\n')
-         sys.exit(1)
+         lintianCommand = [ 'lintian',
+                               '-iIEv',
+                               '--profile', lintianProfile,
+                               '--suppress-tags', 'malformed-deb-archive,bad-distribution-in-changes-file',
+                               '--pedantic',
+                               foundChangesFiles[0] ]
+         print(lintianCommand)
+         try:
+            subprocess.run(lintianCommand, check=True)
+         except Exception as e:
+            sys.stderr.write('ERROR: Lintian run failed: ' + str(e) + '\n')
+            sys.exit(1)
 
    return True
 
@@ -1389,6 +1390,7 @@ if len(sys.argv) < 2:
    sys.stderr.write('* ' + sys.argv[0] + ' info\n')
    sys.stderr.write('* ' + sys.argv[0] + ' make-source-tarball [--skip-signing]\n')
    sys.stderr.write('* ' + sys.argv[0] + ' make-source-deb  [codename ...] [--skip-signing]\n')
+   sys.stderr.write('* ' + sys.argv[0] + ' build-deb  [codename ...] [--skip-signing] [--architecture=arch ...]\n')
    sys.stderr.write('* ' + sys.argv[0] + ' fetch-debian-changelog [codename]\n')
    # |make-source-tarball|make-source-deb|make-source-rpm|build-deb|build-rpm ...\n')
    sys.exit(1)
@@ -1433,15 +1435,18 @@ elif tool == 'make-source-deb':
 elif tool == 'build-deb':
    skipPackageSigning = False
    codenames          = []
+   architectures      = []
    for i in range(2, len(sys.argv)):
       if sys.argv[i][0] != '-':
          codenames.append(sys.argv[i])
       elif sys.argv[i] == '--skip-signing':
          skipPackageSigning = True
+      elif sys.argv[i][0:15] == '--architecture=':
+         architectures.append(sys.argv[i][15:])
       else:
          sys.stderr.write('ERROR: Bad parameter ' + sys.argv[i] + '!\n')
          sys.exit(1)
-   buildDeb(packageInfo, codenames, skipPackageSigning)
+   buildDeb(packageInfo, codenames, architectures, skipPackageSigning)
 
 # ====== Fetch Debian changelog file ========================================
 elif tool == 'fetch-debian-changelog':
