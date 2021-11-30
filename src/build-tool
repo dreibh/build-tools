@@ -494,14 +494,17 @@ def readOtherPackagingInformation():
    return packageInfo
 
 
-# ###### Read packaging information #########################################
-def readPackagingInformation():
 
-   # ====== Obtain distribution codenames ===================================
+# ###### Obtain distribution codenames ######################################
+def obtainDistributionCodenames():
    global DebianCodenames
    global UbuntuCodenames
    DebianCodenames = getDistributionCodenames()
    UbuntuCodenames = getDistributionCodenames('ubuntu')
+
+
+# ###### Read packaging information #########################################
+def readPackagingInformation():
 
    # ====== Read information from different packaging system files ==========
    packageInfo = readPackagingConfiguration()
@@ -1583,6 +1586,7 @@ elif tool == 'make-source-tarball':
 
 # ====== Make source deb file ===============================================
 elif tool == 'make-source-deb':
+   obtainDistributionCodenames()
    skipPackageSigning = False
    codenames          = []
    for i in range(2, len(sys.argv)):
@@ -1597,6 +1601,7 @@ elif tool == 'make-source-deb':
 
 # ====== Build deb file =====================================================
 elif tool == 'build-deb':
+   obtainDistributionCodenames()
    skipPackageSigning = False
    codenames          = []
    architectures      = []
@@ -1642,14 +1647,16 @@ elif tool == 'build-rpm':
 
 # ====== Fetch Debian changelog file ========================================
 elif tool == 'fetch-debian-changelog':
+   obtainDistributionCodenames()
    skipPackageSigning = False
    codename           = 'unstable'
    if len(sys.argv) >= 3:
       codename = sys.argv[2]
    result = fetchDebianChangelog(packageInfo, codename)
-   sys.stdout.write('\n')
-   for line in result:
-      sys.stdout.write(line)
+   if result != None:
+      sys.stdout.write('\n')
+      for line in result:
+         sys.stdout.write(line)
 
 # ====== Invalid tool =======================================================
 else:
