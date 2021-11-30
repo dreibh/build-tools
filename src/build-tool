@@ -809,6 +809,7 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
       except FileExistsError:
          pass
 
+   defaultArchitecture = getDebianDefaultArchitecture()
    for codename in codenames:
       updatedDebhelperVersion = False
 
@@ -1011,17 +1012,24 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
 
    sys.stdout.write('\x1b[34mBuild Test Commands:\x1b[0m\n')
    for codename in sorted(dscFiles.keys()):
-      changesFileName = getDebianChangesName(packageInfo, newDebianVersionPackaging,
-                                             getDebianDefaultArchitecture())
+
+      buildArchitecture = getDebianDefaultArchitecture()
+      buildDistribution = codename
       if codename in DebianCodenames:
+         buildSystem    = 'debian'
          lintianProfile = 'debian'
       else:
+         buildSystem    = 'ubuntu'
          lintianProfile = 'ubuntu'
+      basetgz = '/var/cache/pbuilder/' + buildSystem + '-' + codename + '-' + buildArchitecture + '-base.tgz'
+      changesFileName = getDebianChangesName(packageInfo, newDebianVersionPackaging,
+                                             buildArchitecture)
+
       sys.stdout.write('\x1b[34m   ' + \
-                       'sudo pbuilder build ' + dscFiles[codename] + ' && ' + \
-                       'lintian -iIEv --profile ' + lintianProfile + \
-                        ' --pedantic /var/cache/pbuilder/result/*/' + \
-                        changesFileName + \
+                       'sudo pbuilder build --basetgz ' + basetgz + ' ' + \
+                       dscFiles[codename] + ' && ' + \
+                       'lintian -iIEv --profile ' + lintianProfile + '  --pedantic ' + \
+                        '/var/cache/pbuilder/result/*/' +  changesFileName + \
                        '\x1b[0m\n')
    sys.stdout.write('\n')
 
@@ -1032,11 +1040,14 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
 def buildDeb(packageInfo, codenames, skipPackageSigning):
 
    # ====== Make sure that the source Debian files are available ============
+   if len(codenames) == 0:
+      codenames = [ packageInfo['debian_codename'] ]
    makeSourceDeb(packageInfo, codenames, skipPackageSigning)
 
    # ====== Build for each distribution codename ============================
    printSection('Creating binary Debian packages')
 
+   defaultArchitecture = getDebianDefaultArchitecture()
    for codename in codenames:
       newDebianVersionPackaging = modifyDebianVersionPackaging(packageInfo, codename)
 
@@ -1055,15 +1066,13 @@ def buildDeb(packageInfo, codenames, skipPackageSigning):
       else:
          buildSystem    = 'ubuntu'
          lintianProfile = 'ubuntu'
+      basetgz = '/var/cache/pbuilder/' + buildSystem + '-' + codename + '-' + buildArchitecture + '-base.tgz'
+      if not os.path.isfile(basetgz):
+         sys.stderr.write('ERROR: Base tgz ' + basetgz + ' for pbuilder is not available!\nCheck pbuilder installation and configuration!\n')
+         sys.exit(1)
 
       # ====== Run pbuilder =================================================
-      pbuilderCommand = [ 'sudo',
-                             'OS='   + buildSystem,
-                             'DIST=' + buildDistribution,
-                             'ARCH=' + buildArchitecture,
-                          'pbuilder', 'build',
-                          '--distribution', buildDistribution,
-                          '--architecture', buildArchitecture,
+      pbuilderCommand = [ 'sudo', 'pbuilder', 'build', '--basetgz', basetgz,
                           dscFileName ]
       print(pbuilderCommand)
       try:
@@ -1084,6 +1093,7 @@ def buildDeb(packageInfo, codenames, skipPackageSigning):
       lintianCommand = [ 'lintian',
                             '-iIEv',
                             '--profile', lintianProfile,
+                            '--suppress-tags', 'malformed-deb-archive,bad-distribution-in-changes-file',
                             '--pedantic',
                             foundChangesFiles[0] ]
       print(lintianCommand)
@@ -1238,9 +1248,9 @@ def filterDebianChangelog(changeLogContents, re_last_entry = None):
                   for itpLine in splittedITPEntry:
                      i = i + 1
                      if (i <= 2) or (i >= len(splittedITPEntry) - 2):
-                        resultingChangelog.append(itpLine)
+                        resultingChangelog.append(itpLine + '\n')
                      elif re_item_is_itp.match(itpLine) != None:
-                        resultingChangelog.append(itpLine)
+                        resultingChangelog.append(itpLine + '\n')
                   break   # ITP -> done!
 
                entryContent = ''
