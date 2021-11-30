@@ -53,17 +53,8 @@ Systems = [
    [ 'port',     'Port Makefile',     'port_makefile_name'    ]
 ]
 
-DebianCodenames = [
-   'unstable', 'testing', 'stable', 'oldstable', 'sid',
-   'bookworm', 'bullseye', 'buster', 'stretch', 'jessie', 'wheezy', 'squeeze',
-
-   'bookworm-backports', 'bullseye-backports', 'buster-backports', 'stretch-backports',
-   'jessie-backports', 'wheezy-backports', 'squeeze-backports',
-
-   'bookworm-backports-sloppy', 'bullseye-backports-sloppy', 'buster-backports-sloppy',
-   'stretch-backports-sloppy', 'jessie-backports-sloppy', 'wheezy-backports-sloppy',
-   'squeeze-backports-sloppy',
-]
+DebianCodenames = None   # Will be initialised later!
+UbuntuCodenames = None   # Will be initialised later!
 
 DebhelperLatestVersion = 13
 
@@ -499,6 +490,10 @@ def readOtherPackagingInformation():
 # ###### Read packaging information #########################################
 def readPackagingInformation():
 
+   # ====== Obtain distribution codenames ===================================
+   DebianCodenames = getDistributionCodenames()
+   UbuntuCodenames = getDistributionCodenames('ubuntu')
+
    # ====== Read information from different packaging system files ==========
    packageInfo = readPackagingConfiguration()
 
@@ -694,6 +689,31 @@ def modifyDebianVersionPackaging(packageInfo, codename):
                                           packageInfo['debian_version_packaging'])
 
    return newDebianVersionPackaging
+
+
+# ###### Get Debian/Ubuntu codenames ########################################
+def getDistributionCodenames(distribution = 'debian'):
+   if distribution == 'debian':
+      distroInfo = 'debian-distro-info'
+   else:
+      distroInfo = 'ubuntu-distro-info'
+   try:
+      process = subprocess.Popen([ distroInfo, '--all'],
+                                 stdout=subprocess.PIPE, universal_newlines=True)
+      result = process.stdout.readlines()
+   except Exception as e:
+      sys.stderr.write('ERROR: Unable to obtain Debian codenames: ' + str(e) + '\n')
+      sys.exit(1)
+
+   codenames = [ codename.strip() for codename in result ]
+   if distribution == 'debian':
+      codenames += [ 'unstable', 'testing', 'stable', 'oldstable' ]
+      codenames += [ codename.strip() + '-backports'        for codename in result]
+      codenames += [ codename.strip() + '-backports-sloppy' for codename in result]
+   codenames = sorted(codenames)
+
+   # pprint.pprint(codenames, indent=1)
+   return codenames
 
 
 # ###### Get Debian default architecture ####################################
