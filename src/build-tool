@@ -1530,10 +1530,10 @@ def buildRPM(packageInfo, releases, architectures, skipPackageSigning):
          # ------ Run mock --------------------------------------------------
          try:
             commands = [
-                  [ 'mock', '-r', configuration, '--isolation=nspwan', '--init' ],
-                  [ 'mock', '-r', configuration, '--isolation=nspwan', '--installdeps', srpmFile ],
-                  [ 'mock', '-r', configuration, '--isolation=nspwan', '--install', 'openssl', 'pesign' ],
-                  [ 'mock', '-r', configuration, '--isolation=nspwan', '--rebuild', '--no-clean', srpmFile ]
+                  [ 'mock', '-r', configuration, '--isolation=nspawn', '--init' ],
+                  [ 'mock', '-r', configuration, '--isolation=nspawn', '--installdeps', srpmFile ],
+                  [ 'mock', '-r', configuration, '--isolation=nspawn', '--install', 'openssl', 'pesign' ],
+                  [ 'mock', '-r', configuration, '--isolation=nspawn', '--rebuild', '--no-clean', srpmFile ]
                ]
             for command in commands:
                print(command)
