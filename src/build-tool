@@ -361,7 +361,7 @@ def readRPMPackagingInformation():
 
    # ====== Obtain package configuration ====================================
    rpm_spec_names = glob.glob('rpm/*.spec')
-   if len(rpm_spec_names) > 0:
+   if len(rpm_spec_names) == 1:
       packageInfo['rpm_spec_name'] = rpm_spec_names[0]
 
       re_rpm_name    = re.compile(r'^(Name:[ \t]*)(\S+)')
@@ -401,6 +401,13 @@ def readRPMPackagingInformation():
            (not 'rpm_version_packaging' in packageInfo) ):
          sys.stderr.write('ERROR: Cannot find required package versioning details in ' + packageInfo['rpm_spec_name'] + '!\n')
          sys.exit(1)
+
+   elif len(rpm_spec_names) > 1:
+      sys.stderr.write('ERROR: More than one spec file found: ' + str(rpm_spec_names) + '!\n')
+      sys.exit(1)
+   else:
+      sys.stderr.write('ERROR: No spec file found!\n')
+      sys.exit(1)
 
    return packageInfo
 
@@ -779,6 +786,278 @@ def getDebianControlTarballName(packageInfo, debianVersionPackaging = None):
    return controlTarballFileName
 
 
+# ###### Fetch Debian changelog file ########################################
+def fetchDebianChangelog(packageInfo, codename = 'unstable'):
+   if not hasPackagingFor(packageInfo, 'debian'):
+      sys.stderr.write('ERROR: Cannot find required Debian packaging information!\n')
+      sys.exit(1)
+
+   if codename in DebianCodenames:
+      # Debian
+      statusPageURL = 'https://packages.debian.org/source/' + codename + '/' + packageInfo['debian_package_name']
+   else:
+      # Ubuntu
+      statusPageURL = 'https://packages.ubuntu.com/source/' + codename + '/' + packageInfo['debian_package_name']
+
+   debianVersion       = None
+   debianLocation      = None
+   debianArchive       = None
+   debianArchiveFormat = None
+
+   # ====== Get package status =================================================
+   statusPageContents = None
+   sys.stderr.write('Looking for package status on ' + statusPageURL + ' ... ')
+   sys.stderr.flush()
+   try:
+      statusPage = urllib.request.urlopen(statusPageURL)
+      statusPageContents = statusPage.readlines()
+      statusPage.close()
+
+      re_debian_package = re.compile(r'.*Source Package: ' + packageInfo['debian_package_name'] + ' \(([0-9-+~\.a-z]+)\)')
+      re_debian_archive = re.compile(r'.*href="((http|https)://[a-zA-Z0-9\./+-]+/' + \
+                                       packageInfo['debian_package_name'][0:1] + '/' + \
+                                       packageInfo['debian_package_name'] + '/' + \
+                                       r')(' + packageInfo['debian_package_name'] + r'_[0-9-+~\.a-z]+\.debian\.tar\.[a-zA-Z]+)"')
+      for line in statusPageContents:
+         line = line.decode('utf-8')
+         match = re_debian_package.match(line)
+         if match != None:
+            debianVersion = match.group(1)
+         else:
+            match = re_debian_archive.match(line)
+            if match != None:
+               debianLocation = match.group(1)
+               debianArchive  = match.group(3)
+
+   except urllib.error.HTTPError as e:
+      sys.stderr.write('not found (HTTP ' + str(e.code) + ')!\n')
+      sys.exit(1)
+
+   if (debianVersion == None) or (debianArchive == None):
+      sys.stderr.write('not found!\n')
+      return None
+
+   sys.stderr.write('Version in ' + codename + ' is ' + debianVersion + '\n')
+
+
+   # ====== Determine necessary compression option =============================
+   debianArchiveFormat  = debianArchive[len(debianArchive) - 2 : len(debianArchive)]
+   tarCompressionOption = TarOptions[debianArchiveFormat]
+
+
+   # ====== Fetch debian archive ===============================================
+   archiveFileURL =  debianLocation + debianArchive
+   sys.stderr.write('Looking for \"debian\" archive at ' + archiveFileURL + ' ... ')
+   sys.stderr.flush()
+   result = None
+   try:
+      archiveFile = urllib.request.urlopen(archiveFileURL)
+      debianArchiveFile = tempfile.NamedTemporaryFile(delete=False)
+      shutil.copyfileobj(archiveFile, debianArchiveFile)
+      debianArchiveFile.close()
+      archiveFile.close()
+      sys.stderr.write('found!\n')
+
+      try:
+         process = subprocess.Popen([ 'tar', 'x' + tarCompressionOption + 'fO', debianArchiveFile.name, 'debian/changelog'],
+                                    stdout=subprocess.PIPE, universal_newlines=True)
+         result = process.stdout.readlines()
+         os.unlink(debianArchiveFile.name)
+
+      except Exception as e:
+         sys.stderr.write('ERROR: Failed to extract debian/changelog from ' + debianArchiveFile.name + ': ' + str(e) + '\n')
+         sys.exit(1)
+
+   except urllib.error.HTTPError as e:
+      sys.stderr.write('not found (HTTP ' + str(e.code) + ')!\n')
+      return None
+
+   return result
+
+
+# ###### Filter Debian changelog ############################################
+# This function filters debian/changelog entries:
+# regexp_for_last_entry: None (no filtering), 1 (first entry), RegExp
+# * Empty entries get dropped.
+# * Stop, if entry matches regexp_for_last_entry argument.
+# * Stop after first entry, if regexp_for_last_entry = 1.
+def filterDebianChangelog(changeLogContents, re_last_entry = None):
+
+   re_begin_of_entry = re.compile(r'^[a-zA-Z].*$')
+   re_end_of_entry   = re.compile(r'^ --.*$')
+   re_empty          = re.compile(r'^$')
+   re_item           = re.compile(r'^ *')
+   re_item_is_itp    = re.compile(r'^(.*Closes:.*ITP.*|.*ITP.*Closes:.*)$')
+
+   resultingChangelog = []
+   entries            = 0
+   entryContentLines  = 0
+   entryContent       = ''
+   entryIsITP         = False
+
+   for line in changeLogContents:
+
+      # ====== Begin of entry ===============================================
+      if entryContentLines == 0:
+         if re_begin_of_entry.match(line):
+            if entries == 0:
+               entryContent = line
+            else:
+               entryContent = '\n' + line
+            entryContentLines = 1
+
+      # ====== Within entry =================================================
+      else:
+         # ------ End of entry ----------------------------------------------
+         if re_end_of_entry.match(line):
+            entryContent = entryContent + line
+            if entryContentLines > 1:
+               entries = entries + 1
+
+               # ------ Print entry -----------------------------------------
+               if not entryIsITP:
+                  resultingChangelog.append(entryContent)
+
+               # ------ Print entry with ITP --------------------------------
+               # Special case: The ITP package for Debian must only contain the
+               #               ITP entry with ITP item and nothing else!
+               else:
+                  splittedITPEntry = entryContent.splitlines()
+                  i = 0
+                  for itpLine in splittedITPEntry:
+                     i = i + 1
+                     if (i <= 2) or (i >= len(splittedITPEntry) - 2):
+                        resultingChangelog.append(itpLine + '\n')
+                     elif re_item_is_itp.match(itpLine) != None:
+                        resultingChangelog.append(itpLine + '\n')
+                  break   # ITP -> done!
+
+               entryContent = ''
+               entryIsITP   = False
+
+            # ------ Check for match with last entry regexp in argument -----
+            if re_last_entry != None:
+               if re_last_entry.match(line) != None:
+                  break
+
+            entryContentLines = 0
+
+         # ------ Part of entry ---------------------------------------------
+         else:
+            if re_item.match(line):
+               entryContent      = entryContent + line
+               entryContentLines = entryContentLines + 1
+               if re_item_is_itp.match(line):
+                  entryIsITP = True
+
+   return resultingChangelog
+
+
+# ###### Merge Debian changelogs ###########################################
+# This function merges debian/changelog entries.
+# 1. Import old entries from distributor's changelog
+# 2a. Get all newer entries from PPA changelog
+# 2b. Merge newer entries into a single entry
+def mergeDebianChangelogs(ppaChangelogContents, distributorChangelogContents):
+
+   # ====== Merge changelogs ================================================
+   re_entry_header = re.compile(r'^([a-zA-Z0-9-]+ \([0-9a-zA-Z\.~+]+-[0-9]*)')
+   re_entry_footer = re.compile(r'^ -- .*')
+   re_empty        = re.compile(r'^\S*$')
+
+   topics = [
+      { 'regexp': re.compile(r'^  \* .*ew upstream (version|release).*$'), 'count': 0, 'max': 1 },
+      { 'regexp': re.compile(r'^  \* .*standards version.*$'),             'count': 0, 'max': 1 },
+      { 'regexp': re.compile(r'^  \* .*debian/compat:.*$'),                'count': 0, 'max': 0 }
+   ]
+
+   # ------ Get latest entry from distribution changelog --------------------
+   latestDistributionEntry = distributorChangelogContents[0]
+   match = re_entry_header.match(latestDistributionEntry)
+   if match == None:
+      sys.stderr.write('ERROR: Bad header in ' + changelogNameDistribution + '!\n')
+      sys.exit(1)
+
+   # ------ Join all new entries from PPA changelog -------------------------
+   resultingChangelogContents        = []
+   entries                           = 0
+   insideEntry                       = False
+   foundLatestDistributionEntryInPPA = False
+   firstFooter                       = None
+
+   for line in ppaChangelogContents:
+
+      # ------ Begin of an entry --------------------------------------------
+      match = re_entry_header.match(line)
+      if match != None:
+
+         entries = entries + 1
+         if entries == 1:
+            resultingChangelogContents.append(line)
+            resultingChangelogContents.append('\n')
+
+         # ------ Done? -----------------------------------------------------
+         elif line == latestDistributionEntry:
+            foundLatestDistributionEntryInPPA = True
+            break
+
+         continue
+
+      # ------ Empty line ---------------------------------------------------
+      match = re_empty.match(line)
+      if match != None:
+         continue
+
+      # ------ End of an entry ----------------------------------------------
+      match = re_entry_footer.match(line)
+      if match != None:
+         if entries == 1:
+            firstFooter = line
+         continue
+
+      # ------ Topics -------------------------------------------------------
+      skip = False
+      for topic in topics:
+         match = topic['regexp'].match(line)
+         if match != None:
+            topic['count'] = topic['count'] + 1
+            if topic['count'] > topic['max']:
+               skip = True
+               break
+      if skip == True:
+         continue
+
+      # ------ Add line to output -------------------------------------------
+      if line[0] == ' ':
+         resultingChangelogContents.append(line)
+         continue
+
+      # ------ Something is wrong -------------------------------------------
+      sys.stderr.write('ERROR: Unexpected line: ' + line + '!\n')
+      sys.exit(1)
+
+
+   resultingChangelogContents.append('\n')
+   resultingChangelogContents.append(firstFooter)
+
+   if foundLatestDistributionEntryInPPA == False:
+      # Distributor changelog is equal to PPA changelog?
+      if distributorChangelogContents[0] != ppaChangelogContents[0]:
+         sys.stderr.write('ERROR: Did not found the latest distribution entry in the PPA changelog!\n')
+         sys.stderr.write('Looked for:      "' + latestDistributionEntry + '"\n')
+         sys.stderr.write('First PPA entry: "' + distributorChangelogContents[0] + '"\n')
+         sys.exit(1)
+
+   for line in distributorChangelogContents:
+      resultingChangelogContents.append(line)
+
+   #for line in resultingChangelogContents:
+      #sys.stdout.write(line)
+
+   return resultingChangelogContents
+
+
+
 # ###### Make Debian source package #########################################
 def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
 
@@ -1111,276 +1390,155 @@ def buildDeb(packageInfo, codenames, architectures, skipPackageSigning):
    return True
 
 
+# ###### Make SRPM source package ###########################################
+def makeSourceRPM(packageInfo, skipPackageSigning):
 
-# ###### Fetch Debian changelog file ########################################
-def fetchDebianChangelog(packageInfo, codename = 'unstable'):
-   if not hasPackagingFor(packageInfo, 'debian'):
-      sys.stderr.write('ERROR: Cannot find required Debian packaging information!\n')
-      sys.exit(1)
+   # ====== Make sure that the source tarball is available ==================
+   if makeSourceTarball(packageInfo, skipPackageSigning) == False:
+      return False
 
-   if codename in DebianCodenames:
-      # Debian
-      statusPageURL = 'https://packages.debian.org/source/' + codename + '/' + packageInfo['debian_package_name']
-   else:
-      # Ubuntu
-      statusPageURL = 'https://packages.ubuntu.com/source/' + codename + '/' + packageInfo['debian_package_name']
+   printSection('Creating SRPM source packages')
 
-   debianVersion       = None
-   debianLocation      = None
-   debianArchive       = None
-   debianArchiveFormat = None
+   # ====== Initialise RPM build directories ================================
+   rpmbuildDir = os.environ.get('HOME') + '/rpmbuild'
+   for subdir in [ 'BUILD', 'BUILDROOT', 'RPMS', 'SOURCES', 'SPECS', 'SRPMS' ]:
+      os.makedirs(rpmbuildDir + '/' + subdir, exist_ok = True)
 
-   # ====== Get package status =================================================
-   statusPageContents = None
-   sys.stderr.write('Looking for package status on ' + statusPageURL + ' ... ')
-   sys.stderr.flush()
-   try:
-      statusPage = urllib.request.urlopen(statusPageURL)
-      statusPageContents = statusPage.readlines()
-      statusPage.close()
-
-      re_debian_package = re.compile(r'.*Source Package: ' + packageInfo['debian_package_name'] + ' \(([0-9-+~\.a-z]+)\)')
-      re_debian_archive = re.compile(r'.*href="((http|https)://[a-zA-Z0-9\./+-]+/' + \
-                                       packageInfo['debian_package_name'][0:1] + '/' + \
-                                       packageInfo['debian_package_name'] + '/' + \
-                                       r')(' + packageInfo['debian_package_name'] + r'_[0-9-+~\.a-z]+\.debian\.tar\.[a-zA-Z]+)"')
-      for line in statusPageContents:
-         line = line.decode('utf-8')
-         match = re_debian_package.match(line)
-         if match != None:
-            debianVersion = match.group(1)
-         else:
-            match = re_debian_archive.match(line)
-            if match != None:
-               debianLocation = match.group(1)
-               debianArchive  = match.group(3)
-
-   except urllib.error.HTTPError as e:
-      sys.stderr.write('not found (HTTP ' + str(e.code) + ')!\n')
-      sys.exit(1)
-
-   if (debianVersion == None) or (debianArchive == None):
-      sys.stderr.write('not found!\n')
-      return None
-
-   sys.stderr.write('Version in ' + codename + ' is ' + debianVersion + '\n')
-
-
-   # ====== Determine necessary compression option =============================
-   debianArchiveFormat  = debianArchive[len(debianArchive) - 2 : len(debianArchive)]
-   tarCompressionOption = TarOptions[debianArchiveFormat]
-
-
-   # ====== Fetch debian archive ===============================================
-   archiveFileURL =  debianLocation + debianArchive
-   sys.stderr.write('Looking for \"debian\" archive at ' + archiveFileURL + ' ... ')
-   sys.stderr.flush()
-   result = None
-   try:
-      archiveFile = urllib.request.urlopen(archiveFileURL)
-      debianArchiveFile = tempfile.NamedTemporaryFile(delete=False)
-      shutil.copyfileobj(archiveFile, debianArchiveFile)
-      debianArchiveFile.close()
-      archiveFile.close()
-      sys.stderr.write('found!\n')
-
-      try:
-         process = subprocess.Popen([ 'tar', 'x' + tarCompressionOption + 'fO', debianArchiveFile.name, 'debian/changelog'],
-                                    stdout=subprocess.PIPE, universal_newlines=True)
-         result = process.stdout.readlines()
-         os.unlink(debianArchiveFile.name)
-
-      except Exception as e:
-         sys.stderr.write('ERROR: Failed to extract debian/changelog from ' + debianArchiveFile.name + ': ' + str(e) + '\n')
-         sys.exit(1)
-
-   except urllib.error.HTTPError as e:
-      sys.stderr.write('not found (HTTP ' + str(e.code) + ')!\n')
-      return None
-
-   return result
-
-
-# ###### Filter Debian changelog ############################################
-# This function filters debian/changelog entries:
-# regexp_for_last_entry: None (no filtering), 1 (first entry), RegExp
-# * Empty entries get dropped.
-# * Stop, if entry matches regexp_for_last_entry argument.
-# * Stop after first entry, if regexp_for_last_entry = 1.
-def filterDebianChangelog(changeLogContents, re_last_entry = None):
-
-   re_begin_of_entry = re.compile(r'^[a-zA-Z].*$')
-   re_end_of_entry   = re.compile(r'^ --.*$')
-   re_empty          = re.compile(r'^$')
-   re_item           = re.compile(r'^ *')
-   re_item_is_itp    = re.compile(r'^(.*Closes:.*ITP.*|.*ITP.*Closes:.*)$')
-
-   resultingChangelog = []
-   entries            = 0
-   entryContentLines  = 0
-   entryContent       = ''
-   entryIsITP         = False
-
-   for line in changeLogContents:
-
-      # ====== Begin of entry ===============================================
-      if entryContentLines == 0:
-         if re_begin_of_entry.match(line):
-            if entries == 0:
-               entryContent = line
-            else:
-               entryContent = '\n' + line
-            entryContentLines = 1
-
-      # ====== Within entry =================================================
+   # ====== Copy source tarball =============================================
+   if skipPackageSigning == False:
+      result = os.system('gpg --verify ' + \
+                        packageInfo['source_tarball_signature'] + ' ' + \
+                        packageInfo['source_tarball_name'])
+      if result == 0:
+         sys.stderr.write('Signature verified.\n')
       else:
-         # ------ End of entry ----------------------------------------------
-         if re_end_of_entry.match(line):
-            entryContent = entryContent + line
-            if entryContentLines > 1:
-               entries = entries + 1
+         sys.stderr.write('ERROR: Bad signature! Something is wrong!\n')
+         return False
 
-               # ------ Print entry -----------------------------------------
-               if not entryIsITP:
-                  resultingChangelog.append(entryContent)
+   try:
+      os.unlink(rpmbuildDir + '/SOURCES/' + packageInfo['source_tarball_name'])
+   except FileNotFoundError:
+      pass
+   shutil.copyfile(os.path.abspath(packageInfo['source_tarball_name']),
+                   rpmbuildDir + '/SOURCES/' + packageInfo['source_tarball_name'])
 
-               # ------ Print entry with ITP --------------------------------
-               # Special case: The ITP package for Debian must only contain the
-               #               ITP entry with ITP item and nothing else!
-               else:
-                  splittedITPEntry = entryContent.splitlines()
-                  i = 0
-                  for itpLine in splittedITPEntry:
-                     i = i + 1
-                     if (i <= 2) or (i >= len(splittedITPEntry) - 2):
-                        resultingChangelog.append(itpLine + '\n')
-                     elif re_item_is_itp.match(itpLine) != None:
-                        resultingChangelog.append(itpLine + '\n')
-                  break   # ITP -> done!
-
-               entryContent = ''
-               entryIsITP   = False
-
-            # ------ Check for match with last entry regexp in argument -----
-            if re_last_entry != None:
-               if re_last_entry.match(line) != None:
-                  break
-
-            entryContentLines = 0
-
-         # ------ Part of entry ---------------------------------------------
-         else:
-            if re_item.match(line):
-               entryContent      = entryContent + line
-               entryContentLines = entryContentLines + 1
-               if re_item_is_itp.match(line):
-                  entryIsITP = True
-
-   return resultingChangelog
-
-
-# ###### Merge Debian changelogs ###########################################
-# This function merges debian/changelog entries.
-# 1. Import old entries from distributor's changelog
-# 2a. Get all newer entries from PPA changelog
-# 2b. Merge newer entries into a single entry
-def mergeDebianChangelogs(ppaChangelogContents, distributorChangelogContents):
-
-   # ====== Merge changelogs ================================================
-   re_entry_header = re.compile(r'^([a-zA-Z0-9-]+ \([0-9a-zA-Z\.~+]+-[0-9]*)')
-   re_entry_footer = re.compile(r'^ -- .*')
-   re_empty        = re.compile(r'^\S*$')
-
-   topics = [
-      { 'regexp': re.compile(r'^  \* .*ew upstream (version|release).*$'), 'count': 0, 'max': 1 },
-      { 'regexp': re.compile(r'^  \* .*standards version.*$'),             'count': 0, 'max': 1 },
-      { 'regexp': re.compile(r'^  \* .*debian/compat:.*$'),                'count': 0, 'max': 0 }
-   ]
-
-   # ------ Get latest entry from distribution changelog --------------------
-   latestDistributionEntry = distributorChangelogContents[0]
-   match = re_entry_header.match(latestDistributionEntry)
-   if match == None:
-      sys.stderr.write('ERROR: Bad header in ' + changelogNameDistribution + '!\n')
+   rpm_spec_names = glob.glob('rpm/*.spec')
+   if len(rpm_spec_names) == 1:
+      packageInfo['rpm_spec_name'] = rpm_spec_names[0]
+      shutil.copyfile(packageInfo['rpm_spec_name'],
+                      rpmbuildDir + '/SPECS/' + packageInfo['rpm_package_name'] + '.spec')
+   elif len(rpm_spec_names) > 1:
+      sys.stderr.write('ERROR: More than one spec file found: ' + str(rpm_spec_names) + '!\n')
+      sys.exit(1)
+   else:
+      sys.stderr.write('ERROR: No spec file found!\n')
       sys.exit(1)
 
-   # ------ Join all new entries from PPA changelog -------------------------
-   resultingChangelogContents        = []
-   entries                           = 0
-   insideEntry                       = False
-   foundLatestDistributionEntryInPPA = False
-   firstFooter                       = None
-
-   for line in ppaChangelogContents:
-
-      # ------ Begin of an entry --------------------------------------------
-      match = re_entry_header.match(line)
-      if match != None:
-
-         entries = entries + 1
-         if entries == 1:
-            resultingChangelogContents.append(line)
-            resultingChangelogContents.append('\n')
-
-         # ------ Done? -----------------------------------------------------
-         elif line == latestDistributionEntry:
-            foundLatestDistributionEntryInPPA = True
-            break
-
-         continue
-
-      # ------ Empty line ---------------------------------------------------
-      match = re_empty.match(line)
-      if match != None:
-         continue
-
-      # ------ End of an entry ----------------------------------------------
-      match = re_entry_footer.match(line)
-      if match != None:
-         if entries == 1:
-            firstFooter = line
-         continue
-
-      # ------ Topics -------------------------------------------------------
-      skip = False
-      for topic in topics:
-         match = topic['regexp'].match(line)
-         if match != None:
-            topic['count'] = topic['count'] + 1
-            if topic['count'] > topic['max']:
-               skip = True
-               break
-      if skip == True:
-         continue
-
-      # ------ Add line to output -------------------------------------------
-      if line[0] == ' ':
-         resultingChangelogContents.append(line)
-         continue
-
-      # ------ Something is wrong -------------------------------------------
-      sys.stderr.write('ERROR: Unexpected line: ' + line + '!\n')
+   # ====== Create SRPM =====================================================
+   rpmbuild = [ 'rpmbuild', '-bs', packageInfo['rpm_spec_name'] ]
+   print(rpmbuild)
+   try:
+      subprocess.run(rpmbuild, check = True)
+   except Exception as e:
+      sys.stderr.write('ERROR: RPMBuild run failed: ' + str(e) + '\n')
       sys.exit(1)
 
+   srpmFile = rpmbuildDir + '/SRPMS/' + \
+                 packageInfo['rpm_package_name'] + '-' + \
+                 packageInfo['rpm_version_string'] + '-' + str(packageInfo['rpm_version_packaging']) + \
+                 '.src.rpm'
+   if not os.path.isfile(srpmFile):
+      sys.stderr.write('ERROR: SRPM ' + srpmFile + ' not found!\n')
+      sys.exit(1)
 
-   resultingChangelogContents.append('\n')
-   resultingChangelogContents.append(firstFooter)
-
-   if foundLatestDistributionEntryInPPA == False:
-      # Distributor changelog is equal to PPA changelog?
-      if distributorChangelogContents[0] != ppaChangelogContents[0]:
-         sys.stderr.write('ERROR: Did not found the latest distribution entry in the PPA changelog!\n')
-         sys.stderr.write('Looked for:      "' + latestDistributionEntry + '"\n')
-         sys.stderr.write('First PPA entry: "' + distributorChangelogContents[0] + '"\n')
+   # ====== Sign SRPM =======================================================
+   if skipPackageSigning == False:
+      rpmsign = [ 'rpmsign',
+                  '--define', '_gpg_name ' + packageInfo['packaging_maintainer_key'],
+                  '--addsign', srpmFile ]
+      print(rpmsign)
+      try:
+         subprocess.run(rpmsign, check = True)
+      except Exception as e:
+         sys.stderr.write('ERROR: RPM run failed: ' + str(e) + '\n')
          sys.exit(1)
 
-   for line in distributorChangelogContents:
-      resultingChangelogContents.append(line)
 
-   #for line in resultingChangelogContents:
-      #sys.stdout.write(line)
+# ###### Build RPM binary package ###########################################
+def buildRPM(packageInfo, releases, architectures, skipPackageSigning):
 
-   return resultingChangelogContents
+   # ====== Make sure that the source Debian files are available ============
+   if len(releases) == 0:
+      releases = [ 'rawhide' ]
+   if len(architectures) == 0:
+      architectures = [ getDebianDefaultArchitecture() ]  ## ???? FIXME!!!!!
+   makeSourceRPM(packageInfo, skipPackageSigning)
+
+   # ====== Build for each distribution codename ============================
+   printSection('Creating binary Debian packages')
+
+   # ====== Check SRPM ======================================================
+   rpmbuildDir = os.environ.get('HOME') + '/rpmbuild'
+   srpmFile = rpmbuildDir + '/SRPMS/' + \
+                 packageInfo['rpm_package_name'] + '-' + \
+                 packageInfo['rpm_version_string'] + '-' + str(packageInfo['rpm_version_packaging']) + \
+                 '.src.rpm'
+   if not os.path.isfile(srpmFile):
+      sys.stderr.write('ERROR: SRPM ' + srpmFile + ' not found!\n')
+      sys.exit(1)
+
+   if skipPackageSigning == False:
+      rpm = [ 'rpm',
+            '--define', '_gpg_name ' + packageInfo['packaging_maintainer_key'],
+            '--checksig', srpmFile ]
+      print(rpm)
+      try:
+         subprocess.run(rpm, check = True)
+      except Exception as e:
+         sys.stderr.write('ERROR: RPMSign run failed: ' + str(e) + '\n')
+         sys.exit(1)
+
+   # ====== Build for each release ==========================================
+   for buildArchitecture in architectures:
+      for release in releases:
+
+         printSubsection('Creating binary RPM package for ' + release + '/' + buildArchitecture)
+
+         # ------ Check for mock configuration file -------------------------
+         configuration = release + '-' + buildArchitecture
+         if not os.path.isfile('/etc/mock/' + configuration + '.cfg'):
+            sys.stderr.write('ERROR: Configuration ' + '/etc/mock/' + configuration + '.cfg does not exist!\n')
+            #sys.exit(1)
+
+         # ------ Delete old RPM --------------------------------------------
+         rpmFile = '/var/lib/mock/' + configuration + '/result/' + \
+                      packageInfo['rpm_package_name'] + '-' + \
+                      packageInfo['rpm_version_string'] + '-' + str(packageInfo['rpm_version_packaging']) + \
+                      '.rpm'
+         try:
+            os.unlink(rpmFile)
+         except FileNotFoundError:
+            pass
+
+         # ------ Run mock --------------------------------------------------
+         try:
+            commands = [
+                  [ 'mock', '-r', configuration, '--isolation=nspwan', '--init' ],
+                  [ 'mock', '-r', configuration, '--isolation=nspwan', '--installdeps', srpmFile ],
+                  [ 'mock', '-r', configuration, '--isolation=nspwan', '--install', 'openssl', 'pesign' ],
+                  [ 'mock', '-r', configuration, '--isolation=nspwan', '--rebuild', '--no-clean', srpmFile ]
+               ]
+            for command in commands:
+               print(command)
+               subprocess.run(command, check = True)
+         except Exception as e:
+            sys.stderr.write('ERROR: RPMSign run failed: ' + str(e) + '\n')
+            sys.exit(1)
+
+         # ------ Check resulting RPM ---------------------------------------
+         if not os.path.isfile(rpmFile):
+            sys.stderr.write('ERROR: RPM ' + rpmFile + ' not found!\n')
+            sys.exit(1)
 
 
 
@@ -1395,6 +1553,8 @@ if len(sys.argv) < 2:
    sys.stderr.write('* ' + sys.argv[0] + ' make-source-tarball [--skip-signing]\n')
    sys.stderr.write('* ' + sys.argv[0] + ' make-source-deb  [codename ...] [--skip-signing]\n')
    sys.stderr.write('* ' + sys.argv[0] + ' build-deb  [codename ...] [--skip-signing] [--architecture=arch ...]\n')
+   sys.stderr.write('* ' + sys.argv[0] + ' make-source-rpm  [release ...] [--skip-signing]\n')
+   sys.stderr.write('* ' + sys.argv[0] + ' build-rpm  [release ...] [--skip-signing] [--architecture=arch ...]\n')
    sys.stderr.write('* ' + sys.argv[0] + ' fetch-debian-changelog [codename]\n')
    # |make-source-tarball|make-source-deb|make-source-rpm|build-deb|build-rpm ...\n')
    sys.exit(1)
@@ -1451,6 +1611,34 @@ elif tool == 'build-deb':
          sys.stderr.write('ERROR: Bad parameter ' + sys.argv[i] + '!\n')
          sys.exit(1)
    buildDeb(packageInfo, codenames, architectures, skipPackageSigning)
+
+# ====== Make source deb file ===============================================
+elif tool == 'make-source-rpm':
+   skipPackageSigning = False
+   for i in range(2, len(sys.argv)):
+      if sys.argv[i] == '--skip-signing':
+         skipPackageSigning = True
+      else:
+         sys.stderr.write('ERROR: Bad parameter ' + sys.argv[i] + '!\n')
+         sys.exit(1)
+   makeSourceRPM(packageInfo, skipPackageSigning)
+
+# ====== Build deb file =====================================================
+elif tool == 'build-rpm':
+   skipPackageSigning = False
+   releases           = []
+   architectures      = []
+   for i in range(2, len(sys.argv)):
+      if sys.argv[i][0] != '-':
+         releases.append(sys.argv[i])
+      elif sys.argv[i] == '--skip-signing':
+         skipPackageSigning = True
+      elif sys.argv[i][0:15] == '--architecture=':
+         architectures.append(sys.argv[i][15:])
+      else:
+         sys.stderr.write('ERROR: Bad parameter ' + sys.argv[i] + '!\n')
+         sys.exit(1)
+   buildRPM(packageInfo, releases, architectures, skipPackageSigning)
 
 # ====== Fetch Debian changelog file ========================================
 elif tool == 'fetch-debian-changelog':
