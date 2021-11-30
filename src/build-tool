@@ -1073,7 +1073,11 @@ def buildDeb(packageInfo, codenames, architectures, skipPackageSigning):
             sys.exit(1)
 
          # ====== Run pbuilder ==============================================
-         pbuilderCommand = [ 'sudo', 'pbuilder', 'build', '--basetgz', basetgz,
+         pbuilderCommand = [ 'sudo',
+                                'OS='   + buildSystem,
+                                'ARCH=' + buildArchitecture,
+                                'DIST=' + codename,
+                             'pbuilder', 'build', '--basetgz', basetgz,
                              dscFileName ]
          print(pbuilderCommand)
          try:
