@@ -491,6 +491,8 @@ def readOtherPackagingInformation():
 def readPackagingInformation():
 
    # ====== Obtain distribution codenames ===================================
+   global DebianCodenames
+   global UbuntuCodenames
    DebianCodenames = getDistributionCodenames()
    UbuntuCodenames = getDistributionCodenames('ubuntu')
 
