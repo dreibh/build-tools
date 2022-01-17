@@ -747,8 +747,6 @@ def getDebianDefaultArchitecture():
 # ###### Get name of Debian DSC file name ###################################
 def getDebianDscName(packageInfo, debianVersionPackaging = None):
 
-   if debianVersionPackaging == None:
-      packageInfo['debian_version_packaging']
    dscFileName = packageInfo['debian_package_name'] + '_' + \
                     packageInfo['debian_version_string'] + '-' + \
                     debianVersionPackaging + '.dsc'
@@ -759,8 +757,6 @@ def getDebianDscName(packageInfo, debianVersionPackaging = None):
 def getDebianBuildinfoName(packageInfo, debianVersionPackaging = None,
                            architecture = 'source'):
 
-   if debianVersionPackaging == None:
-      packageInfo['debian_version_packaging']
    sourceBuildInfoFileName = packageInfo['debian_package_name'] + '_' + \
                                 packageInfo['debian_version_string'] + '-' + \
                                 debianVersionPackaging + '_' +  \
@@ -772,8 +768,6 @@ def getDebianBuildinfoName(packageInfo, debianVersionPackaging = None,
 def getDebianChangesName(packageInfo, debianVersionPackaging = None,
                          architecture = 'source'):
 
-   if debianVersionPackaging == None:
-      packageInfo['debian_version_packaging']
    changesFileName = packageInfo['debian_package_name'] + '_' + \
                         packageInfo['debian_version_string'] + '-' + \
                         debianVersionPackaging + '_' + \
@@ -784,8 +778,6 @@ def getDebianChangesName(packageInfo, debianVersionPackaging = None,
 # ###### Get name of Debian control tarball name ############################
 def getDebianControlTarballName(packageInfo, debianVersionPackaging = None):
 
-   if debianVersionPackaging == None:
-      packageInfo['debian_version_packaging']
    controlTarballFileName = packageInfo['debian_package_name'] + '_' + \
                                packageInfo['debian_version_string'] + '-' + \
                                debianVersionPackaging + '.debian.tar.' + \
