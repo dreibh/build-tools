@@ -169,7 +169,7 @@ def readCMakePackagingInformation():
       re_cmake_project   = re.compile(r'[ \t]*PROJECT[ \t]*\(([a-zA-Z0-9-+]+)')
       re_cmakefile_major = re.compile(r'^[Ss][Ee][Tt]\(BUILD_MAJOR[ \t]*"(\d+)"[ \t]*\)')
       re_cmakefile_minor = re.compile(r'^[Ss][Ee][Tt]\(BUILD_MINOR[ \t]*"(\d+)"[ \t]*\)')
-      re_cmakefile_patch = re.compile(r'^[Ss][Ee][Tt]\(BUILD_PATCH[ \t]*"(\d+)(~[a-zA-Z0-9\.+]+|)"[ \t]*\)')
+      re_cmakefile_patch = re.compile(r'^[Ss][Ee][Tt]\(BUILD_PATCH[ \t]*"(\d+)(~[a-zA-Z0-9\.+~]+|)"[ \t]*\)')
 
       packageInfo['cmake_lists_name'] = cmakeListsFile
       try:
