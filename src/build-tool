@@ -273,7 +273,7 @@ def readDebianPackagingInformation():
    if ( (os.path.isfile(debianChangelogName)) and
         (os.path.isfile(debianControlName)) and
         (os.path.isfile(debianRulesName)) ):
-      re_debian_version = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+:|)(\d+)\.(\d+)\.(\d+)(.*|)[-+](\d|\d[a-zA-Z-+~]+\d|)\)[ \t]*([a-zA-Z-+]+)[ \t]*;(.*)$')
+      re_debian_version = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+:|)(\d+)\.(\d+)\.(\d+)([a-zA-Z0-9+~]*)(-|)(\d[a-zA-Z0-9-+~]*|)\)[ \t]*([a-zA-Z-+]+)[ \t]*;(.*)$')
       re_debian_itp1    = re.compile(r'^ * .*ITP.*Closes: #([0-9]+).*$')
       re_debian_itp2    = re.compile(r'^ * .*Closes: #([0-9]+).*ITP.*$')
 
@@ -302,8 +302,8 @@ def readDebianPackagingInformation():
                   packageInfo['debian_version_minor']     = int(match.group(4))
                   packageInfo['debian_version_patch']     = int(match.group(5))
                   packageInfo['debian_version_extra']     = match.group(6)
-                  packageInfo['debian_version_packaging'] = match.group(7)
-                  packageInfo['debian_codename']          = match.group(8)
+                  packageInfo['debian_version_packaging'] = match.group(8)
+                  packageInfo['debian_codename']          = match.group(9)
                   packageInfo['debian_version_string']    = \
                      str(packageInfo['debian_version_major']) + '.' + \
                      str(packageInfo['debian_version_minor']) + '.' + \
@@ -747,6 +747,8 @@ def getDebianDefaultArchitecture():
 # ###### Get name of Debian DSC file name ###################################
 def getDebianDscName(packageInfo, debianVersionPackaging = None):
 
+   if debianVersionPackaging == None:
+      debianVersionPackaging = packageInfo['debian_version_packaging']
    dscFileName = packageInfo['debian_package_name'] + '_' + \
                     packageInfo['debian_version_string'] + '-' + \
                     debianVersionPackaging + '.dsc'
@@ -757,6 +759,8 @@ def getDebianDscName(packageInfo, debianVersionPackaging = None):
 def getDebianBuildinfoName(packageInfo, debianVersionPackaging = None,
                            architecture = 'source'):
 
+   if debianVersionPackaging == None:
+      debianVersionPackaging = packageInfo['debian_version_packaging']
    sourceBuildInfoFileName = packageInfo['debian_package_name'] + '_' + \
                                 packageInfo['debian_version_string'] + '-' + \
                                 debianVersionPackaging + '_' +  \
@@ -768,6 +772,8 @@ def getDebianBuildinfoName(packageInfo, debianVersionPackaging = None,
 def getDebianChangesName(packageInfo, debianVersionPackaging = None,
                          architecture = 'source'):
 
+   if debianVersionPackaging == None:
+      debianVersionPackaging = packageInfo['debian_version_packaging']
    changesFileName = packageInfo['debian_package_name'] + '_' + \
                         packageInfo['debian_version_string'] + '-' + \
                         debianVersionPackaging + '_' + \
@@ -778,6 +784,8 @@ def getDebianChangesName(packageInfo, debianVersionPackaging = None,
 # ###### Get name of Debian control tarball name ############################
 def getDebianControlTarballName(packageInfo, debianVersionPackaging = None):
 
+   if debianVersionPackaging == None:
+      debianVersionPackaging = packageInfo['debian_version_packaging']
    controlTarballFileName = packageInfo['debian_package_name'] + '_' + \
                                packageInfo['debian_version_string'] + '-' + \
                                debianVersionPackaging + '.debian.tar.' + \
@@ -1041,10 +1049,10 @@ def mergeDebianChangelogs(ppaChangelogContents, distributorChangelogContents):
 
    if foundLatestDistributionEntryInPPA == False:
       # Distributor changelog is equal to PPA changelog?
-      if distributorChangelogContents[0] != ppaChangelogContents[0]:
+      if ppaChangelogContents[0] != latestDistributionEntry:
          sys.stderr.write('ERROR: Did not found the latest distribution entry in the PPA changelog!\n')
          sys.stderr.write('Looked for:      "' + latestDistributionEntry + '"\n')
-         sys.stderr.write('First PPA entry: "' + distributorChangelogContents[0] + '"\n')
+         sys.stderr.write('First PPA entry: "' + ppaChangelogContents[0] + '"\n')
          sys.exit(1)
 
    for line in distributorChangelogContents:
