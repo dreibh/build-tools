@@ -273,7 +273,7 @@ def readDebianPackagingInformation():
    if ( (os.path.isfile(debianChangelogName)) and
         (os.path.isfile(debianControlName)) and
         (os.path.isfile(debianRulesName)) ):
-      re_debian_version = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+:|)(\d+)\.(\d+)\.(\d+)(.*|)-(\d|\d[a-zA-Z-+~]+\d|)\)[ \t]*([a-zA-Z-+]+)[ \t]*;(.*)$')
+      re_debian_version = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+:|)(\d+)\.(\d+)\.(\d+)(.*|)[-+](\d|\d[a-zA-Z-+~]+\d|)\)[ \t]*([a-zA-Z-+]+)[ \t]*;(.*)$')
       re_debian_itp1    = re.compile(r'^ * .*ITP.*Closes: #([0-9]+).*$')
       re_debian_itp2    = re.compile(r'^ * .*Closes: #([0-9]+).*ITP.*$')
 
@@ -1131,8 +1131,19 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
 
       upstreamSourceDir = workdir + '/' + packageInfo['debian_package_name'] + '-' + packageInfo['debian_version_string']
       if not os.path.isdir(upstreamSourceDir):
+         # Sources not found in expected directory!
          sys.stderr.write('ERROR: Sources are not in the expected directory ' + upstreamSourceDir + '!\n')
-         sys.exit(1)
+         # Check for package-*/debian/.. as new path:
+         found = glob.glob(workdir + '/' + packageInfo['debian_package_name'] + '-*/debian/..')
+         if len(found) == 1:
+            # Found -> set new upstream source path
+            sys.stderr.write('WARNING: Sources are not in the expected directory ' + upstreamSourceDir)
+            upstreamSourceDir = os.path.realpath(found[0])
+            sys.stderr.write(' => using ' + upstreamSourceDir + '!\n')
+         else:
+            # Not found -> abort with error.
+            sys.stderr.write('ERROR: Sources are not in the expected directory ' + upstreamSourceDir + '!\n')
+            sys.exit(1)
 
 
       # ====== Adapt packaging ==============================================
