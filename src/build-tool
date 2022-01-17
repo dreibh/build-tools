@@ -273,7 +273,7 @@ def readDebianPackagingInformation():
    if ( (os.path.isfile(debianChangelogName)) and
         (os.path.isfile(debianControlName)) and
         (os.path.isfile(debianRulesName)) ):
-      re_debian_version = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+:|)(\d+)\.(\d+)\.(\d+)([a-zA-Z0-9+~]*)(-|)(\d[a-zA-Z0-9-+~]*|)\)[ \t]*([a-zA-Z-+]+)[ \t]*;(.*)$')
+      re_debian_version = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+:|)(\d+)\.(\d+)\.(\d+)([a-zA-Z0-9+~\.]*)(-|)(\d[a-zA-Z0-9-+~]*|)\)[ \t]*([a-zA-Z-+]+)[ \t]*;(.*)$')
       re_debian_itp1    = re.compile(r'^ * .*ITP.*Closes: #([0-9]+).*$')
       re_debian_itp2    = re.compile(r'^ * .*Closes: #([0-9]+).*ITP.*$')
 
@@ -1051,8 +1051,8 @@ def mergeDebianChangelogs(ppaChangelogContents, distributorChangelogContents):
       # Distributor changelog is equal to PPA changelog?
       if ppaChangelogContents[0] != latestDistributionEntry:
          sys.stderr.write('ERROR: Did not found the latest distribution entry in the PPA changelog!\n')
-         sys.stderr.write('Looked for:      "' + latestDistributionEntry + '"\n')
-         sys.stderr.write('First PPA entry: "' + ppaChangelogContents[0] + '"\n')
+         sys.stderr.write('Latest distributor entry: "' + latestDistributionEntry.strip() + '"\n')
+         sys.stderr.write('First PPA entry:          "' + ppaChangelogContents[0].strip() + '"\n')
          sys.exit(1)
 
    for line in distributorChangelogContents:
@@ -1147,7 +1147,6 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
 
 
       # ====== Adapt packaging ==============================================
-
       changeLogContents = readTextFile(packageInfo['debian_changelog_name'])
       controlContents   = readTextFile(packageInfo['debian_control_name'])
       rulesContents     = readTextFile(packageInfo['debian_rules_name'])
