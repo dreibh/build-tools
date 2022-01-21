@@ -167,9 +167,9 @@ def readCMakePackagingInformation():
    cmakeListsFile = 'CMakeLists.txt'
    if os.path.isfile(cmakeListsFile):
       re_cmake_project   = re.compile(r'[ \t]*PROJECT[ \t]*\(([a-zA-Z0-9-+]+)')
-      re_cmakefile_major = re.compile(r'^[Ss][Ee][Tt]\(BUILD_MAJOR[ \t]*"(\d+)"[ \t]*\)')
-      re_cmakefile_minor = re.compile(r'^[Ss][Ee][Tt]\(BUILD_MINOR[ \t]*"(\d+)"[ \t]*\)')
-      re_cmakefile_patch = re.compile(r'^[Ss][Ee][Tt]\(BUILD_PATCH[ \t]*"(\d+)(~[a-zA-Z0-9\.+~]+|)"[ \t]*\)')
+      re_cmakefile_major = re.compile(r'^[Ss][Ee][Tt]\((BUILD_MAJOR|PROJECT_MAJOR_VERSION)[ \t]*("|)(\d+)("|)[ \t]*\)')
+      re_cmakefile_minor = re.compile(r'^[Ss][Ee][Tt]\((BUILD_MINOR|PROJECT_MINOR_VERSION)[ \t]*("|)(\d+)("|)[ \t]*\)')
+      re_cmakefile_patch = re.compile(r'^[Ss][Ee][Tt]\((BUILD_PATCH|PROJECT_PATCH_VERSION)[ \t]*("|)(\d+)(~[a-zA-Z0-9\.+~]+|)("|)[ \t]*\)')
 
       packageInfo['cmake_lists_name'] = cmakeListsFile
       try:
@@ -178,29 +178,30 @@ def readCMakePackagingInformation():
          for line in cmakeFileContents:
             match = re_cmakefile_major.match(line)
             if match != None:
-               packageInfo['cmake_version_major'] = int(match.group(1))
+               packageInfo['cmake_version_major'] = int(match.group(3))
             else:
                match = re_cmakefile_minor.match(line)
                if match != None:
-                  packageInfo['cmake_version_minor'] = int(match.group(1))
+                  packageInfo['cmake_version_minor'] = int(match.group(3))
                else:
                   match = re_cmakefile_patch.match(line)
                   if match != None:
-                     packageInfo['cmake_version_patch'] = int(match.group(1))
-                     packageInfo['cmake_version_extra'] = match.group(2)
+                     packageInfo['cmake_version_patch'] = int(match.group(3))
+                     packageInfo['cmake_version_extra'] = match.group(4)
                   else:
                      match = re_cmake_project.match(line)
                      if match != None:
                         packageInfo['cmake_package'] = match.group(1)
          cmakeFile.close()
 
-         if (packageInfo['cmake_version_major'] != None) and \
-            (packageInfo['cmake_version_minor'] != None) and \
-            (packageInfo['cmake_version_patch'] != None) and \
-            (packageInfo['cmake_version_extra'] != None):
-            packageInfo['cmake_version_string'] = str(packageInfo['cmake_version_major']) + '.' + \
-                                 str(packageInfo['cmake_version_minor']) + '.' + \
-                                 str(packageInfo['cmake_version_patch']) + packageInfo['cmake_version_extra']
+         if ('cmake_version_major' in packageInfo) and \
+            ('cmake_version_minor' in packageInfo) and \
+            ('cmake_version_patch' in packageInfo) and \
+            ('cmake_version_extra' in packageInfo):
+            packageInfo['cmake_version_string'] = \
+               str(packageInfo['cmake_version_major']) + '.' + \
+                  str(packageInfo['cmake_version_minor']) + '.' + \
+                  str(packageInfo['cmake_version_patch']) + packageInfo['cmake_version_extra']
 
       except Exception as e:
          sys.stderr.write('ERROR: Unable to read ' + packageInfo['cmake_lists_name'] + ': ' + str(e) + '\n')
@@ -408,9 +409,6 @@ def readRPMPackagingInformation():
 
    elif len(rpm_spec_names) > 1:
       sys.stderr.write('ERROR: More than one spec file found: ' + str(rpm_spec_names) + '!\n')
-      sys.exit(1)
-   else:
-      sys.stderr.write('ERROR: No spec file found!\n')
       sys.exit(1)
 
    return packageInfo
