@@ -1586,7 +1586,6 @@ if len(sys.argv) < 2:
    sys.stderr.write('* ' + sys.argv[0] + ' make-source-rpm  [release ...] [--skip-signing]\n')
    sys.stderr.write('* ' + sys.argv[0] + ' build-rpm  [release ...] [--skip-signing] [--architecture=arch ...]\n')
    sys.stderr.write('* ' + sys.argv[0] + ' fetch-debian-changelog [codename]\n')
-   # |make-source-tarball|make-source-deb|make-source-rpm|build-deb|build-rpm ...\n')
    sys.exit(1)
 
 
