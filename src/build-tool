@@ -166,7 +166,7 @@ def readCMakePackagingInformation():
    # ====== Obtain package configuration ====================================
    cmakeListsFile = 'CMakeLists.txt'
    if os.path.isfile(cmakeListsFile):
-      re_cmake_project   = re.compile(r'[ \t]*PROJECT[ \t]*\(([a-zA-Z0-9-+]+)')
+      re_cmake_project   = re.compile(r'[ \t]*[Pp][Rr][Oo][Jj][Ee][Cc][Tt][ \t]*\(([a-zA-Z0-9-+]+)')
       re_cmakefile_major = re.compile(r'^[Ss][Ee][Tt]\((BUILD_MAJOR|PROJECT_MAJOR_VERSION)[ \t]*("|)(\d+)("|)[ \t]*\)')
       re_cmakefile_minor = re.compile(r'^[Ss][Ee][Tt]\((BUILD_MINOR|PROJECT_MINOR_VERSION)[ \t]*("|)(\d+)("|)[ \t]*\)')
       re_cmakefile_patch = re.compile(r'^[Ss][Ee][Tt]\((BUILD_PATCH|PROJECT_PATCH_VERSION)[ \t]*("|)(\d+)(~[a-zA-Z0-9\.+~]+|)("|)[ \t]*\)')
@@ -211,6 +211,7 @@ def readCMakePackagingInformation():
       if ( ( not 'cmake_package' in packageInfo) or
            ( not 'cmake_version_string' in packageInfo ) ):
          sys.stderr.write('ERROR: Cannot find required package versioning details in ' + packageInfo['cmake_lists_name'] + '!\n')
+         print(packageInfo)
          sys.exit(1)
 
    return packageInfo
