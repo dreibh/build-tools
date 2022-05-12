@@ -632,15 +632,15 @@ def showInformation(packageInfo):
 
 
 # ###### Make source tarball ################################################
-def makeSourceTarball(packageInfo, skipPackageSigning):
+def makeSourceTarball(packageInfo, skipPackageSigning, summaryFile):
 
    printSection('Creating source tarball')
 
    # ====== Make source tarball =============================================
    if 'source_tarball_name' in packageInfo:
       sourcePackageInfo = findSourceTarball(packageInfo, quiet=True)
-      sys.stdout.write('Tarball is already there: ' + packageInfo['source_tarball_name'] + \
-                       ' (format is ' + packageInfo['source_tarball_format'] + ')\n')
+      sys.stdout.write('Tarball is already there: ' + sourcePackageInfo['source_tarball_name'] + \
+                       ' (format is ' + sourcePackageInfo['source_tarball_format'] + ')\n')
    else:
       print(packageInfo['packaging_make_dist'])
       result = os.system(packageInfo['packaging_make_dist'])
@@ -657,6 +657,9 @@ def makeSourceTarball(packageInfo, skipPackageSigning):
          os.unlink(sourcePackageInfo['source_tarball_name'] + '.asc')
       except FileNotFoundError:
          pass
+
+   if summaryFile != None:
+      summaryFile.write('sourceTarballFile: ' + os.path.abspath(sourcePackageInfo['source_tarball_name']) + '\n')
 
    # ====== Sign tarball ====================================================
    if skipPackageSigning == False:
@@ -675,13 +678,16 @@ def makeSourceTarball(packageInfo, skipPackageSigning):
             sys.stderr.write('ERROR: Unable to find signature of source tarball!\n')
 
       result = os.system('gpg --verify ' + \
-                           sourcePackageInfo['source_tarball_signature'] + ' ' + \
-                           sourcePackageInfo['source_tarball_name'])
+                            sourcePackageInfo['source_tarball_signature'] + ' ' + \
+                            sourcePackageInfo['source_tarball_name'])
       if result == 0:
          sys.stderr.write('Signature verified.\n')
       else:
          sys.stderr.write('ERROR: Bad signature! Something is wrong!\n')
          return False
+
+      if summaryFile != None:
+         summaryFile.write('sourceTarballSignatureFile: ' + os.path.abspath(sourcePackageInfo['source_tarball_signature']) + '\n')
 
    packageInfo.update(sourcePackageInfo)
    return True
@@ -1065,10 +1071,10 @@ def mergeDebianChangelogs(ppaChangelogContents, distributorChangelogContents):
 
 
 # ###### Make Debian source package #########################################
-def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
+def makeSourceDeb(packageInfo, codenames, skipPackageSigning, summaryFile):
 
    # ====== Make sure that the source tarball is available ==================
-   if makeSourceTarball(packageInfo, skipPackageSigning) == False:
+   if makeSourceTarball(packageInfo, skipPackageSigning, summaryFile) == False:
       return False
    if len(codenames) == 0:
       codenames = [ packageInfo['debian_codename'] ]
@@ -1278,7 +1284,7 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
       if os.path.isfile(workdir + '/' + changesName):
          sys.stdout.write('* Changes file is ' + changesName + '.\n')
       else:
-         sys.stderr.write('ERROR: Changes file not found at expected location ' + workdir + '/' + changesName + '!\n')
+         sys.stderr.write('ERROR: Source changes file not found at expected location ' + workdir + '/' + changesName + '!\n')
          sys.exit(1)
       if os.path.isfile(workdir + '/' + controlTarballName):
          sys.stdout.write('* Control tarball file is ' + controlTarballName + '.\n')
@@ -1291,6 +1297,11 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
       for fileName in [ dscFileName, buildinfoName, changesName, controlTarballName ] :
          shutil.copyfile(workdir + '/' + fileName, fileName)
 
+      if summaryFile != None:
+         summaryFile.write('debSourceDscFile: '            + workdir + '/' + dscFileName        + ' ' + codename + '\n')
+         summaryFile.write('debSourceBuildinfoFile: '      + workdir + '/' + buildinfoName      + ' ' + codename + '\n')
+         summaryFile.write('debSourceChangesFile: '        + workdir + '/' + changesName        + ' ' + codename + '\n')
+         summaryFile.write('debSourceControlTarballFile: ' + workdir + '/' + controlTarballName + ' ' + codename + '\n')
 
    # ====== Print overview ==================================================
    printSection('Debian source package overview')
@@ -1332,12 +1343,12 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning):
 
 
 # ###### Build Debian binary package ########################################
-def buildDeb(packageInfo, codenames, architectures, skipPackageSigning):
+def buildDeb(packageInfo, codenames, architectures, skipPackageSigning, summaryFile):
 
    # ====== Make sure that the source Debian files are available ============
    if len(codenames) == 0:
       codenames = [ packageInfo['debian_codename'] ]
-   makeSourceDeb(packageInfo, codenames, skipPackageSigning)
+   makeSourceDeb(packageInfo, codenames, skipPackageSigning, summaryFile)
 
    # ====== Build for each distribution codename ============================
    printSection('Creating binary Debian packages')
@@ -1403,14 +1414,17 @@ def buildDeb(packageInfo, codenames, architectures, skipPackageSigning):
             sys.stderr.write('ERROR: Lintian run failed: ' + str(e) + '\n')
             sys.exit(1)
 
+         if summaryFile != None:
+            summaryFile.write('debBuildChangesFile: ' + foundChangesFiles[0] + ' ' + codename + ' ' + buildArchitecture + '\n')
+
    return True
 
 
 # ###### Make SRPM source package ###########################################
-def makeSourceRPM(packageInfo, skipPackageSigning):
+def makeSourceRPM(packageInfo, skipPackageSigning, summaryFile):
 
    # ====== Make sure that the source tarball is available ==================
-   if makeSourceTarball(packageInfo, skipPackageSigning) == False:
+   if makeSourceTarball(packageInfo, skipPackageSigning, summaryFile) == False:
       return False
 
    printSection('Creating SRPM source packages')
@@ -1603,9 +1617,9 @@ elif tool == 'make-source-tarball':
       if sys.argv[i] == '--skip-signing':
          skipPackageSigning = True
       else:
-         sys.stderr.write('ERROR: Bad parameter ' + sys.argv[i] + '!\n')
+         sys.stderr.write('ERROR: Bad make-source-tarball parameter ' + sys.argv[i] + '!\n')
          sys.exit(1)
-   result = makeSourceTarball(packageInfo, skipPackageSigning)
+   result = makeSourceTarball(packageInfo, skipPackageSigning, summaryFile)
    if result == False:
       sys.exit(1)
 
@@ -1614,20 +1628,29 @@ elif tool == 'make-source-deb':
    obtainDistributionCodenames()
    skipPackageSigning = False
    codenames          = []
+   summaryFile        = None
    for i in range(2, len(sys.argv)):
       if sys.argv[i][0] != '-':
          codenames.append(sys.argv[i])
       elif sys.argv[i] == '--skip-signing':
          skipPackageSigning = True
+      elif sys.argv[i][0:10] == '--summary=':
+         summaryFileName = sys.argv[i][10:]
+         try:
+            summaryFile = open(summaryFileName, 'w', encoding='utf-8')
+         except:
+            sys.stderr.write('ERROR: Unable to create summary file ' + summaryFileName + '!\n')
+            sys.exit(1)
       else:
-         sys.stderr.write('ERROR: Bad parameter ' + sys.argv[i] + '!\n')
+         sys.stderr.write('ERROR: Bad make-source-debparameter ' + sys.argv[i] + '!\n')
          sys.exit(1)
-   makeSourceDeb(packageInfo, codenames, skipPackageSigning)
+   makeSourceDeb(packageInfo, codenames, skipPackageSigning, summaryFile)
 
 # ====== Build deb file =====================================================
 elif tool == 'build-deb':
    obtainDistributionCodenames()
    skipPackageSigning = False
+   summaryFile        = None
    codenames          = []
    architectures      = []
    for i in range(2, len(sys.argv)):
@@ -1635,27 +1658,43 @@ elif tool == 'build-deb':
          codenames.append(sys.argv[i])
       elif sys.argv[i] == '--skip-signing':
          skipPackageSigning = True
+      elif sys.argv[i][0:10] == '--summary=':
+         summaryFileName = sys.argv[i][10:]
+         try:
+            summaryFile = open(summaryFileName, 'w', encoding='utf-8')
+         except:
+            sys.stderr.write('ERROR: Unable to create summary file ' + summaryFileName + '!\n')
+            sys.exit(1)
       elif sys.argv[i][0:15] == '--architecture=':
          architectures.append(sys.argv[i][15:])
       else:
-         sys.stderr.write('ERROR: Bad parameter ' + sys.argv[i] + '!\n')
+         sys.stderr.write('ERROR: Bad build-deb parameter ' + sys.argv[i] + '!\n')
          sys.exit(1)
-   buildDeb(packageInfo, codenames, architectures, skipPackageSigning)
+   buildDeb(packageInfo, codenames, architectures, skipPackageSigning, summaryFile)
 
 # ====== Make source deb file ===============================================
 elif tool == 'make-source-rpm':
    skipPackageSigning = False
+   summaryFile        = None
    for i in range(2, len(sys.argv)):
       if sys.argv[i] == '--skip-signing':
          skipPackageSigning = True
+      elif sys.argv[i][0:10] == '--summary=':
+         summaryFileName = sys.argv[i][10:]
+         try:
+            summaryFile = open(summaryFileName, 'w', encoding='utf-8')
+         except:
+            sys.stderr.write('ERROR: Unable to create summary file ' + summaryFileName + '!\n')
+            sys.exit(1)
       else:
-         sys.stderr.write('ERROR: Bad parameter ' + sys.argv[i] + '!\n')
+         sys.stderr.write('ERROR: Bad make-source-rpm parameter ' + sys.argv[i] + '!\n')
          sys.exit(1)
-   makeSourceRPM(packageInfo, skipPackageSigning)
+   makeSourceRPM(packageInfo, skipPackageSigning, summaryFile)
 
 # ====== Build deb file =====================================================
 elif tool == 'build-rpm':
    skipPackageSigning = False
+   summaryFile        = None
    releases           = []
    architectures      = []
    for i in range(2, len(sys.argv)):
@@ -1663,12 +1702,19 @@ elif tool == 'build-rpm':
          releases.append(sys.argv[i])
       elif sys.argv[i] == '--skip-signing':
          skipPackageSigning = True
+      elif sys.argv[i][0:10] == '--summary=':
+         summaryFileName = sys.argv[i][10:]
+         try:
+            summaryFile = open(summaryFileName, 'w', encoding='utf-8')
+         except:
+            sys.stderr.write('ERROR: Unable to create summary file ' + summaryFileName + '!\n')
+            sys.exit(1)
       elif sys.argv[i][0:15] == '--architecture=':
          architectures.append(sys.argv[i][15:])
       else:
-         sys.stderr.write('ERROR: Bad parameter ' + sys.argv[i] + '!\n')
+         sys.stderr.write('ERROR: Bad build-rpm parameter ' + sys.argv[i] + '!\n')
          sys.exit(1)
-   buildRPM(packageInfo, releases, architectures, skipPackageSigning)
+   buildRPM(packageInfo, releases, architectures, skipPackageSigning, summaryFile)
 
 # ====== Fetch Debian changelog file ========================================
 elif tool == 'fetch-debian-changelog':
