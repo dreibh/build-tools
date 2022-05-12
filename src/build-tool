@@ -695,20 +695,27 @@ def makeSourceTarball(packageInfo, skipPackageSigning, summaryFile):
 
 # ###### Get modified debian packaging version for given codename ###########
 def modifyDebianVersionPackaging(packageInfo, codename):
+   # print("I=" + packageInfo['debian_version_packaging'])
+
    # ------- Debian ------------------------------------------------------
    if codename in DebianCodenames:
       # Update codename and package versioning:
       # Drop Ubuntu packaging version:
-      newDebianVersionPackaging = re.sub(r'(ubuntu|ppa)[0-9]', '',
-                                          packageInfo['debian_version_packaging'])
+      if codename == 'unstable':
+         newSuffix = ''
+      else:
+         newSuffix = '~' + codename + '1'
+      newDebianVersionPackaging = re.sub(r'(ubuntu|ppa|)[0-9]+$', newSuffix,
+                                         packageInfo['debian_version_packaging'])
 
    # ------- Ubuntu ------------------------------------------------------
    else:
       # Update codename and package versioning:
       # Drop Ubuntu packaging version:
       newDebianVersionPackaging = re.sub(r'[0-9]+$', '~' + codename + '1',
-                                          packageInfo['debian_version_packaging'])
+                                         packageInfo['debian_version_packaging'])
 
+   # print("N=" + newDebianVersionPackaging)
    return newDebianVersionPackaging
 
 
