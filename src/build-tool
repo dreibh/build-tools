@@ -1594,10 +1594,10 @@ if len(sys.argv) < 2:
    sys.stderr.write('Usage: ' + sys.argv[0] + ' tool [options ...]\n')
    sys.stderr.write('* ' + sys.argv[0] + ' info\n')
    sys.stderr.write('* ' + sys.argv[0] + ' make-source-tarball [--skip-signing]\n')
-   sys.stderr.write('* ' + sys.argv[0] + ' make-source-deb  [codename ...] [--skip-signing]\n')
-   sys.stderr.write('* ' + sys.argv[0] + ' build-deb  [codename ...] [--skip-signing] [--architecture=arch ...]\n')
-   sys.stderr.write('* ' + sys.argv[0] + ' make-source-rpm  [release ...] [--skip-signing]\n')
-   sys.stderr.write('* ' + sys.argv[0] + ' build-rpm  [release ...] [--skip-signing] [--architecture=arch ...]\n')
+   sys.stderr.write('* ' + sys.argv[0] + ' make-source-deb [--summary=file] [codename ...] [--skip-signing]\n')
+   sys.stderr.write('* ' + sys.argv[0] + ' build-deb [--summary=file]  [codename ...] [--skip-signing] [--architecture=arch[,...]]\n')
+   sys.stderr.write('* ' + sys.argv[0] + ' make-source-rpm [--summary=file]  [release ...] [--skip-signing]\n')
+   sys.stderr.write('* ' + sys.argv[0] + ' build-rpm [--summary=file] [release ...] [--skip-signing] [--architecture=[,...]]\n')
    sys.stderr.write('* ' + sys.argv[0] + ' fetch-debian-changelog [codename]\n')
    sys.exit(1)
 
@@ -1666,7 +1666,8 @@ elif tool == 'build-deb':
             sys.stderr.write('ERROR: Unable to create summary file ' + summaryFileName + '!\n')
             sys.exit(1)
       elif sys.argv[i][0:15] == '--architecture=':
-         architectures.append(sys.argv[i][15:])
+         for architecture in sys.argv[i][15:].split(','):
+            architectures.append(architecture)
       else:
          sys.stderr.write('ERROR: Bad build-deb parameter ' + sys.argv[i] + '!\n')
          sys.exit(1)
@@ -1710,7 +1711,8 @@ elif tool == 'build-rpm':
             sys.stderr.write('ERROR: Unable to create summary file ' + summaryFileName + '!\n')
             sys.exit(1)
       elif sys.argv[i][0:15] == '--architecture=':
-         architectures.append(sys.argv[i][15:])
+         for architecture in sys.argv[i][15:].split(','):
+            architectures.append(architecture)
       else:
          sys.stderr.write('ERROR: Bad build-rpm parameter ' + sys.argv[i] + '!\n')
          sys.exit(1)
