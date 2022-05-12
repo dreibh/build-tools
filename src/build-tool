@@ -1345,18 +1345,19 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning, summaryFile):
 # ###### Build Debian binary package ########################################
 def buildDeb(packageInfo, codenames, architectures, skipPackageSigning, summaryFile):
 
-   # ====== Make sure that the source Debian files are available ============
-   if len(codenames) == 0:
-      codenames = [ packageInfo['debian_codename'] ]
-   makeSourceDeb(packageInfo, codenames, skipPackageSigning, summaryFile)
-
    # ====== Build for each distribution codename ============================
    printSection('Creating binary Debian packages')
 
+   if len(codenames) == 0:
+      codenames = [ packageInfo['debian_codename'] ]
    if len(architectures) == 0:
       architectures = [ getDebianDefaultArchitecture() ]
-   for buildArchitecture in architectures:
-      for codename in codenames:
+   for codename in codenames:
+
+      # ====== Make sure that the source Debian files are available ============
+      makeSourceDeb(packageInfo, [ codename ], skipPackageSigning, summaryFile)
+
+      for buildArchitecture in architectures:
          newDebianVersionPackaging = modifyDebianVersionPackaging(packageInfo, codename)
 
          printSubsection('Creating binary Debian package for ' + codename + '/' + buildArchitecture)
