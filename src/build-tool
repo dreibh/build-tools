@@ -1392,15 +1392,31 @@ def buildDeb(packageInfo, codenames, architectures, skipPackageSigning, summaryF
             sys.stderr.write('ERROR: PBuilder run failed: ' + str(e) + '\n')
             sys.exit(1)
 
-         # ====== Run Lintian ===============================================
+         # ====== Check for changes file ====================================
          changesFileName = getDebianChangesName(packageInfo, newDebianVersionPackaging,
                                                 buildArchitecture)
-         foundChangesFiles = glob.glob('/var/cache/pbuilder/result/*/' + changesFileName)
-         if len(foundChangesFiles) != 1:
+         changesFileGlobs = [
+            '/var/cache/pbuilder/result/' + buildSystem + '-' + codename + '-' + buildArchitecture + '/' + changesFileName,
+            '/var/cache/pbuilder/result/' + changesFileName,
+            '/var/cache/pbuilder/result/*/' + changesFileName
+         ]
+         for changesFileGlob in changesFileGlobs:
+            foundChangesFiles = glob.glob(changesFileGlob)
+            if len(foundChangesFiles) != 0:
+               break
+         if len(foundChangesFiles) < 1:
             sys.stderr.write('ERROR: Unable to locate the changes file!\n')
-            sys.stderr.write('foundChangesFiles = ' + str(foundChangesFiles) + '\n')
+            sys.stderr.write('Search locations for changes file: ' + str(changesFileGlobs) + '!')
+            sys.exit(1)
+         elif len(foundChangesFiles) > 1:
+            sys.stderr.write('ERROR: Multiple changes files have been found! PBuilder configuration problem?\n')
+            sys.stderr.write('Found changes files: ' + str(foundChangesFiles) + '\n')
             sys.exit(1)
 
+         if summaryFile != None:
+            summaryFile.write('debBuildChangesFile: ' + foundChangesFiles[0] + ' ' + codename + ' ' + buildArchitecture + '\n')
+
+         # ====== Run Lintian ===============================================
          lintianCommand = [ 'lintian',
                                '-iIEv',
                                '--profile', lintianProfile,
@@ -1413,9 +1429,6 @@ def buildDeb(packageInfo, codenames, architectures, skipPackageSigning, summaryF
          except Exception as e:
             sys.stderr.write('ERROR: Lintian run failed: ' + str(e) + '\n')
             sys.exit(1)
-
-         if summaryFile != None:
-            summaryFile.write('debBuildChangesFile: ' + foundChangesFiles[0] + ' ' + codename + ' ' + buildArchitecture + '\n')
 
    return True
 
