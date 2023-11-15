@@ -590,8 +590,8 @@ def findSourceTarball(packageInfo, quiet = False):
    for tarball in tarballs:
       extension = os.path.splitext(tarball)[1][1:]
       if extension in TarballFormats:
-         sourceInfo['source_tarball_name']      = tarball
-         sourceInfo['source_tarball_format']    = extension
+         sourceInfo['source_tarball_name']   = tarball
+         sourceInfo['source_tarball_format'] = extension
 
          # ====== Check for signature file ==================================
          signature = sourceInfo['source_tarball_name'] + '.asc'
@@ -801,7 +801,7 @@ def getDebianControlTarballName(packageInfo, debianVersionPackaging = None):
    controlTarballFileName = packageInfo['debian_package_name'] + '_' + \
                                packageInfo['debian_version_string'] + '-' + \
                                debianVersionPackaging + '.debian.tar.' + \
-                               packageInfo['source_tarball_format']
+                               'xz'   # FIXME: Check packageInfo['source_tarball_format'] with ".tar.gz" package!
    return controlTarballFileName
 
 
