@@ -1234,9 +1234,9 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning, summaryFile):
          # changeLogContents = [ line for line in changeLogContents if not re_launchpad.match(line) ]
 
          # ------ Update control --------------------------------------------
-         for i in range(0, len(controlContents)):
-            # FIXME: Is this still necessary for Ubuntu?
-            controlContents[i] = re.sub(r'^Maintainer:', 'Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>\nXSBC-Original-Maintainer:', controlContents[i])
+         # for i in range(0, len(controlContents)):
+         #    # FIXME: Is this still necessary for Ubuntu?
+         #    controlContents[i] = re.sub(r'^Maintainer:', 'Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>\nXSBC-Original-Maintainer:', controlContents[i])
 
 
       # ------ Clean up empty lines -----------------------------------------
