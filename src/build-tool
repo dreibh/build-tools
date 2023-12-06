@@ -1531,7 +1531,7 @@ def buildRPM(packageInfo, releases, architectures, skipPackageSigning, summaryFi
    makeSourceRPM(packageInfo, skipPackageSigning, summaryFile)
 
    # ====== Build for each distribution codename ============================
-   printSection('Creating binary Debian packages')
+   printSection('Creating binary RPM packages')
 
    # ====== Check SRPM ======================================================
    rpmbuildDir = os.environ.get('HOME') + '/rpmbuild'
