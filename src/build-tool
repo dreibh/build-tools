@@ -19,6 +19,7 @@
 #
 # Contact: thomas.dreibholz@gmail.com
 
+import distro
 import glob
 import os
 import pprint
@@ -832,7 +833,7 @@ def fetchDebianChangelog(packageInfo, codename = 'unstable'):
       statusPageContents = statusPage.readlines()
       statusPage.close()
 
-      re_debian_package = re.compile(r'.*Source Package: ' + packageInfo['debian_package_name'] + ' \(([0-9-+~\.a-z]+)\)')
+      re_debian_package = re.compile(r'.*Source Package: ' + packageInfo['debian_package_name'] + r' \(([0-9-+~\.a-z]+)\)')
       re_debian_archive = re.compile(r'.*href="((http|https)://[a-zA-Z0-9\./+-]+/' + \
                                        packageInfo['debian_package_name'][0:1] + '/' + \
                                        packageInfo['debian_package_name'] + '/' + \
@@ -1517,14 +1518,17 @@ def makeSourceRPM(packageInfo, skipPackageSigning, summaryFile):
 
 
 # ###### Build RPM binary package ###########################################
-def buildRPM(packageInfo, releases, architectures, skipPackageSigning):
+def buildRPM(packageInfo, releases, architectures, skipPackageSigning, summaryFile):
 
    # ====== Make sure that the source Debian files are available ============
    if len(releases) == 0:
-      releases = [ 'rawhide' ]
+      if distro.id() == 'fedora':
+         releases = [ 'fedora-' + distro.major_version() ]
+      else:
+         releases = [ 'rawhide' ]
    if len(architectures) == 0:
       architectures = [ getArchitecture() ]
-   makeSourceRPM(packageInfo, skipPackageSigning)
+   makeSourceRPM(packageInfo, skipPackageSigning, summaryFile)
 
    # ====== Build for each distribution codename ============================
    printSection('Creating binary Debian packages')
