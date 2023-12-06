@@ -1581,8 +1581,6 @@ def buildRPM(packageInfo, releases, architectures, skipPackageSigning, summaryFi
             commands = [
                   [ 'mock', '-r', configuration, '--isolation=nspawn', '--init' ],
                   [ 'mock', '-r', configuration, '--isolation=nspawn', '--installdeps', srpmFile ],
-                  # FIXME! Is this needed:
-                  # [ 'mock', '-r', configuration, '--isolation=nspawn', '--install', 'openssl', 'pesign' ],
                   [ 'mock', '-r', configuration, '--isolation=nspawn', '--rebuild', '--no-clean', srpmFile ]
                ]
             for command in commands:
