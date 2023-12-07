@@ -40,14 +40,14 @@ fi
 
 
 # ====== Extract package information ========================================
-PORTNAME=`grep "PORTNAME=" ${DISTINFO_DIRECTORY}/Makefile | awk '{ print $2 }'`
-PORTVERSION=`grep "PORTVERSION=" ${DISTINFO_DIRECTORY}/Makefile | awk '{ print $2 }'`
-LOCATION=`grep "MASTER_SITES=" ${DISTINFO_DIRECTORY}/Makefile | awk '{ print $2 }'`
-EXTRACT_SUFX=`grep "EXTRACT_SUFX=" ${DISTINFO_DIRECTORY}/Makefile | awk '{ print $2 }'`
+PORTNAME=`grep "^PORTNAME=" ${DISTINFO_DIRECTORY}/Makefile | awk '{ print $2 }'`
+PORTVERSION=`grep "^PORTVERSION=" ${DISTINFO_DIRECTORY}/Makefile | awk '{ print $2 }'`
+LOCATION=`grep "^MASTER_SITES=" ${DISTINFO_DIRECTORY}/Makefile | awk '{ print $2 }'`
+EXTRACT_SUFX=`grep "^EXTRACT_SUFX=" ${DISTINFO_DIRECTORY}/Makefile | awk '{ print $2 }'`
 if [ "${EXTRACT_SUFX}" == "" ] ; then
-   if grep "USES=" ${DISTINFO_DIRECTORY}/Makefile | grep -q "tar:xz" ; then
+   if grep "^USES=" ${DISTINFO_DIRECTORY}/Makefile | grep -q "tar:xz" ; then
       EXTRACT_SUFX=".tar.xz"
-   elif grep "USES=" ${DISTINFO_DIRECTORY}/Makefile | grep -q "tar:bz2" ; then
+   elif grep "^USES=" ${DISTINFO_DIRECTORY}/Makefile | grep -q "tar:bz2" ; then
       EXTRACT_SUFX=".tar.bz2"
    else
       EXTRACT_SUFX=".tar.gz"
@@ -112,5 +112,5 @@ if ! colordiff -I '^TIMESTAMP.*$' ${DISTINFO_DIRECTORY}/distinfo ${DISTINFO_DIRE
    fi
    echo "Done!"
 else
-   echo "No change -> exiting."   
+   echo "No change -> exiting."
 fi
