@@ -66,7 +66,7 @@ if [ ! -e "${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}" ] ; then
    read -er applyChanges
    if [ "$applyChanges" == "yes" -o "$applyChanges" == "y" ] ; then
       echo "Downloading ${LOCATION}/${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}"
-      wget "${LOCATION}/${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}"
+      wget -4 "${LOCATION}/${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}"
    else
       exit 1
    fi
