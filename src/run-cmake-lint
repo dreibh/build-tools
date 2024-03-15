@@ -1,0 +1,2 @@
+#!/bin/sh
+find . -name CMakeLists.txt | xargs -r cmake-lint --disabled-codes C0307 C0301 C0113 C0103
