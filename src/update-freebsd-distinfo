@@ -41,7 +41,7 @@ fi
 
 # ====== Extract package information ========================================
 PORTNAME=`grep "^PORTNAME=" ${DISTINFO_DIRECTORY}/Makefile | awk '{ print $2 }'`
-PORTVERSION=`grep "^PORTVERSION=" ${DISTINFO_DIRECTORY}/Makefile | awk '{ print $2 }'`
+DISTVERSION=`grep "^DISTVERSION=" ${DISTINFO_DIRECTORY}/Makefile | awk '{ print $2 }'`
 LOCATION=`grep "^MASTER_SITES=" ${DISTINFO_DIRECTORY}/Makefile | awk '{ print $2 }'`
 EXTRACT_SUFX=`grep "^EXTRACT_SUFX=" ${DISTINFO_DIRECTORY}/Makefile | awk '{ print $2 }'`
 if [ "${EXTRACT_SUFX}" == "" ] ; then
@@ -55,18 +55,18 @@ if [ "${EXTRACT_SUFX}" == "" ] ; then
 fi
 
 echo "PORTNAME:     ${PORTNAME}"
-echo "PORTVERSION : ${PORTVERSION}"
+echo "DISTVERSION:  ${DISTVERSION}"
 echo "LOCATION:     ${LOCATION}"
 echo "EXTRACT_SUFX: ${EXTRACT_SUFX}"
 
 
 # ====== Check for sources tarball ==========================================
-if [ ! -e "${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}" ] ; then
-   echo -en "\x1b[34m${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX} does not exist -> Try to download it from ${LOCATION}?  [yes/no]?\x1b[0m "
+if [ ! -e "${PORTNAME}-${DISTVERSION}${EXTRACT_SUFX}" ] ; then
+   echo -en "\x1b[34m${PORTNAME}-${DISTVERSION}${EXTRACT_SUFX} does not exist -> Try to download it from ${LOCATION}?  [yes/no]?\x1b[0m "
    read -er applyChanges
    if [ "$applyChanges" == "yes" -o "$applyChanges" == "y" ] ; then
-      echo "Downloading ${LOCATION}/${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}"
-      wget -4 "${LOCATION}/${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}"
+      echo "Downloading ${LOCATION}/${PORTNAME}-${DISTVERSION}${EXTRACT_SUFX}"
+      wget -4 "${LOCATION}/${PORTNAME}-${DISTVERSION}${EXTRACT_SUFX}"
    else
       exit 1
    fi
@@ -75,16 +75,16 @@ fi
 
 # ====== Copy sources tarball to /usr/ports/distinfo (FreeBSD) ==============
 if [ -e "/usr/ports/distfiles/" ] ; then
-   if [ ! -e "/usr/ports/distfiles/${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}" ] ; then
-      echo "Copying ${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX} to /usr/ports/distfiles/ ..."
-      sudo cp "${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}" /usr/ports/distfiles/
-   elif [ -e "${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}" ] ; then
-      if ! diff "${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}" "/usr/ports/distfiles/${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}" ; then
-         echo -en "\x1b[34m${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX} differs from /usr/ports/distfiles/${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}! Replace version in /usr/ports/distfiles?  [yes/no]?\x1b[0m "
+   if [ ! -e "/usr/ports/distfiles/${PORTNAME}-${DISTVERSION}${EXTRACT_SUFX}" ] ; then
+      echo "Copying ${PORTNAME}-${DISTVERSION}${EXTRACT_SUFX} to /usr/ports/distfiles/ ..."
+      sudo cp "${PORTNAME}-${DISTVERSION}${EXTRACT_SUFX}" /usr/ports/distfiles/
+   elif [ -e "${PORTNAME}-${DISTVERSION}${EXTRACT_SUFX}" ] ; then
+      if ! diff "${PORTNAME}-${DISTVERSION}${EXTRACT_SUFX}" "/usr/ports/distfiles/${PORTNAME}-${DISTVERSION}${EXTRACT_SUFX}" ; then
+         echo -en "\x1b[34m${PORTNAME}-${DISTVERSION}${EXTRACT_SUFX} differs from /usr/ports/distfiles/${PORTNAME}-${DISTVERSION}${EXTRACT_SUFX}! Replace version in /usr/ports/distfiles?  [yes/no]?\x1b[0m "
          read -er applyChanges
          if [ "$applyChanges" == "yes" -o "$applyChanges" == "y" ] ; then
-            echo "Copying ${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX} to /usr/ports/distfiles/ ..."
-            sudo cp "${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}" /usr/ports/distfiles/
+            echo "Copying ${PORTNAME}-${DISTVERSION}${EXTRACT_SUFX} to /usr/ports/distfiles/ ..."
+            sudo cp "${PORTNAME}-${DISTVERSION}${EXTRACT_SUFX}" /usr/ports/distfiles/
          fi
       fi
    fi
@@ -96,11 +96,11 @@ echo "Updating distinfo ..."
 (
    echo "TIMESTAMP = `date +%s`"
    if [ -x "$(command -v sha256sum)" ] ; then
-      sha256sum --tag ${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}
+      sha256sum --tag ${PORTNAME}-${DISTVERSION}${EXTRACT_SUFX}
    else
-      sha256 ${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}
+      sha256 ${PORTNAME}-${DISTVERSION}${EXTRACT_SUFX}
    fi
-   echo "SIZE (${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX}) = `wc -c ${PORTNAME}-${PORTVERSION}${EXTRACT_SUFX} | awk '{ print $1 }'`"
+   echo "SIZE (${PORTNAME}-${DISTVERSION}${EXTRACT_SUFX}) = `wc -c ${PORTNAME}-${DISTVERSION}${EXTRACT_SUFX} | awk '{ print $1 }'`"
 ) >${DISTINFO_DIRECTORY}/distinfo.new
 
 echo "Update:"
