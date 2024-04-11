@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 echo -e "\x1b[34mRunning cmake-lint ...\x1b[0m"
-find . -name CMakeLists.txt -exec cmake-lint {} --suppress-decorations --disabled-codes C0307 C0301 C0113 C0103 \;
+find . -name CMakeLists.txt -exec cmake-lint {} --suppress-decorations --disabled-codes C0307 C0301 C0113 C0103 C0305 \;
 echo -e "\x1b[34mDone!\x1b[0m"
