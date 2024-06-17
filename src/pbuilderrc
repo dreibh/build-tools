@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+#
+# NorNet Core pbuilderrc File
+# Copyright (C) 2012-2024 by Thomas Dreibholz
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Contact: dreibh@simula.no
+
+# Bash options:
+set -e
+
+
+# ====== Initialise =========================================================
+if [ "${OS}" == "" ] ; then
+   OS=`lsb_release -is`
+   OS=${OS,,}
+fi
+if [ "${DIST}" == "" ] ; then
+   DIST=`lsb_release -cs`
+fi
+if [ "${ARCH}" == "" ] ; then
+   ARCH=`dpkg --print-architecture`
+fi
+
+
+# ====== Settings ===========================================================
+DISTRIBUTION="${DIST}"
+COMPONENTS="main universe"
+if [ "${OS}" == "ubuntu" ] ; then
+   COMPONENTS="main universe"
+   if [ "${ARCH}" == "amd64" -o  "${ARCH}" == "i386" ] ; then
+      MIRRORSITE="http://no.archive.ubuntu.com/ubuntu/"
+   else
+      MIRRORSITE="http://ports.ubuntu.com/ubuntu-ports/"
+   fi
+   KEYRING="/usr/share/keyrings/ubuntu-archive-keyring.gpg"
+elif [ "${OS}" == "debian" ] ; then
+   if [ "${ARCH}" == "m68k" -o  "${ARCH}" == "riscv64" ] ; then
+      # Debian Ports (special architectures)
+      COMPONENTS="main"
+      MIRRORSITE="http://ftp.ports.debian.org/debian-ports/"
+      KEYRING="/usr/share/keyrings/debian-ports-archive-keyring.gpg"
+   else
+      # Debian (supported architectures)
+      COMPONENTS="main"
+      MIRRORSITE="http://ftp.no.debian.org/debian/"
+      KEYRING="/usr/share/keyrings/debian-archive-keyring.gpg"
+   fi
+else
+   echo >&2 "ERROR: Unknown Linux distribution ${OS}!"
+   exit 1
+fi
+if [ ! -e "${KEYRING}" ] ; then
+   echo >&2 "ERROR: Missing keyring file ${KEYRING}!"
+   exit 1
+fi
+DEBOOTSTRAPOPTS=("${DEBOOTSTRAPOPTS[@]}" "--keyring=${KEYRING}")
+DEBOOTSTRAPOPTS=("${DEBOOTSTRAPOPTS[@]}" "--variant=buildd")
+ARCHITECTURE="${ARCH}"
+
+COMPRESSPROG=pigz
+EXTRAPACKAGES=eatmydata
+EATMYDATA=yes
+
+cores=`getconf _NPROCESSORS_ONLN`
+export CONCURRENCY_LEVEL=${cores}
+export DEB_BUILD_OPTIONS="parallel=${cores}"
+
+# Support tmpfs build
+# (see http://www.davromaniak.eu/index.php?post/2011/07/12/Pbuilder-and-tmpfs-can-be-friends)
+# Add to /etc/fstab:
+# tmpfs   /var/cache/pbuilder/build   tmpfs   defaults,auto   0   2
+#
+APTCACHEHARDLINK=no
+
+
+# ====== Directories ========================================================
+NAME="${OS}-${DISTRIBUTION}-${ARCHITECTURE}"
+BASETGZ="/var/cache/pbuilder/${NAME}-base.tgz"
+APTCACHE="/var/cache/pbuilder/aptcache/${NAME}/"
+BUILDPLACE="/var/cache/pbuilder/build/${NAME}/"
+BUILDRESULT="/var/cache/pbuilder/result/${NAME}/"
+HOOKDIR="/var/cache/pbuilder/hook.d/"
+
+mkdir -p ${APTCACHE}
+mkdir -p ${BUILDRESULT}
+mkdir -p ${HOOKDIR}
+
+
+# ====== Debugging hook =====================================================
+cat >${HOOKDIR}/C10shell <<EOF
+#!/bin/sh
+# Run when the build fails:
+# - Install helpful tools (bash, joe, less, etc.).
+# - Run a shell.
+
+apt-get install -y --force-yes bash joe less
+cd /tmp/buildd/*/debian/..
+/bin/bash </dev/tty >/dev/tty 2>/dev/tty
+EOF
+
+chmod a+x ${HOOKDIR}/C10shell
