@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+#
+# NorNet Core PBuilder Helper Script
+# Copyright (C) 2012-2024 by Thomas Dreibholz
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Contact: dreibh@simula.no
+
+# Bash options:
+set -e
+
+
+create-pbuilder ()
+{
+   local os="$1"
+   local dist="$2"
+   local arch="$3"
+   local name="${os}-${dist}-${arch}"
+   local logfile="${name}.log"
+
+   if [ ! -e "/var/cache/pbuilder/${name}-base.tgz" ] ; then
+      startTime=`date +%FT%H:%M:%S`
+      echo "${startTime}: Starting to build ${name}, logfile is ${logfile} ..."
+
+      # ====== pbuilder =====================================================
+      (
+         (
+            echo "OS=${os} DIST=${dist} ARCH=${arch}"
+            sudo OS=${os} DIST=${dist} ARCH=${arch} pbuilder create | \
+               ( grep -v "^I: Retrieving\|^I: Validating\|^I: Unpacking\|^I: Extracting\|^I: Configuring\|^I: new cache content" || true )
+
+               sudo OS=$1 DIST=$2 ARCH=$3 pbuilder login --save-after-login <<EOF
+# No need for sync:
+echo "force-unsafe-io" >/etc/dpkg/dpkg.cfg.d/force-unsafe-io
+# Add PPA for Ubuntu:
+if [ "${OS}" == "ubuntu" ] ; then
+   apt-get install -qy software-properties-common
+   apt-add-repository -y ppa:dreibh/ppa
+   apt-get update -q
+fi
+# Install common build tools:
+apt-get install -qy build-essential debhelper cmake
+EOF
+
+         ) >${logfile} 2>&1
+
+         finishTime=`date +%FT%H:%M:%S`
+         echo "${finishTime}: Finished to build ${name}, logfile is ${logfile}"
+         grep ERROR ${logfile}
+      ) &
+
+   else
+      echo "${name} is already there -> running UPDATE only!"
+      (
+         (
+            echo "OS=${os} DIST=${dist} ARCH=${arch}"
+            sudo OS=${os} DIST=${dist} ARCH=${arch} pbuilder update
+         ) >${logfile} 2>&1
+
+         finishTime=`date +%FT%H:%M:%S`
+         echo "${finishTime}: Finished to build ${name}, logfile is ${logfile}"
+         grep ERROR ${logfile}
+      ) &
+   fi
+}
+
+
+# ====== Some checks ========================================================
+if [ ! -x /usr/bin/qemu-m68k-static ] ; then
+   echo >&2 "ERROR: qemu-user-static is not installed!"
+   echo >&2 "To fix: sudo apt install -y qemu-user-static"
+fi
+if [ ! -e /usr/share/keyrings/debian-ports-archive-keyring.gpg ] ; then
+   echo >&2 "ERROR: Missing keyring /usr/share/keyrings/debian-archive-keyring!"
+   echo >&2 "To fix: sudo apt install -y debian-archive-keyring"
+fi
+if [ ! -e /usr/share/keyrings/debian-ports-archive-keyring.gpg ] ; then
+   echo >&2 "ERROR: Missing keyring /usr/share/keyrings/debian-ports-archive-keyring!"
+   echo >&2 "To fix: sudo apt install -y debian-ports-archive-keyring"
+fi
+
+
+# ====== Ubuntu =============================================================
+create-pbuilder ubuntu noble amd64
+create-pbuilder ubuntu noble arm64
+create-pbuilder ubuntu mantic amd64
+create-pbuilder ubuntu mantic arm64
+
+create-pbuilder ubuntu jammy  amd64
+create-pbuilder ubuntu jammy  arm64
+create-pbuilder ubuntu jammy  armhf
+
+create-pbuilder ubuntu focal  amd64
+create-pbuilder ubuntu focal  arm64
+
+create-pbuilder ubuntu bionic amd64
+create-pbuilder ubuntu bionic arm64
+
+create-pbuilder ubuntu xenial amd64
+
+
+# ====== Debian =============================================================
+create-pbuilder debian bookworm amd64
+create-pbuilder debian bookworm arm64
+create-pbuilder debian bookworm armhf
+
+create-pbuilder debian bullseye amd64
+create-pbuilder debian bullseye arm64
+create-pbuilder debian bullseye armhf
+
+create-pbuilder debian buster   amd64
+create-pbuilder debian buster   arm64
+create-pbuilder debian buster   armhf
+
+create-pbuilder debian unstable amd64
+create-pbuilder debian unstable arm64
+create-pbuilder debian unstable i386
+
+create-pbuilder debian unstable arm64
+create-pbuilder debian unstable armhf
+create-pbuilder debian unstable m68k
+create-pbuilder debian unstable riscv64
+create-pbuilder debian unstable ppc64el
+create-pbuilder debian unstable s390x
+create-pbuilder debian unstable armel
+create-pbuilder debian unstable mipsel
+
+
+wait
