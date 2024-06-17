@@ -1,0 +1,37 @@
+Source: td-build-tools
+Section: utils
+Priority: optional
+Maintainer: Thomas Dreibholz <thomas.dreibholz@gmail.com>
+Homepage: https://www.nntb.no/~dreibh/build-tools/
+Build-Depends: cmake,
+               debhelper (>= 12)
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+
+Package: td-build-tool
+Architecture: all
+Depends: build-essential,
+         debhelper,
+         pbuilder,
+         python3,
+         qemu-system,
+         reprepro,
+         ${misc:Depends}
+Recommends: td-system-info,
+            td-system-maintenance
+Description: Build tool
+ Build Tool is a tool to help creating and maintaining package
+ builds for Debian/Ubuntu, Fedora, FreeBSD and other systems.
+ It performs the following tasks:
+ creating a source tarball,
+ creating a source package (Debian/Ubuntu, Fedora, etc.),
+ building binary packages from the source package (including
+ cross-architecture builds).
+
+Package: td-build-tools
+Architecture: all
+Depends: td-build-tool,
+         ${misc:Depends}
+Recommends: td-system-tools
+Description: Metapackage for build tools
+ This package is a metapackage for the build tools.
