@@ -29,9 +29,9 @@ INSTALL(FILES build-tool.1  DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 #### CONFIGURATION FILES                                                 ####
 #############################################################################
 
+INSTALL(FILES pbuilderrc DESTINATION ${CMAKE_INSTALL_DATADIR}/build-tools)
 
 
 #############################################################################
 #### EXAMPLES                                                            ####
 #############################################################################
-
