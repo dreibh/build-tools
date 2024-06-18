@@ -1,0 +1,2 @@
+# The Build Tool actually needs debhelper for building packages:
+td-build-tool: binary-package-depends-on-toolchain-package Depends: debhelper
