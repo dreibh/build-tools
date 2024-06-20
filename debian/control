@@ -15,6 +15,7 @@ Depends: build-essential,
          debian-archive-keyring,
          debian-ports-archive-keyring
          reprepro,
+         distro-info,
          pbuilder,
          python3,
          python3-distro,
