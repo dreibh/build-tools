@@ -426,7 +426,7 @@ def readFreeBSDPackagingInformation():
    # ====== Obtain package configuration ====================================
    if len(port_makefile_names) > 0:
       packageInfo['port_makefile_name'] = port_makefile_names[0]
-      re_freebsd_version = re.compile(r'^(PORTVERSION=[ \t]*)(\d+)\.(\d+)\.(\d+)(.*|)')
+      re_freebsd_version = re.compile(r'^(DISTVERSION=[ \t]*)(\d+)\.(\d+)\.(\d+)(.*|)')
       try:
          freeBSDMakefileFile = open(packageInfo['port_makefile_name'], 'r', encoding='utf-8')
          freeBSDMakefileFileContents = freeBSDMakefileFile.readlines()
@@ -449,7 +449,7 @@ def readFreeBSDPackagingInformation():
 
       # ====== Check whether information is complete ========================
       if not 'port_version_string' in packageInfo:
-         sys.stderr.write('ERROR: Cannot find required package versioning details in ' + debianChangelogName + '!\n')
+         sys.stderr.write('ERROR: Cannot find required package versioning details in ' + packageInfo['port_makefile_name'] + '!\n')
          sys.exit(1)
 
    return packageInfo
