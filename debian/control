@@ -10,7 +10,8 @@ Rules-Requires-Root: no
 
 Package: td-build-tool
 Architecture: all
-Depends: build-essential,
+Depends: blhc,
+         build-essential,
          debhelper,
          debian-archive-keyring,
          debian-ports-archive-keyring,

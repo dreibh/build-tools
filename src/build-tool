@@ -1387,13 +1387,17 @@ def buildDeb(packageInfo, codenames, architectures, skipPackageSigning, summaryF
          if not os.path.isfile(basetgz):
             sys.stderr.write('ERROR: Base tgz ' + basetgz + ' for pbuilder is not available!\nCheck pbuilder installation and configuration!\n')
             sys.exit(1)
+         buildlog = 'build-' + buildSystem + '-' + codename + '-' + buildArchitecture + '.log'
 
          # ====== Run pbuilder ==============================================
          pbuilderCommand = [ 'sudo',
                                 'OS='   + buildSystem,
                                 'ARCH=' + buildArchitecture,
                                 'DIST=' + codename,
-                             'pbuilder', 'build', '--basetgz', basetgz,
+                             'pbuilder',
+                                'build',
+                                '--basetgz', basetgz,
+                                '--logfile', buildlog,
                              dscFileName ]
          print(pbuilderCommand)
          try:
@@ -1425,6 +1429,16 @@ def buildDeb(packageInfo, codenames, architectures, skipPackageSigning, summaryF
 
          if summaryFile != None:
             summaryFile.write('debBuildChangesFile: ' + foundChangesFiles[0] + ' ' + codename + ' ' + buildArchitecture + '\n')
+
+         # ====== Run BLHC ==================================================
+         # FIXME: BLHC < 0.14 does not properly handle D_FORTIFY_SOURCE=3!
+         blhcCommand = 'blhc ' + buildlog + ' | grep -v "^CPPFLAGS missing (-D_FORTIFY_SOURCE=2).*-D_FORTIFY_SOURCE=3.*"  | grep -v "^NONVERBOSE BUILD:"'
+         print(blhcCommand)
+         try:
+            subprocess.run(blhcCommand, check=False, shell=True)
+         except Exception as e:
+            sys.stderr.write('ERROR: BLHC run failed: ' + str(e) + '\n')
+            sys.exit(1)
 
          # ====== Run Lintian ===============================================
          lintianCommand = [ 'lintian',
