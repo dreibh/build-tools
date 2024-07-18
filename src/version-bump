@@ -189,7 +189,7 @@ freeBSDVersionString = None
 freeBSDMakefileNames = glob.glob('freebsd/*/Makefile')
 if len(freeBSDMakefileNames) > 0:
    freeBSDMakefileName = freeBSDMakefileNames[0]
-   re_freebsd_version = re.compile(r'^(PORTVERSION=[ \t]*)(\d+)\.(\d+)\.(\d+)(.*|)')
+   re_freebsd_version = re.compile(r'^(DISTVERSION=[ \t]*)(\d+)\.(\d+)\.(\d+)(.*|)')
    try:
       freeBSDMakefileFile = open(freeBSDMakefileName, 'r', encoding='utf-8')
       freeBSDMakefileFileContents = freeBSDMakefileFile.readlines()
