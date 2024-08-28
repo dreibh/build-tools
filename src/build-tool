@@ -1442,16 +1442,23 @@ def buildDeb(packageInfo, codenames, architectures, skipPackageSigning, summaryF
 
          # ====== Run Lintian ===============================================
          lintianCommand = [ 'lintian',
-                               '-iIEv',
+                               '-v', '-i', '-I', '-E', '--pedantic',
                                '--profile', lintianProfile,
                                '--suppress-tags', 'malformed-deb-archive,bad-distribution-in-changes-file',
-                               '--pedantic',
                                foundChangesFiles[0] ]
          print(lintianCommand)
          try:
             subprocess.run(lintianCommand, check=True)
          except Exception as e:
             sys.stderr.write('ERROR: Lintian run failed: ' + str(e) + '\n')
+            sys.exit(1)
+
+         # ====== Run LicenseCheck ==========================================
+         lrcCommand = 'lrc -t'
+         try:
+            subprocess.run(lrcCommand, check=False, shell=True)
+         except Exception as e:
+            sys.stderr.write('ERROR: LicenseCheck run failed: ' + str(e) + '\n')
             sys.exit(1)
 
    return True
