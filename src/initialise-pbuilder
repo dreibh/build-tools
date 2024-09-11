@@ -47,8 +47,8 @@ echo "force-unsafe-io" >/etc/dpkg/dpkg.cfg.d/force-unsafe-io
 # Enable official updates repository:
 (
    if [ "${OS}" == "ubuntu" ] ; then
-      echo "deb http://no.archive.ubuntu.com/ubuntu/ ${DIST}-updates main restricted"
-      echo "# deb-src http://no.archive.ubuntu.com/ubuntu/ ${DIST}-updates main restricted"
+      echo "deb http://no.archive.ubuntu.com/ubuntu/ ${DIST}-updates main universe restricted "
+      echo "# deb-src http://no.archive.ubuntu.com/ubuntu/ ${DIST}-updates main universe restricted"
    elif [ "${OS}" == "debian" ] ; then
       echo "deb http://security.debian.org/debian-security ${DIST}-security main non-free-firmware"
       echo "# deb-src http://security.debian.org/debian-security ${DIST}-security main non-free-firmware"
@@ -116,6 +116,8 @@ create-pbuilder ubuntu bionic amd64
 create-pbuilder ubuntu bionic arm64
 
 create-pbuilder ubuntu xenial amd64
+create-pbuilder ubuntu trusty amd64
+create-pbuilder ubuntu precise amd64
 
 
 # ====== Debian =============================================================
