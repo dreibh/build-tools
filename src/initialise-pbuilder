@@ -117,7 +117,7 @@ create-pbuilder ubuntu bionic arm64
 
 create-pbuilder ubuntu xenial amd64
 create-pbuilder ubuntu trusty amd64
-create-pbuilder ubuntu precise amd64
+# create-pbuilder ubuntu precise amd64
 
 
 # ====== Debian =============================================================

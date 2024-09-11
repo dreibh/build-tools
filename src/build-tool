@@ -1199,8 +1199,8 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning, summaryFile):
             re_debhelper = re.compile(r'debhelper \(.* [0-9]+\)')
             for i in range(0, len(controlContents)):
                controlContents[i] = re.sub(re_debhelper,
-                                          'debhelper-compat (= ' + str(DebhelperLatestVersion) + ')',
-                                          controlContents[i])
+                                           'debhelper-compat (= ' + str(DebhelperLatestVersion) + ')',
+                                           controlContents[i])
 
             # There is no need for debian/compat any more:
             try:
