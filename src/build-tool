@@ -1197,6 +1197,7 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning, summaryFile):
          if codename in [ 'unstable', 'testing', 'stable', 'oldstable' ]:
             # Update debhelper version:
             re_debhelper = re.compile(r'debhelper \(.* [0-9]+\)')
+            # Ugly CMake 3.x version work-around for old Ubuntu versions:
             re_cmake3    = re.compile(r'cmake .* \| cmake3')
             for i in range(0, len(controlContents)):
                controlContents[i] = re.sub(re_debhelper,
