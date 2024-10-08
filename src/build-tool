@@ -1090,7 +1090,8 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning, summaryFile):
 
 
    # ====== Build for each distribution codename ============================
-   dscFiles = {}
+   changesFiles = {}
+   dscFiles     = {}
 
    printSection('Creating source Debian packages')
 
@@ -1289,6 +1290,7 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning, summaryFile):
       else:
          sys.stderr.write('ERROR: DSC file not found at expected location ' + workdir + '/' + dscFile + '!\n')
          sys.exit(1)
+      changesFiles[codename] = changesName
 
       if os.path.isfile(workdir + '/' + buildinfoName):
          sys.stdout.write('* Buildinfo file is ' + buildinfoName + '.\n')
@@ -1321,13 +1323,12 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning, summaryFile):
    printSection('Debian source package overview')
 
    sys.stdout.write('\x1b[34mUpload to PPA:\x1b[0m\n')
-   for codename in sorted(dscFiles.keys()):
-      changesName = getDebianChangesName(packageInfo, newDebianVersionPackaging)
+   for codename in sorted(changesFiles.keys()):
       if codename in DebianCodenames:
          ppa = 'mentors'
       else:
          ppa = 'ppa'
-      sys.stdout.write('\x1b[34m   dput ' + ppa + ' ' + changesName + '\x1b[0m\n')
+      sys.stdout.write('\x1b[34m   dput ' + ppa + ' ' + changesFiles[codename] + '\x1b[0m\n')
    sys.stdout.write('\n')
 
    sys.stdout.write('\x1b[34mBuild Test Commands:\x1b[0m\n')
@@ -1342,14 +1343,12 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning, summaryFile):
          buildSystem    = 'ubuntu'
          lintianProfile = 'ubuntu'
       basetgz = '/var/cache/pbuilder/' + buildSystem + '-' + codename + '-' + buildArchitecture + '-base.tgz'
-      changesFileName = getDebianChangesName(packageInfo, newDebianVersionPackaging,
-                                             buildArchitecture)
 
       sys.stdout.write('\x1b[34m   ' + \
                        'sudo pbuilder build --basetgz ' + basetgz + ' ' + \
                        dscFiles[codename] + ' && ' + \
                        'lintian -iIEv --profile ' + lintianProfile + '  --pedantic ' + \
-                        '/var/cache/pbuilder/result/*/' +  changesFileName + \
+                        '/var/cache/pbuilder/result/*/' +  changesFiles[codename] + \
                        '\x1b[0m\n')
    sys.stdout.write('\n')
 
