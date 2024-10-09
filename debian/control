@@ -16,7 +16,6 @@ Depends: blhc,
          debian-archive-keyring,
          debian-ports-archive-keyring,
          distro-info,
-         licenserecon,
          pbuilder,
          python3,
          python3-distro,
@@ -24,7 +23,8 @@ Depends: blhc,
          qemu-user-static,
          reprepro,
          ${misc:Depends}
-Recommends: td-system-info,
+Recommends: licenserecon,
+            td-system-info,
             td-system-maintenance
 Description: Build tool
  Build Tool is a tool to help creating and maintaining package
