@@ -22,6 +22,14 @@
 set -e
 
 
+# ====== Handle arguments ===================================================
+if [ $# -lt 1 ] ; then
+   echo >&2 "Usage: $0 lsm_file_directory"
+   exit 1
+fi
+LSM_DIRECTORY="$1"
+
+
 # ====== Get package configuration ==========================================
 CHANGELOG_HEADER="`head -n1 debian/changelog`"
 
@@ -54,7 +62,7 @@ echo -e "\x1b[34m###############################################################
 
 
 # ====== Update LSM entry ===================================================
-LSM_ENTRY="${PACKAGE}.lsm"
+LSM_ENTRY="${LSM_DIRECTORY}/${PACKAGE}.lsm"
 if [ ! -e "${LSM_ENTRY}" ] ; then
    echo 2>&1 "ERROR: LSM entry ${LSM_ENTRY} does not exist!"
    exit 1
@@ -91,5 +99,5 @@ echo -en "\x1b[34mRun: Apply update? [yes/no]?\x1b[0m "
 read -er applyChanges
 if [ "$applyChanges" == "yes" -o "$applyChanges" == "y" ] ; then
    mv ${LSM_ENTRY}.new ${LSM_ENTRY}
-   thunderbird -compose to=lsm@pug.qqx.org,subject=add,attachment="`pwd`/${LSM_ENTRY}" || true &
+   thunderbird -compose to=lsm@pug.qqx.org,subject=add,attachment="${LSM_ENTRY}" || true &
 fi
