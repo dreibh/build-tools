@@ -46,16 +46,16 @@ create-pbuilder ()
 echo "force-unsafe-io" >/etc/dpkg/dpkg.cfg.d/force-unsafe-io
 # Enable official updates repository:
 (
-   if [ "${OS}" == "ubuntu" ] ; then
-      echo "deb http://no.archive.ubuntu.com/ubuntu/ ${DIST}-updates main universe restricted "
-      echo "# deb-src http://no.archive.ubuntu.com/ubuntu/ ${DIST}-updates main universe restricted"
-   elif [ "${OS}" == "debian" ] ; then
-      echo "deb http://security.debian.org/debian-security ${DIST}-security main non-free-firmware"
-      echo "# deb-src http://security.debian.org/debian-security ${DIST}-security main non-free-firmware"
+   if [ "${os}" == "ubuntu" ] ; then
+      echo "deb http://no.archive.ubuntu.com/ubuntu/ ${dist}-updates main universe restricted "
+      echo "# deb-src http://no.archive.ubuntu.com/ubuntu/ ${dist}-updates main universe restricted"
+   elif [ "${os}" == "debian" ] ; then
+      echo "deb http://security.debian.org/debian-security ${dist}-security main non-free-firmware"
+      echo "# deb-src http://security.debian.org/debian-security ${dist}-security main non-free-firmware"
    fi
 ) >>/etc/apt/sources.list
 # Add PPA for Ubuntu:
-if [ "${OS}" == "ubuntu" ] ; then
+if [ "${os}" == "ubuntu" ] ; then
    apt-get install -qy software-properties-common
    apt-add-repository -y ppa:dreibh/ppa
    apt-get update -q
@@ -72,7 +72,7 @@ EOF
       ) &
 
    else
-      echo "${name} is already there -> running UPDATE only!"
+      echo "${name} (/var/cache/pbuilder/${name}-base.tgz) is already there -> running UPDATE only!"
       (
          (
             echo "OS=${os} DIST=${dist} ARCH=${arch}"
