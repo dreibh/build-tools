@@ -1450,7 +1450,7 @@ def buildDeb(packageInfo, codenames, architectures, skipPackageSigning, summaryF
             printSubsection('Running Lintian')
             print('=> ' + lintianCommand)
             try:
-               subprocess.run(blhcCommand, check=False, shell=True)
+               subprocess.run(lintianCommand, check=False, shell=True)
             except Exception as e:
                sys.stderr.write('ERROR: Lintian run failed: ' + str(e) + '\n')
                sys.exit(1)
