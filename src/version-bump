@@ -735,7 +735,7 @@ if versionExtra == '':
    pathname = os.path.dirname(sys.argv[0])
    if os.path.isfile("ChangeLog"):
       sys.stdout.write('Updating ChangeLog ...\n')
-      subprocess.call([ pathname + '/update-changelog' ])
+      subprocess.call('git log -v . >ChangeLog.new && mv ChangeLog.new ChangeLog', shell = True)
 
    # ------ Create Git tag --------------------------------------------------
    newGitTag = package + '-' + versionString
