@@ -118,25 +118,27 @@ if [ ${COPR} -ne 0 ] ; then
 fi
 
 
-# # ====== Run dput ===========================================================
-# if [ ${DPUT} -ne 0 ] ; then
-#    changeFiles="$(find . -mindepth 1 -maxdepth 1 -name "*.changes")"
-#    for changeFile in ${changeFiles} ; do
-#       if [[ ${changeFile} =~ -[0-9]_source.changes$ ]] ; then
-#          dput mentors "${changeFile}"
-#       else
-#          dput ppa "${changeFile}"
-#       fi
-#    done
-# fi
+# ====== Run dput ===========================================================
+if [ ${DPUT} -ne 0 ] ; then
+   changeFiles="$(find . -mindepth 1 -maxdepth 1 -name "*.changes")"
+   for changeFile in ${changeFiles} ; do
+      if [[ ${changeFile} =~ -[0-9]_source.changes$ ]] ; then
+         dput mentors "${changeFile}"
+      else
+         dput ppa "${changeFile}"
+      fi
+   done
+fi
 
 
 # ====== Run COPR ===========================================================
 if [ ${COPR} -ne 0 ] ; then
-   PACKAGE="$(grep "^Name:" rpm/*.spec | head -n1 | sed -e "s/Name://g" -e "s/[ \t]*//g")"
-   SRPM="$(find "${HOME}"/rpmbuild/SRPMS -name "${PACKAGE}-*.src.rpm")"
+   PACKAGE="$(grep "^Name:" rpm/*.spec | head -n1 | sed -e "s/^Name://g" -e "s/[ \t]*//g")"
+   VERSION="$(grep "^Version:" rpm/*.spec | head -n1 | sed -e "s/^Version://g" -e "s/[ \t]*//g")"
+   RELEASE="$(grep "^Release:" rpm/*.spec | head -n1 | sed -e "s/^Release://g" -e "s/[ \t]*//g")"
+   SRPM="${HOME}/rpmbuild/SRPMS/${PACKAGE}-${VERSION}-${RELEASE}.src.rpm"
    if [ ! -e "${SRPM}" ] ; then
-      echo >&2 "ERROR: ${PACKAGE}-*.src.rpm not found!"
+      echo >&2 "ERROR: ${SRPM} not found!"
       exit 1
    fi
 
