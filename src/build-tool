@@ -1548,6 +1548,20 @@ def makeSourceRPM(packageInfo, skipPackageSigning, summaryFile):
          sys.stderr.write('ERROR: RPMSign run failed: ' + str(e) + '\n')
          sys.exit(1)
 
+   # ====== Run RPM Lint ====================================================
+   if shutil.which('rpmlint') != None:
+      rpmlintCommand = 'rpmlint -P ' + srpmFile
+      printSubsection('Running RPM Lint')
+      print('=> ' + rpmlintCommand)
+      try:
+         subprocess.run(rpmlintCommand, check=False, shell=True)
+      except Exception as e:
+         sys.stderr.write('ERROR: RPM Lint run failed: ' + str(e) + '\n')
+         sys.exit(1)
+   else:
+      sys.stderr.write('NOTE: RPM Lint is not installed -> checks skipped!\n')
+
+
    # ====== Add SRPM file to summary ========================================
    if summaryFile != None:
       summaryFile.write('rpmSourceFile: ' + srpmFile + '\n')
