@@ -119,10 +119,10 @@ def readPackagingConfiguration():
 
    # ====== Initialise ======================================================
    packageInfo = {}
-   packageInfo['packaging_maintainer']      = None
-   packageInfo['packaging_maintainer_key']  = None
-   packageInfo['packaging_make_dist']       = None
-   packageInfo['packaging_config_name']     = 'packaging.conf'
+   packageInfo['packaging_maintainer']     = None
+   packageInfo['packaging_maintainer_key'] = None
+   packageInfo['packaging_make_dist']      = None
+   packageInfo['packaging_config_name']    = 'packaging.conf'
 
    # ====== Obtain package configuration ====================================
    re_package_maintainer     = re.compile(r'^(MAINTAINER=\")(.*)(\".*$)')
