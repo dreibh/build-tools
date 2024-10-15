@@ -24,9 +24,24 @@ if [ ! -e "${TARBALL}" ] ; then
    exit 1
 fi
 
-git ls-files         | sort >git-files.txt
-tar tJf "${TARBALL}" | sed -e 's#[^/]*/##' -e '/\/$/d' | sort >tarball-files.txt
+# ====== Check contents =====================================================
+gitFile="$(mktemp)"
+tarballFile="$(mktemp)"
+trap 'rm -rf "${gitFile}" "${tarballFile}"' EXIT
 
+git ls-files         | sort >"${gitFile}"
+tar tJf "${TARBALL}" | sed -e 's#[^/]*/##' -e '/\/$/d' | sort >"${tarballFile}"
+
+echo "----- Files tracked by Git but not in tarball: ------"
+join "${gitFile}" "${tarballFile}" -v 1
 echo "----- Files in tarball but not tracked by Git: ------"
-join tarball-files.txt git-files.txt -v 1
+results="$(join "${tarballFile}" "${gitFile}" -v 1)"
+if [ "${results}" != "" ] ; then
+   echo "${results}"
+fi
 echo "-----------------------------------------------------"
+
+if [ "${results}" != "" ] ; then
+   echo "ERROR: There are untracked filed in the tarball!"
+   exit 1
+fi
