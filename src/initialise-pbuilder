@@ -103,6 +103,9 @@ fi
 
 
 # ====== Ubuntu =============================================================
+create-pbuilder ubuntu oracular amd64
+create-pbuilder ubuntu plucky amd64
+
 create-pbuilder ubuntu noble amd64
 create-pbuilder ubuntu noble arm64
 
