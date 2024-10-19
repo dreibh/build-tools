@@ -53,7 +53,7 @@ elif [ "${OS}" == "debian" ] ; then
    else
       # Debian (supported architectures)
       COMPONENTS="main"
-      MIRRORSITE="http://ftp.no.debian.org/debian/"
+      MIRRORSITE="http://ftp.dk.debian.org/debian/"
       KEYRING="/usr/share/keyrings/debian-archive-keyring.gpg"
    fi
 else
