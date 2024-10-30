@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1-labs
-FROM td-build-tools-pbuilder
+FROM --platform=${BUILDPLATFORM} dreibh/td-build-tools-pbuilder:latest
 
 ARG OS="ubuntu"
 ARG DIST="plucky"
