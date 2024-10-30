@@ -1,0 +1,31 @@
+# syntax=docker/dockerfile:1-labs
+FROM td-build-tools-pbuilder
+
+ARG OS="ubuntu"
+ARG DIST="plucky"
+ARG ARCH="amd64"
+
+COPY pbuilderrc /etc
+# RUN <<EOF
+#    echo "env xxxxxxxx OS=${OS} DISTRIBUTION=${DIST} ARCHITECTURE=${ARCH}"
+#    env OS="${OS}" DIST="${DIST}" ARCH="${ARCH}" pbuilder create \
+#       --debootstrapopts --variant=buildd
+# EOF
+
+RUN --security=insecure env OS="${OS}" DIST="${DIST}" ARCH="${ARCH}" pbuilder create --debootstrapopts --variant=buildd
+
+
+#    if [ "${OS}" = "ubuntu" ] ; then
+#       # Add PPA dreibh/ppa for Ubuntu:
+#       env OS="${OS}" DIST="${DIST}" ARCH="${ARCH}" pbuilder login --save-after-login <<EOF2
+# echo \"force-unsafe-io\" > /etc/dpkg/dpkg.cfg.d/02apt-speedup
+# DEBIAN_FRONTEND=noninteractive apt-get install -qqy -o Dpkg::Options::=--force-confold -o Dpkg::Options::=--force-confdef --no-install-recommends \
+# software-properties-common
+# apt-add-repository -y ppa:dreibh/ppa
+# apt-get update -q
+# EOF2
+#    else
+#       env OS="${OS}" DISTRIBUTION="${DIST}" ARCHITECTURE="${ARCH}" pbuilder login --save-after-login <<EOF2
+# echo \"force-unsafe-io\" > /etc/dpkg/dpkg.cfg.d/02apt-speedup
+# EOF2
+#    fi

@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+set -eu
+
+cp ../pbuilderrc .
+
+export BUILDKIT_COLORS="run=123,20,245:error=yellow:cancel=blue:warning=white"
+
+# Root
+docker buildx build --load --progress=plain -t td-build-tools-pbuilder . --file=Dockerfile.td-build-tools-pbuilder
+
+# Dist/Arch:
+# docker build -t ubuntu-pbuilder . --allow security.insecure --file=Dockerfile.ubuntu-pbuilder
+
+# docker buildx build --progress=plain -t td-build-tools-pbuilder . --file=Dockerfile.ubuntu-pbuilder
+
+
+
+# docker buildx create --name insecure-builder --buildkitd-flags '--allow-insecure-entitlement security.insecure'
+docker buildx use insecure-builder
+docker buildx build --load --progress=plain --allow security.insecure -t ubuntu-pbuilder . --file=Dockerfile.ubuntu-pbuilder
