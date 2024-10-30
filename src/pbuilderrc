@@ -39,7 +39,7 @@ COMPONENTS="main universe"
 if [ "${OS}" == "ubuntu" ] ; then
    COMPONENTS="main universe"
    if [ "${ARCH}" == "amd64" ] || [ "${ARCH}" == "i386" ] ; then
-      MIRRORSITE="http://no.archive.ubuntu.com/ubuntu/"
+      MIRRORSITE="http://dk.archive.ubuntu.com/ubuntu/"
    else
       MIRRORSITE="http://ports.ubuntu.com/ubuntu-ports/"
    fi

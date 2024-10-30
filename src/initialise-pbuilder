@@ -47,8 +47,8 @@ echo "force-unsafe-io" >/etc/dpkg/dpkg.cfg.d/force-unsafe-io
 # Enable official updates repository:
 (
    if [ "${os}" == "ubuntu" ] ; then
-      echo "deb http://no.archive.ubuntu.com/ubuntu/ ${dist}-updates main universe restricted "
-      echo "# deb-src http://no.archive.ubuntu.com/ubuntu/ ${dist}-updates main universe restricted"
+      echo "deb http://dk.archive.ubuntu.com/ubuntu/ ${dist}-updates main universe restricted "
+      echo "# deb-src http://dk.archive.ubuntu.com/ubuntu/ ${dist}-updates main universe restricted"
    elif [ "${os}" == "debian" ] ; then
       echo "deb http://security.debian.org/debian-security ${dist}-security main non-free-firmware"
       echo "# deb-src http://security.debian.org/debian-security ${dist}-security main non-free-firmware"
@@ -118,16 +118,20 @@ create-pbuilder ubuntu focal  arm64
 create-pbuilder ubuntu bionic amd64
 create-pbuilder ubuntu bionic arm64
 
-create-pbuilder ubuntu xenial amd64
-create-pbuilder ubuntu trusty amd64
+create-pbuilder ubuntu xenial  amd64
+create-pbuilder ubuntu trusty  amd64
+create-pbuilder ubuntu precise amd64
 
 
 # ====== Debian =============================================================
+create-pbuilder debian trixie amd64
+create-pbuilder debian trixie i386
+create-pbuilder debian trixie arm64
+create-pbuilder debian trixie armhf
+
 create-pbuilder debian bookworm amd64
-create-pbuilder debian bookworm i386
 create-pbuilder debian bookworm arm64
 create-pbuilder debian bookworm armhf
-create-pbuilder debian bookworm mipsel
 
 create-pbuilder debian bullseye amd64
 create-pbuilder debian bullseye arm64
