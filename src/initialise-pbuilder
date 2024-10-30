@@ -125,13 +125,13 @@ debianDistributions="$( (
 ) | sort -u)"
 
 for distribution in ${debianDistributions} ; do
-   for architecture in amd64 arm64 ; do
+   for architecture in amd64 arm64 armhf ; do
       create-pbuilder debian "${distribution}" "${architecture}"
    done
 done
 
 for distribution in unstable ; do
-   for architecture in amd64 arm64 i386 m68k riscv64 ppc64el s390x mipsel ; do
+   for architecture in amd64 arm64 armhf i386 m68k riscv64 ppc64el s390x mipsel ; do
       create-pbuilder debian "${distribution}" "${architecture}"
    done
 done
