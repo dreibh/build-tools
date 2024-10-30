@@ -1,4 +1,23 @@
 # syntax=docker/dockerfile:1-labs
+#
+# Unified Build Tool
+# Copyright (C) 2021-2024 by Thomas Dreibholz
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Contact: thomas.dreibholz@gmail.com
+
 FROM --platform=${BUILDPLATFORM} dreibh/td-build-tools-pbuilder:latest
 
 ARG OS="ubuntu"
@@ -6,26 +25,28 @@ ARG DIST="plucky"
 ARG ARCH="amd64"
 
 COPY pbuilderrc /etc
-# RUN <<EOF
-#    echo "env xxxxxxxx OS=${OS} DISTRIBUTION=${DIST} ARCHITECTURE=${ARCH}"
-#    env OS="${OS}" DIST="${DIST}" ARCH="${ARCH}" pbuilder create \
-#       --debootstrapopts --variant=buildd
-# EOF
 
-RUN --security=insecure env OS="${OS}" DIST="${DIST}" ARCH="${ARCH}" pbuilder create --debootstrapopts --variant=buildd
+RUN --security=insecure <<EOF
+   # ====== Initialise PBuilder =============================================
+   echo "Initialising PBuilder: OS=${OS} DIST=${DIST} ARCH=${ARCH}"
+   env OS="${OS}" DIST="${DIST}" ARCH="${ARCH}" pbuilder create \
+      --debootstrapopts --variant=buildd
 
-
-#    if [ "${OS}" = "ubuntu" ] ; then
-#       # Add PPA dreibh/ppa for Ubuntu:
-#       env OS="${OS}" DIST="${DIST}" ARCH="${ARCH}" pbuilder login --save-after-login <<EOF2
-# echo \"force-unsafe-io\" > /etc/dpkg/dpkg.cfg.d/02apt-speedup
-# DEBIAN_FRONTEND=noninteractive apt-get install -qqy -o Dpkg::Options::=--force-confold -o Dpkg::Options::=--force-confdef --no-install-recommends \
-# software-properties-common
-# apt-add-repository -y ppa:dreibh/ppa
-# apt-get update -q
-# EOF2
-#    else
-#       env OS="${OS}" DISTRIBUTION="${DIST}" ARCHITECTURE="${ARCH}" pbuilder login --save-after-login <<EOF2
-# echo \"force-unsafe-io\" > /etc/dpkg/dpkg.cfg.d/02apt-speedup
-# EOF2
-#    fi
+   # ====== System-specific settings ========================================
+   if [ "${OS}" = "ubuntu" ] ; then
+      # ------ Ubuntu -------------------------------------------------------
+      # Add PPA dreibh/ppa for Ubuntu:
+      env OS="${OS}" DIST="${DIST}" ARCH="${ARCH}" pbuilder login --save-after-login <<EOF2
+echo "force-unsafe-io" >/etc/dpkg/dpkg.cfg.d/02apt-speedup
+DEBIAN_FRONTEND=noninteractive apt-get install -qqy -o Dpkg::Options::=--force-confold -o Dpkg::Options::=--force-confdef --no-install-recommends \
+software-properties-common
+apt-add-repository -y ppa:dreibh/ppa
+apt-get update -q
+EOF2
+   else
+      # ------ Debian -------------------------------------------------------
+      env OS="${OS}" DIST="${DIST}" ARCH="${ARCH}" pbuilder login --save-after-login <<EOF2
+echo "force-unsafe-io" >/etc/dpkg/dpkg.cfg.d/02apt-speedup
+EOF2
+   fi
+EOF
