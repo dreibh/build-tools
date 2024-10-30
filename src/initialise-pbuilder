@@ -103,56 +103,37 @@ fi
 
 
 # ====== Ubuntu =============================================================
-create-pbuilder ubuntu oracular amd64
-create-pbuilder ubuntu plucky amd64
+ubuntuDistributions="$( (
+   ubuntu-distro-info --stable
+   ubuntu-distro-info --supported
+   ubuntu-distro-info --supported-esm
+   ubuntu-distro-info --devel
+) | sort -u)"
 
-create-pbuilder ubuntu noble amd64
-create-pbuilder ubuntu noble arm64
-
-create-pbuilder ubuntu jammy  amd64
-create-pbuilder ubuntu jammy  arm64
-
-create-pbuilder ubuntu focal  amd64
-create-pbuilder ubuntu focal  arm64
-
-create-pbuilder ubuntu bionic amd64
-create-pbuilder ubuntu bionic arm64
-
-create-pbuilder ubuntu xenial  amd64
-create-pbuilder ubuntu trusty  amd64
-create-pbuilder ubuntu precise amd64
-
+for distribution in ${ubuntuDistributions} ; do
+   for architecture in amd64 arm64 ; do
+      create-pbuilder ubuntu "${distribution}" "${architecture}"
+   done
+done
 
 # ====== Debian =============================================================
-create-pbuilder debian trixie amd64
-create-pbuilder debian trixie i386
-create-pbuilder debian trixie arm64
-create-pbuilder debian trixie armhf
+debianDistributions="$( (
+   debian-distro-info --stable
+   debian-distro-info --oldstable
+   debian-distro-info --testing
+   echo "unstable"
+) | sort -u)"
 
-create-pbuilder debian bookworm amd64
-create-pbuilder debian bookworm arm64
-create-pbuilder debian bookworm armhf
+for distribution in ${debianDistributions} ; do
+   for architecture in amd64 arm64 ; do
+      create-pbuilder debian "${distribution}" "${architecture}"
+   done
+done
 
-create-pbuilder debian bullseye amd64
-create-pbuilder debian bullseye arm64
-create-pbuilder debian bullseye armhf
-
-create-pbuilder debian buster   amd64
-create-pbuilder debian buster   arm64
-create-pbuilder debian buster   armhf
-
-create-pbuilder debian unstable amd64
-create-pbuilder debian unstable arm64
-create-pbuilder debian unstable i386
-
-create-pbuilder debian unstable arm64
-create-pbuilder debian unstable armhf
-create-pbuilder debian unstable i386
-create-pbuilder debian unstable m68k
-create-pbuilder debian unstable riscv64
-create-pbuilder debian unstable ppc64el
-create-pbuilder debian unstable s390x
-create-pbuilder debian unstable armel
-create-pbuilder debian unstable mipsel
+for distribution in unstable ; do
+   for architecture in amd64 arm64 i386 m68k riscv64 ppc64el s390x mipsel ; do
+      create-pbuilder debian "${distribution}" "${architecture}"
+   done
+done
 
 wait
