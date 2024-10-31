@@ -19,7 +19,8 @@
 # Contact: thomas.dreibholz@gmail.com
 
 # Using Ubuntu as base, since it includes the Debian keyring packages:
-FROM --platform=${BUILDPLATFORM} ubuntu:latest
+ARG BASE="ubuntu:latest"
+FROM --platform=${BUILDPLATFORM} ${BASE}
 
 COPY pbuilderrc /etc
 RUN <<EOF

@@ -18,8 +18,10 @@
 #
 # Contact: thomas.dreibholz@gmail.com
 
-FROM --platform=${BUILDPLATFORM} dreibh/td-build-tools-pbuilder:latest
+ARG OS="ubuntu"
+FROM --platform=${BUILDPLATFORM} dreibh/td-build-tool-pbuilder-${OS}-base:latest
 
+# NOTE: ARGs must be declared again here, since they disappear after FROM!
 ARG OS="ubuntu"
 ARG DIST="plucky"
 ARG ARCH="amd64"

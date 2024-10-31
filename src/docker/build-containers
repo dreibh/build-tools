@@ -30,19 +30,22 @@ export BUILDKIT_COLORS="run=123,20,245:error=yellow:cancel=blue:warning=white"
 docker buildx create --name insecure-builder --buildkitd-flags '--allow-insecure-entitlement security.insecure' || true
 
 # ====== Base image with PBuilder and QEMU ==================================
-docker buildx build --push --builder insecure-builder --progress=plain \
-   --file=Dockerfile.td-build-tools-pbuilder \
-   --tag dreibh/td-build-tools-pbuilder:latest \
-   .
+for os in  ubuntu ; do
+   docker buildx build --push --builder insecure-builder --progress=plain \
+      --file Dockerfile.td-build-tool-pbuilder-base \
+      --tag  "dreibh/td-build-tool-pbuilder-${os}-base:latest" \
+      --build-arg BASE="${os}:latest" \
+      .
+done
 
 # ====== Initialised PBuilder with certain Distribution/Architecture ========
 os=ubuntu
 for distribution in noble ; do
-   for architecture in amd64 arm64 ; do
+   for architecture in amd64 ; do
       docker buildx build --load --builder insecure-builder --progress=plain \
+         --file Dockerfile.td-build-tool-pbuilder-builder \
+         --tag  "dreibh/td-build-tool-pbuilder-${os}-${distribution}-${architecture}:latest" \
          --allow security.insecure \
-         --file=Dockerfile.ubuntu-pbuilder \
-         --tag "dreibh/td-build-tools-pbuilder-${os}-${distribution}-${architecture}:latest" \
          --build-arg OS="${os}" \
          --build-arg DIST="${distribution}" \
          --build-arg ARCH="${architecture}" \
