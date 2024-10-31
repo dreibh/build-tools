@@ -30,7 +30,7 @@ export BUILDKIT_COLORS="run=123,20,245:error=yellow:cancel=blue:warning=white"
 docker buildx create --name insecure-builder --buildkitd-flags '--allow-insecure-entitlement security.insecure' || true
 
 # ====== Base image with PBuilder and QEMU ==================================
-for os in  ubuntu ; do
+for os in debian ubuntu ; do
    docker buildx build --push --builder insecure-builder --progress=plain \
       --file Dockerfile.td-build-tool-pbuilder-base \
       --tag  "dreibh/td-build-tool-pbuilder-${os}-base:latest" \
@@ -39,16 +39,45 @@ for os in  ubuntu ; do
 done
 
 # ====== Initialised PBuilder with certain Distribution/Architecture ========
-os=ubuntu
-for distribution in noble ; do
-   for architecture in amd64 ; do
-      docker buildx build --load --builder insecure-builder --progress=plain \
-         --file Dockerfile.td-build-tool-pbuilder-builder \
-         --tag  "dreibh/td-build-tool-pbuilder-${os}-${distribution}-${architecture}:latest" \
-         --allow security.insecure \
-         --build-arg OS="${os}" \
-         --build-arg DIST="${distribution}" \
-         --build-arg ARCH="${architecture}" \
-         .
+
+# ------ Settings for Debian ------------------------------------------------
+# debianDistributions="$( (
+#    debian-distro-info --stable
+#    debian-distro-info --oldstable
+#    debian-distro-info --testing
+#    echo "unstable"
+# ) | sort -u)"
+debianDistributions="bookworm"
+debianArchitectures="amd64 arm64"
+
+# ------ Settings for Ubuntu ------------------------------------------------
+# ubuntuDistributions="$( (
+#    ubuntu-distro-info --stable
+#    ubuntu-distro-info --supported
+#    ubuntu-distro-info --supported-esm
+#    ubuntu-distro-info --devel
+# ) | sort -u)"
+ubuntuDistributions="noble"
+ubuntuArchitectures="amd64"
+
+for os in debian ubuntu ; do
+   if [ "${os}" == "debian" ] ; then
+      distributions="${debianDistributions}"
+      architectures="${debianArchitectures}"
+   else
+      distributions="${ubuntuDistributions}"
+      architectures="${ubuntuArchitectures}"
+   fi
+   for distribution in ${distributions} ; do
+      for architecture in ${architectures} ; do
+         docker buildx build --push --builder insecure-builder --progress=plain \
+            --file Dockerfile.td-build-tool-pbuilder-builder \
+            --tag  "dreibh/td-build-tool-pbuilder-${os}-${distribution}-${architecture}:latest" \
+            --allow security.insecure \
+            --build-arg OS="${os}" \
+            --build-arg DIST="${distribution}" \
+            --build-arg ARCH="${architecture}" \
+            .
+      done
    done
 done
