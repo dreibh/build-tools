@@ -21,16 +21,20 @@ set -e
 
 
 # ====== Initialise =========================================================
+. /etc/os-release
 if [ "${OS}" == "" ] ; then
-   OS="$(lsb_release -is)"
-   OS="${OS,,}"
+   OS="${ID}"
 fi
 if [ "${DIST}" == "" ] ; then
-   DIST="$(lsb_release -cs)"
+   DIST="${VERSION_CODENAME}"
+   if [ "${DIST}" == "" ] ; then
+      DIST="${VERSION_ID}"
+   fi
 fi
 if [ "${ARCH}" == "" ] ; then
    ARCH="$(dpkg --print-architecture)"
 fi
+echo "Initialising PBuilder: OS=${OS} DIST=${DIST} ARCH=${ARCH}"
 
 
 # ====== Settings ===========================================================
