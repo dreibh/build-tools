@@ -27,10 +27,14 @@ RUN <<EOF
    apt update -qq
    apt dist-upgrade -y -qq
    env DEBIAN_FRONTEND=noninteractive apt install -qq -y --no-install-recommends \
+      bash-completion \
       debian-archive-keyring \
       debian-ports-archive-keyring \
       eatmydata \
       fakeroot \
+      iproute2 \
+      joe \
+      less \
       pbuilder \
       pigz \
       qemu-user-static
