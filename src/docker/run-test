@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+#
+# Unified Build Tool
+# Copyright (C) 2021-2024 by Thomas Dreibholz
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Contact: thomas.dreibholz@gmail.com
+
+set -eu
+
+os=ubuntu
+distribution=noble
+architecture=amd64
+
+os=debian
+distribution=bookworm
+architecture=arm64
+
+mkdir -p input
+mkdir -p output
+rm -f output/*
+
+mkdir -p "/var/tmp/aptcache/${os}-${distribution}-${architecture}"
+
+docker run --rm -it --privileged \
+   --volume "$(pwd)/input":/input:ro \
+   --volume "$(pwd)/output":"/var/cache/pbuilder/result/${os}-${distribution}-${architecture}" \
+   --volume "/var/tmp/aptcache/${os}-${distribution}-${architecture}":"/var/cache/pbuilder/aptcache/${os}-${distribution}-${architecture}" \
+   "dreibh/td-build-tool-pbuilder-${os}-${distribution}-${architecture}:latest" \
+   bash
+   #-c "find /input -maxdepth 1 -name '*.dsc' | xargs -n1 -r env OS="${os}" DIST="${distribution}" ARCH="${architecture}" pbuilder build"
