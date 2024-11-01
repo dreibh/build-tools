@@ -30,6 +30,10 @@ os=debian
 distribution=unstable
 architecture=m68k
 
+os=fedora
+distribution=41
+architecture=x86_64
+
 
 mkdir -p input
 mkdir -p output
@@ -37,9 +41,20 @@ rm -f output/*
 
 mkdir -p "/var/tmp/aptcache/${os}-${distribution}-${architecture}"
 
+
+# ====== Run PBuilder =======================================================
+# docker run --rm -it --privileged \
+#    --volume "$(pwd)/input":/input:ro \
+#    --volume "$(pwd)/output":"/var/cache/pbuilder/result/${os}-${distribution}-${architecture}" \
+#    --volume "/var/tmp/aptcache/${os}-${distribution}-${architecture}":"/var/cache/pbuilder/aptcache/${os}-${distribution}-${architecture}" \
+#    "dreibh/td-build-tool-pbuilder-${os}-${distribution}-${architecture}:latest" \
+#    bash -c "find /input -maxdepth 1 -name '*.dsc' | xargs -n1 -r env OS="${os}" DIST="${distribution}" ARCH="${architecture}" pbuilder build"
+
+
+# ====== Run Mock ===========================================================
 docker run --rm -it --privileged \
    --volume "$(pwd)/input":/input:ro \
    --volume "$(pwd)/output":"/var/cache/pbuilder/result/${os}-${distribution}-${architecture}" \
    --volume "/var/tmp/aptcache/${os}-${distribution}-${architecture}":"/var/cache/pbuilder/aptcache/${os}-${distribution}-${architecture}" \
-   "dreibh/td-build-tool-pbuilder-${os}-${distribution}-${architecture}:latest" \
-   bash -c "find /input -maxdepth 1 -name '*.dsc' | xargs -n1 -r env OS="${os}" DIST="${distribution}" ARCH="${architecture}" pbuilder build"
+   "dreibh/td-build-tool-mock-${os}-${distribution}-${architecture}:latest" \
+   bash

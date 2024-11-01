@@ -1,0 +1,47 @@
+# syntax=docker/dockerfile:1-labs
+#
+# Unified Build Tool
+# Copyright (C) 2021-2024 by Thomas Dreibholz
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Contact: thomas.dreibholz@gmail.com
+
+ARG OS="fedora"
+FROM --platform=${BUILDPLATFORM} dreibh/td-build-tool-mock-${OS}-base:latest
+
+# NOTE: ARGs must be declared again here, since they disappear after FROM!
+ARG OS="fedora"
+ARG DIST="41"
+ARG ARCH="x86_64"
+
+COPY pbuilderrc /etc
+
+RUN --security=insecure <<EOF
+   # ====== Initialise Mock =================================================
+   echo "Initialising Mock: OS=${OS} DIST=${DIST} ARCH=${ARCH}"
+
+   groupadd -f mock
+
+   (
+      shopt -s extglob
+      ppa="config_opts['dnf.conf'] = \"\"\"\n[copr-dreibh-ppa]\nname=Copr repo for ppa owned by dreibh\nbaseurl=https://copr-be.cloud.fedoraproject.org/results/dreibh/ppa/fedora-\$releasever-\$basearch/\ntype=rpm-md\nskip_if_unavailable=True\ngpgcheck=1\ngpgkey=https://copr-be.cloud.fedoraproject.org/results/dreibh/ppa/pubkey.gpg\nrepo_gpgcheck=0\nenabled=1\n\"\"\""
+      ppa="${ppa//+( )$/\\n}"
+      echo -e "${ppa}"
+      cat /etc/mock/${OS}-${DIST}-${ARCH}.cfg
+   ) >/etc/mock/${OS}-${DIST}-${ARCH}.cfg.new
+   mv /etc/mock/${OS}-${DIST}-${ARCH}.cfg.new /etc/mock/${OS}-${DIST}-${ARCH}.cfg
+
+   mock -r /etc/mock/${OS}-${DIST}-${ARCH}.cfg --isolation=auto --init
+EOF

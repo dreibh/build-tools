@@ -26,55 +26,92 @@ cp ../pbuilderrc .
 export BUILDKIT_COLORS="run=123,20,245:error=yellow:cancel=blue:warning=white"
 
 
-# ====== Prepare insecure builder ===========================================
-docker buildx create --name insecure-builder --buildkitd-flags '--allow-insecure-entitlement security.insecure' || true
+# # ====== Prepare insecure builder ===========================================
+# docker buildx create --name insecure-builder --buildkitd-flags '--allow-insecure-entitlement security.insecure' || true
+#
+# # ====== Base image with PBuilder and QEMU ==================================
+# for os in debian ubuntu ; do
+#    docker buildx build --push --builder insecure-builder --progress=plain \
+#       --file Dockerfile.td-build-tool-pbuilder-base \
+#       --tag  "dreibh/td-build-tool-pbuilder-${os}-base:latest" \
+#       --build-arg BASE="${os}:latest" \
+#       .
+# done
 
-# ====== Base image with PBuilder and QEMU ==================================
-for os in debian ubuntu ; do
+
+# # ====== Base image with Mock and QEMU ====================================
+# FIXME! Not Using "latest" Fedora base image here, due to AppArmor(?) permissions issue
+# => https://github.com/rpm-software-management/mock/issues/1487
+for os in fedora ; do
    docker buildx build --push --builder insecure-builder --progress=plain \
-      --file Dockerfile.td-build-tool-pbuilder-base \
-      --tag  "dreibh/td-build-tool-pbuilder-${os}-base:latest" \
-      --build-arg BASE="${os}:latest" \
+      --file Dockerfile.td-build-tool-mock-base \
+      --tag  "dreibh/td-build-tool-mock-${os}-base:latest" \
+      --build-arg BASE="${os}:39" \
       .
 done
 
-# ====== Initialised PBuilder with certain Distribution/Architecture ========
 
-# ------ Settings for Debian ------------------------------------------------
-# debianDistributions="$( (
-#    debian-distro-info --stable
-#    debian-distro-info --oldstable
-#    debian-distro-info --testing
-#    echo "unstable"
-# ) | sort -u)"
-debianDistributions="bookworm"
-debianArchitectures="amd64 arm64"
-# debianDistributions="unstable"
-# debianArchitectures="m68k"
+# # ====== Initialise PBuilder with certain Distribution/Architecture =========
+#
+# # ------ Settings for Debian ------------------------------------------------
+# # debianDistributions="$( (
+# #    debian-distro-info --stable
+# #    debian-distro-info --oldstable
+# #    debian-distro-info --testing
+# #    echo "unstable"
+# # ) | sort -u)"
+# debianDistributions="bookworm"
+# debianArchitectures="amd64 arm64"
+# # debianDistributions="unstable"
+# # debianArchitectures="m68k"
+#
+# # ------ Settings for Ubuntu ------------------------------------------------
+# # ubuntuDistributions="$( (
+# #    ubuntu-distro-info --stable
+# #    ubuntu-distro-info --supported
+# #    ubuntu-distro-info --supported-esm
+# #    ubuntu-distro-info --devel
+# # ) | sort -u)"
+# ubuntuDistributions="noble"
+# ubuntuArchitectures="amd64"
+#
+# for os in debian ubuntu ; do
+#    if [ "${os}" == "debian" ] ; then
+#       distributions="${debianDistributions}"
+#       architectures="${debianArchitectures}"
+#    else
+#       distributions="${ubuntuDistributions}"
+#       architectures="${ubuntuArchitectures}"
+#    fi
+#    for distribution in ${distributions} ; do
+#       for architecture in ${architectures} ; do
+#          docker buildx build --push --builder insecure-builder --progress=plain \
+#             --file Dockerfile.td-build-tool-pbuilder-builder \
+#             --tag  "dreibh/td-build-tool-pbuilder-${os}-${distribution}-${architecture}:latest" \
+#             --allow security.insecure \
+#             --build-arg OS="${os}" \
+#             --build-arg DIST="${distribution}" \
+#             --build-arg ARCH="${architecture}" \
+#             .
+#       done
+#    done
+# done
 
-# ------ Settings for Ubuntu ------------------------------------------------
-# ubuntuDistributions="$( (
-#    ubuntu-distro-info --stable
-#    ubuntu-distro-info --supported
-#    ubuntu-distro-info --supported-esm
-#    ubuntu-distro-info --devel
-# ) | sort -u)"
-ubuntuDistributions="noble"
-ubuntuArchitectures="amd64"
 
-for os in debian ubuntu ; do
-   if [ "${os}" == "debian" ] ; then
-      distributions="${debianDistributions}"
-      architectures="${debianArchitectures}"
-   else
-      distributions="${ubuntuDistributions}"
-      architectures="${ubuntuArchitectures}"
-   fi
+# ====== Initialise Mock with certain Distribution/Architecture =============
+fedoraDistributions="41"
+fedoraArchitectures="x86_64"
+# aarch64 i386 ppc64le s390x x86_64
+
+for os in fedora ; do
+   distributions="${fedoraDistributions}"
+   architectures="${fedoraArchitectures}"
+
    for distribution in ${distributions} ; do
       for architecture in ${architectures} ; do
          docker buildx build --push --builder insecure-builder --progress=plain \
-            --file Dockerfile.td-build-tool-pbuilder-builder \
-            --tag  "dreibh/td-build-tool-pbuilder-${os}-${distribution}-${architecture}:latest" \
+            --file Dockerfile.td-build-tool-mock-builder \
+            --tag  "dreibh/td-build-tool-mock-${os}-${distribution}-${architecture}:latest" \
             --allow security.insecure \
             --build-arg OS="${os}" \
             --build-arg DIST="${distribution}" \
