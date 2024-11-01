@@ -25,8 +25,11 @@ distribution=noble
 architecture=amd64
 
 os=debian
-distribution=bookworm
-architecture=arm64
+# distribution=bookworm
+# architecture=arm64
+distribution=unstable
+architecture=m68k
+
 
 mkdir -p input
 mkdir -p output
@@ -39,5 +42,4 @@ docker run --rm -it --privileged \
    --volume "$(pwd)/output":"/var/cache/pbuilder/result/${os}-${distribution}-${architecture}" \
    --volume "/var/tmp/aptcache/${os}-${distribution}-${architecture}":"/var/cache/pbuilder/aptcache/${os}-${distribution}-${architecture}" \
    "dreibh/td-build-tool-pbuilder-${os}-${distribution}-${architecture}:latest" \
-   bash
-   #-c "find /input -maxdepth 1 -name '*.dsc' | xargs -n1 -r env OS="${os}" DIST="${distribution}" ARCH="${architecture}" pbuilder build"
+   bash -c "find /input -maxdepth 1 -name '*.dsc' | xargs -n1 -r env OS="${os}" DIST="${distribution}" ARCH="${architecture}" pbuilder build"

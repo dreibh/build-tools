@@ -18,7 +18,6 @@
 #
 # Contact: thomas.dreibholz@gmail.com
 
-# Using Ubuntu as base, since it includes the Debian keyring packages:
 ARG BASE="ubuntu:latest"
 FROM --platform=${BUILDPLATFORM} ${BASE}
 

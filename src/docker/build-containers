@@ -49,6 +49,8 @@ done
 # ) | sort -u)"
 debianDistributions="bookworm"
 debianArchitectures="amd64 arm64"
+# debianDistributions="unstable"
+# debianArchitectures="m68k"
 
 # ------ Settings for Ubuntu ------------------------------------------------
 # ubuntuDistributions="$( (
