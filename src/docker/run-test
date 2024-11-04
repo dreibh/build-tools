@@ -40,6 +40,7 @@ mkdir -p output
 rm -f output/*
 
 mkdir -p "/var/tmp/aptcache/${os}-${distribution}-${architecture}"
+mkdir -p "/var/tmp/rpmcache/${os}-${distribution}-${architecture}"
 
 
 # ====== Run PBuilder =======================================================
@@ -54,7 +55,14 @@ mkdir -p "/var/tmp/aptcache/${os}-${distribution}-${architecture}"
 # ====== Run Mock ===========================================================
 docker run --rm -it --privileged \
    --volume "$(pwd)/input":/input:ro \
-   --volume "$(pwd)/output":"/var/cache/pbuilder/result/${os}-${distribution}-${architecture}" \
-   --volume "/var/tmp/aptcache/${os}-${distribution}-${architecture}":"/var/cache/pbuilder/aptcache/${os}-${distribution}-${architecture}" \
+   --volume "$(pwd)/output":"/var/lib/mock/${os}-${distribution}-${architecture}/result" \
+   --volume "/var/tmp/rpmcache/${os}-${distribution}-${architecture}":"/var/cache/mock/${os}-${distribution}-${architecture}" \
    "dreibh/td-build-tool-mock-${os}-${distribution}-${architecture}:latest" \
    bash
+
+
+os=fedora
+distribution=41
+architecture=x86_64
+mock -r /etc/mock/${os}-${distribution}-${architecture}.cfg --isolation=auto --resultdir /output --installdeps /input/*.rpm
+mock -r /etc/mock/${os}-${distribution}-${architecture}.cfg --isolation=auto --resultdir /output --rebuild --offline --no-clean --no-cleanup-after /input/*.rpm

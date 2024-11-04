@@ -36,6 +36,7 @@ RUN <<EOF
       less \
       pbuilder \
       pigz \
-      qemu-user-static
+      qemu-user-static \
+      tree
    apt clean
 EOF

@@ -29,5 +29,6 @@ RUN <<EOF
       mock \
       joe \
       pigz \
-      qemu-user-static
+      qemu-user-static \
+      tree
 EOF
