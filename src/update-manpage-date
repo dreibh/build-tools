@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -eu
+
+today="$(LC_ALL=C.UTF-8 date +"%B, %d %Y")"
+echo "$today"
+
+while [ $# -gt 0 ] ; do
+   echo >&2 "====== $1 ======"
+   sed -e "s/^\.Dd [A-Z].*$/.Dd ${today}/" -i "$1"
+   shift
+done
