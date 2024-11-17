@@ -1,6 +1,6 @@
-td-build-tools (0.0.0~alpha2-1ubuntu1) noble; urgency=medium
+td-build-tools (0.0.0~alpha4-1ubuntu1) noble; urgency=medium
 
   * New upstream release.
   * Closes: #xxxxxx (ITP).
 
- -- Thomas Dreibholz <thomas.dreibholz@gmail.com>  Fri, 11 Oct 2024 12:11:10 +0200
+ -- Thomas Dreibholz <thomas.dreibholz@gmail.com>  Sun, 17 Nov 2024 12:11:20 +0100
