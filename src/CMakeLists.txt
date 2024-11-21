@@ -21,8 +21,17 @@
 #### PROGRAMS                                                            ####
 #############################################################################
 
-INSTALL(PROGRAMS build-tool DESTINATION ${CMAKE_INSTALL_BINDIR})
-INSTALL(FILES build-tool.1  DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
+INSTALL(PROGRAMS    build-tool   DESTINATION ${CMAKE_INSTALL_BINDIR})
+INSTALL(FILES       build-tool.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
+INSTALL(FILES       build-tool.bash-completion
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/bash-completion/completions
+        RENAME      build-tool)
+
+INSTALL(PROGRAMS version-bump DESTINATION ${CMAKE_INSTALL_BINDIR})
+INSTALL(FILES version-bump.1  DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
+INSTALL(FILES       version-bump.bash-completion
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/bash-completion/completions
+        RENAME      version-bump)
 
 
 #############################################################################

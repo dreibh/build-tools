@@ -1,4 +1,4 @@
-.\" build-tool
+.\" version-bump
 .\" Copyright (C) 2013-2025 by Thomas Dreibholz
 .\"
 .\" This program is free software: you can redistribute it and/or modify
@@ -18,52 +18,24 @@
 .\"
 .\" ###### Setup ############################################################
 .Dd November 21, 2024
-.Dt build-tool 1
-.Os build-tool
+.Dt version-bump 1
+.Os version-bump
 .\" ###### Name #############################################################
 .Sh NAME
-.Nm build-tool
-.Nd Build Tool
+.Nm version-bump
+.Nd Version Bump
 .\" ###### Synopsis #########################################################
 .Sh SYNOPSIS
-
-.Nm build-tool info
-
-.Nm build-tool make-source-tarball
-.Op Fl Fl skip-signing
-
-.Nm build-tool build-deb
-.Op Fl Fl summary=file
-codename ...
-.Op Fl Fl skip-signing
-.Op Fl Fl architecture=arch[,...]
-
-.Nm build-tool fetch-debian-changelog
-codename
-
-.Nm build-tool make-source-rpm
-.Op Fl Fl summary=file
-.Op Fl Fl summary=file
-release ...
-.Op Fl Fl skip-signing
-
-.Nm build-tool build-rpm
-.Op Fl Fl summary=file
-release ...
-.Op Fl Fl skip-signing
-.Op Fl Fl architecture=arch[,...]
-
+.Op Fl M | Fl Fl major
+.Op Fl m | Fl Fl minor
+.Op Fl p | Fl Fl patch
+.Op Fl p | Fl Fl extra | Fl Fl extra=label
+.Op Fl r | Fl Fl release
+.Op Fl distribution codename
 .\" ###### Description ######################################################
 .Sh DESCRIPTION
-Build Tool is a tool to help creating and maintaining package
-builds for Debian/Ubuntu, Fedora, FreeBSD and other systems.
-It performs the following tasks:
-.Bl -tag -width indent
-.It creating a source tarball,
-.It creating a source package (Debian/Ubuntu, Fedora, etc.),
-.It building binary packages from the source package (including
-cross-architecture builds).
-.El
+Version Bump is a tool to help creating versioned packages
+with Git and Build Tool.
 .Pp
 .\" ###### Arguments ########################################################
 .Sh ARGUMENTS
@@ -77,5 +49,10 @@ FIXME! TBD
 .\" ###### Examples #########################################################
 .Sh EXAMPLES
 .Bl -tag -width indent
-.It build-tool
+.It version-bump
+.It version-bump -M
+.It version-bump -m
+.It version-bump -p
+.It version-bump -e
+.It version-bump -M --extra=rc1
 .El
