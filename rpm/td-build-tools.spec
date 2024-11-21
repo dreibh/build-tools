@@ -1,5 +1,5 @@
 Name: td-build-tools
-Version: 0.0.0~alpha4
+Version: 0.0.0~alpha5
 Release: 1
 Summary: Build tools
 Group: Applications/System
