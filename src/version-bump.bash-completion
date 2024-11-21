@@ -19,8 +19,8 @@
 # Contact: thomas.dreibholz@gmail.com
 
 
-# ###### Bash completion for build-tool #####################################
-_build_tool()
+# ###### Bash completion for version-bump ###################################
+_version_bump()
 {
    # Based on: https://www.benningtons.net/index.php/bash-completion/
    local cur prev words cword
@@ -47,9 +47,18 @@ _build_tool()
 
    # ====== All options =====================================================
    local opts="
---architecture=
---skip-signing
---summary=
+-M
+--major
+-m
+--minor
+-p
+--patch
+-p
+--extra
+--extra=
+-r
+--release
+-distribution
 "
    # shellcheck disable=SC2207
    COMPREPLY=( $( compgen -W "${opts}" -- "${cur}" ) )
@@ -57,4 +66,4 @@ _build_tool()
    return 0
 }
 
-complete -F _build_tool build-tool
+complete -F _version_bump version-bump
