@@ -32,7 +32,7 @@ Recommends: licenserecon,
             rpmlint,
             td-system-info,
             td-system-maintenance
-Description: Build tool
+Description: Build Tool
  Build Tool is a tool to help creating and maintaining package
  builds for Debian/Ubuntu, Fedora, FreeBSD and other systems.
  It performs the following tasks:
@@ -41,9 +41,32 @@ Description: Build tool
  building binary packages from the source package (including
  cross-architecture builds).
 
+Package: td-version-bump
+Architecture: all
+Depends: blhc,
+         build-essential,
+         debhelper,
+         debian-archive-keyring,
+         debian-ports-archive-keyring,
+         distro-info,
+         gnupg2,
+         pbuilder,
+         pigz,
+         python3,
+         python3-distro,
+         qemu-system,
+         qemu-user-static,
+         reprepro,
+         ${misc:Depends}
+Recommends: td-build-tool
+Description: Version Bump
+ Version Bump is a tool to help creating versioned packages
+ with Git and Build Tool.
+
 Package: td-build-tools
 Architecture: all
 Depends: td-build-tool,
+         td-version-bump,
          ${misc:Depends}
 Recommends: td-system-tools
 Description: Metapackage for build tools

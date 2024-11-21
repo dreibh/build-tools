@@ -1,2 +1,3 @@
 usr/bin/build-tool
+usr/share/bash-completion/completions/build-tool
 usr/share/build-tools/pbuilderrc
