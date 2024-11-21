@@ -13,6 +13,7 @@ BuildRequires: gcc
 BuildRequires: gcc-c++
 BuildRoot: %{_tmppath}/%{name}-%{version}-build
 
+BuildArch: noarch
 Requires: %{name}-build-tool = %{version}-%{release}
 Requires: %{name}-version-bump = %{version}-%{release}
 
@@ -43,6 +44,8 @@ This package is a metapackage for the build tools.
 
 %package build-tool
 Summary: Build Tool
+BuildArch: noarch
+Requires: python3
 Requires: mock
 Requires: rpm
 Requires: rpmlint
@@ -59,11 +62,14 @@ cross-architecture builds).
 %files build-tool
 %{_bindir}/build-tool
 %{_datadir}/bash-completion/completions/build-tool
+%{_datadir}/build-tools/pbuilderrc
 %{_mandir}/man1/build-tool.1.gz
 
 
 %package version-bump
 Summary: Version Bump
+BuildArch: noarch
+Requires: python3
 Recommends: %{name}-build-tool = %{version}-%{release}
 
 %description version-bump
