@@ -2,7 +2,7 @@
 
 set -eu
 
-today="$(LC_ALL=C.UTF-8 date +"%B, %d %Y")"
+today="$(LC_ALL=C.UTF-8 date +"%B %d, %Y")"
 echo "$today"
 
 while [ $# -gt 0 ] ; do
