@@ -43,20 +43,7 @@ Description: Build Tool
 
 Package: td-version-bump
 Architecture: all
-Depends: blhc,
-         build-essential,
-         debhelper,
-         debian-archive-keyring,
-         debian-ports-archive-keyring,
-         distro-info,
-         gnupg2,
-         pbuilder,
-         pigz,
-         python3,
-         python3-distro,
-         qemu-system,
-         qemu-user-static,
-         reprepro,
+Depends: python3,
          ${misc:Depends}
 Recommends: td-build-tool
 Description: Version Bump
