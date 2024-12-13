@@ -102,19 +102,19 @@ if [ ! -e /usr/share/keyrings/debian-ports-archive-keyring.gpg ] ; then
 fi
 
 
-# ====== Ubuntu =============================================================
-ubuntuDistributions="$( (
-   ubuntu-distro-info --stable
-#    ubuntu-distro-info --supported
-#    ubuntu-distro-info --supported-esm
-#    ubuntu-distro-info --devel
-) | sort -u)"
-
-for distribution in ${ubuntuDistributions} ; do
-   for architecture in amd64 arm64 ; do
-      create-pbuilder ubuntu "${distribution}" "${architecture}"
-   done
-done
+# # ====== Ubuntu =============================================================
+# ubuntuDistributions="$( (
+#    ubuntu-distro-info --stable
+# #    ubuntu-distro-info --supported
+# #    ubuntu-distro-info --supported-esm
+# #    ubuntu-distro-info --devel
+# ) | sort -u)"
+#
+# for distribution in ${ubuntuDistributions} ; do
+#    for architecture in amd64 arm64 ; do
+#       create-pbuilder ubuntu "${distribution}" "${architecture}"
+#    done
+# done
 
 # ====== Debian =============================================================
 debianDistributions="$( (
@@ -122,6 +122,7 @@ debianDistributions="$( (
 #    debian-distro-info --oldstable
 #    debian-distro-info --testing
    echo "unstable"
+   echo "trixie"
 ) | sort -u)"
 
 for distribution in ${debianDistributions} ; do
@@ -131,11 +132,11 @@ for distribution in ${debianDistributions} ; do
    done
 done
 
-for distribution in unstable ; do
-#    for architecture in amd64 arm64 armhf i386 m68k riscv64 ppc64el s390x mipsel ; do
-   for architecture in amd64 arm64 ; do
-      create-pbuilder debian "${distribution}" "${architecture}"
-   done
-done
+# for distribution in unstable ; do
+# #    for architecture in amd64 arm64 armhf i386 m68k riscv64 ppc64el s390x mipsel ; do
+#    for architecture in amd64 arm64 ; do
+#       create-pbuilder debian "${distribution}" "${architecture}"
+#    done
+# done
 
 wait
