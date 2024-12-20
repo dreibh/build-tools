@@ -47,7 +47,8 @@ rm -f ${DIFF_FILE} exclude.list
 git ls-files . | xargs -I {} sudo cp "{}" "/usr/ports/${CATEGORY}/${PACKAGE}/{}"
 dir="$(pwd)"
 pushd /usr/ports/${CATEGORY}/${PACKAGE} >/dev/null
-sudo git diff >"${dir}/${DIFF_FILE}"
+sudo git diff . >"${dir}/${DIFF_FILE}"
+sudo git diff --cached . >>"${dir}/${DIFF_FILE}"
 sudo chown ${USER}:${USER} "${dir}/${DIFF_FILE}"
 popd >/dev/null
 
