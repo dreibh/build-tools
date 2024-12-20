@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+#
+# FreeBSD Packaging Helper Script
+# Copyright (C) 2010-2024 by Thomas Dreibholz
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Contact: thomas.dreibholz@gmail.com
+
+set -eu
+
+PACKAGE=`cat Makefile | grep "^PORTNAME=" | sed -e "s/PORTNAME=//g" | tr -d "\t"`
+UPSTREAM_VERSION=`cat Makefile | grep "^DISTVERSION=" | sed -e "s/DISTVERSION=//g" | tr -d "\t"`
+CATEGORY=`cat Makefile | grep "^CATEGORIES=" | sed -e "s/CATEGORIES=//g" | tr -d "\t"`
+MASTER_SITES=`cat Makefile | grep "^MASTER_SITES=" | sed -e "s/MASTER_SITES=//g" | tr -d "\t"`
+
+echo "######################################################################"
+echo "PACKAGE:          ${PACKAGE}"
+echo "UPSTREAM_VERSION: ${UPSTREAM_VERSION}"
+echo "CATEGORY:         ${CATEGORY}"
+echo "MASTER_SITES:     ${MASTER_SITES}"
+echo "######################################################################"
+
+
+PACKAGING_FILES="Makefile distinfo pkg-descr pkg-plist"
+
+if [ ! -d /usr/ports/${CATEGORY}/${PACKAGE} ] ; then
+   echo >&2 "ERROR: There is not port ${CATEGORY}/${PACKAGE} under /usr/ports!"
+   exit 1
+fi
+
+DIFF_FILE="${PACKAGE}-${UPSTREAM_VERSION}.diff"
+rm -f ${DIFF_FILE} exclude.list
+
+# ====== Create diff ========================================================
+git ls-files . | xargs -I {} sudo cp "{}" "/usr/ports/${CATEGORY}/${PACKAGE}/{}"
+dir="$(pwd)"
+pushd /usr/ports/${CATEGORY}/${PACKAGE} >/dev/null
+sudo git diff >"${dir}/${DIFF_FILE}"
+sudo chown ${USER}:${USER} "${dir}/${DIFF_FILE}"
+popd >/dev/null
+
+
+# ====== Show results =======================================================
+colordiff <${DIFF_FILE} 
+echo ""
+echo "Results written to ${DIFF_FILE}"
+echo ""
+
+
+# ====== Show FreeBSD Update Bug template ===================================
+URL=`echo "${MASTER_SITES}" | sed -e 's#download[/]*$##g'`
+
+echo "====== FreeBSD Update Bug template =========================================="
+echo ""
+echo "Summary: ${CATEGORY}/${PACKAGE}: Update to new release ${UPSTREAM_VERSION}"
+echo ""
+echo "Product: Ports & Packages"
+echo "Component: Individual Ports"
+echo "URL: ${URL}"
+echo ""
+echo "Description:"
+echo "---"
+echo "The latest upstream version of ${PACKAGE} is ${UPSTREAM_VERSION}."
+echo "Therefore, the port ${CATEGORY}/${PACKAGE} needs an update."
+echo ""
+echo "Fix: The updated diff file ${DIFF_FILE} is attached."
+echo "---"
+echo ""
+echo "============================================================================="
+echo ""
+echo "Submit here: https://bugs.freebsd.org/bugzilla/enter_bug.cgi?product=Ports%20%26%20Packages&component=Individual%20Port%28s%29"
+echo ""
+
+if [ -d ~/diff/ ] ; then
+   echo "Copying ${DIFF_FILE} to ~/diff/ ..."
+   cp ${DIFF_FILE} ~/diff/
+fi
