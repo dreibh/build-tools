@@ -50,8 +50,10 @@ echo "force-unsafe-io" >/etc/dpkg/dpkg.cfg.d/force-unsafe-io
       echo "deb http://dk.archive.ubuntu.com/ubuntu/ ${dist}-updates main universe restricted "
       echo "# deb-src http://dk.archive.ubuntu.com/ubuntu/ ${dist}-updates main universe restricted"
    elif [ "${os}" == "debian" ] ; then
-      echo "deb http://security.debian.org/debian-security ${dist}-security main non-free-firmware"
-      echo "# deb-src http://security.debian.org/debian-security ${dist}-security main non-free-firmware"
+      if [ "${dist}" != "unstable" ] ; then
+         echo "deb http://security.debian.org/debian-security ${dist}-security main non-free-firmware"
+         echo "# deb-src http://security.debian.org/debian-security ${dist}-security main non-free-firmware"
+      fi
    fi
 ) >>/etc/apt/sources.list
 # Add PPA for Ubuntu:
@@ -102,7 +104,16 @@ if [ ! -e /usr/share/keyrings/debian-ports-archive-keyring.gpg ] ; then
 fi
 
 
-# # ====== Ubuntu =============================================================
+# !!!!!! TEST ONLY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+# create-pbuilder debian unstable amd64
+
+# wait
+# exit 1
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+# ====== Ubuntu =============================================================
 ubuntuDistributions="$( (
    ubuntu-distro-info --stable
    ubuntu-distro-info --supported
