@@ -31,17 +31,17 @@ create-pbuilder ()
    local logfile="${name}.log"
 
    if [ ! -e "/var/cache/pbuilder/${name}-base.tgz" ] ; then
-      startTime=`date +%FT%H:%M:%S`
+      startTime=$(date +%FT%H:%M:%S)
       echo "${startTime}: Starting to build ${name}, logfile is ${logfile} ..."
 
       # ====== pbuilder =====================================================
       (
          (
             echo "OS=${os} DIST=${dist} ARCH=${arch}"
-            sudo OS=${os} DIST=${dist} ARCH=${arch} pbuilder create | \
+            sudo OS="${os}" DIST="${dist}" ARCH="${arch}" pbuilder create | \
                ( grep -v "^I: Retrieving\|^I: Validating\|^I: Unpacking\|^I: Extracting\|^I: Configuring\|^I: new cache content" || true )
 
-               sudo OS=${os} DIST=${dist} ARCH=${arch} pbuilder login --save-after-login <<EOF
+               sudo OS="${os}" DIST="${dist}" ARCH="${arch}" pbuilder login --save-after-login <<EOF
 # No need for sync:
 echo "force-unsafe-io" >/etc/dpkg/dpkg.cfg.d/force-unsafe-io
 # Enable official updates repository:
@@ -66,11 +66,11 @@ apt-get dist-upgrade -y
 # Install common build tools:
 apt-get install -qy build-essential debhelper cmake
 EOF
-         ) >${logfile} 2>&1
+         ) >"${logfile}" 2>&1
 
-         finishTime=`date +%FT%H:%M:%S`
+         finishTime=$(date +%FT%H:%M:%S)
          echo "${finishTime}: Finished to build ${name}, logfile is ${logfile}"
-         grep ERROR ${logfile}
+         grep ERROR "${logfile}"
       ) &
 
    else
@@ -78,12 +78,12 @@ EOF
       (
          (
             echo "OS=${os} DIST=${dist} ARCH=${arch}"
-            sudo OS=${os} DIST=${dist} ARCH=${arch} pbuilder update
-         ) >${logfile} 2>&1
+            sudo OS="${os}" DIST="${dist}" ARCH="${arch}" pbuilder update
+         ) >"${logfile}" 2>&1
 
-         finishTime=`date +%FT%H:%M:%S`
+         finishTime=$(date +%FT%H:%M:%S)
          echo "${finishTime}: Finished to build ${name}, logfile is ${logfile}"
-         grep ERROR ${logfile}
+         grep ERROR "${logfile}"
       ) &
    fi
 }
