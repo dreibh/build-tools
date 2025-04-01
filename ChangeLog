@@ -1,3 +1,27 @@
+commit e9dd6fa33cc8cf0b9241ab8814344933ccd5bb24
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sun Mar 16 22:56:11 2025 +0100
+
+    Minor update.
+
+commit 5d10f666107aa3cb45122ba4d2d9d1122a69037f
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Feb 27 14:03:11 2025 +0100
+
+    ShellCheck improvements.
+
+commit 43be3db652e3e61ada323cda249f029723c7773e
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Feb 27 14:02:47 2025 +0100
+
+    Improved script.
+
+commit 8053185aec990ce6dc7c6fe33781fb41dc71d1ee
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Feb 27 12:52:03 2025 +0100
+
+    New release td-build-tools-0.1.0.
+
 commit ce3a0f976683a58dc970eb67da0539fc5fa2c843
 Author: Thomas Dreibholz <dreibh@simula.no>
 Date:   Thu Feb 27 12:50:37 2025 +0100
