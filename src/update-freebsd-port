@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+set -eu
+
+POUDRIERE_PORTS="/usr/local/poudriere/ports/default/"
+
+# ====== Get port default ===================================================
+PORTNAME=$(grep "^PORTNAME=" freebsd/*/Makefile | awk '{ print $2 }')
+CATEGORIES=$(grep "^CATEGORIES=" freebsd/*/Makefile | awk '{ print $2 }')
+echo "Processing ${CATEGORIES}/${PORTNAME} ..."
+
+# ====== Update =============================================================
+cd freebsd/*
+git pull
+sudo make makesum
+
+# ====== Update Poudriere ports =============================================
+DISTVERSION=$(grep "^DISTVERSION=" Makefile | awk '{ print $2 }')
+PORTREVISION=$(grep "^PORTREVISION=" Makefile | awk '{ print "-" $2 }' || echo "")
+
+sudo git clean -dfx
+sudo rsync -a --info=progress2 --delete ./ "/usr/local/poudriere/ports/default/${CATEGORIES}/${PORTNAME}/"
+cd "/usr/local/poudriere/ports/default/${CATEGORIES}/${PORTNAME}/"
+
+git diff . | tee ~/diff/${PORTNAME}-${DISTVERSION}${PORTREVISION}.diff
+
+sudo poudriere testport -j 142amd64-release -p default -b latest "${CATEGORIES}/${PORTNAME}"
