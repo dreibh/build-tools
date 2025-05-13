@@ -6,8 +6,8 @@ POUDRIERE_PORTS="/usr/local/poudriere/ports/default/"
 
 # ====== Get port default ===================================================
 PORTNAME=$(grep "^PORTNAME=" freebsd/*/Makefile | awk '{ print $2 }')
-CATEGORIES=$(grep "^CATEGORIES=" freebsd/*/Makefile | awk '{ print $2 }')
-echo "Processing ${CATEGORIES}/${PORTNAME} ..."
+CATEGORY=$(grep "^CATEGORIES=" freebsd/*/Makefile | awk '{ print $2 }')
+echo "Processing ${CATEGORY}/${PORTNAME} ..."
 
 # ====== Update =============================================================
 cd freebsd/*
@@ -17,11 +17,40 @@ sudo make makesum
 # ====== Update Poudriere ports =============================================
 DISTVERSION=$(grep "^DISTVERSION=" Makefile | awk '{ print $2 }')
 PORTREVISION=$(grep "^PORTREVISION=" Makefile | awk '{ print "-" $2 }' || echo "")
+MASTER_SITES=$(grep "^MASTER_SITES=" Makefile | sed -e "s/MASTER_SITES=//g" | tr -d "\t")
 
 sudo git clean -dfx
-sudo rsync -a --info=progress2 --delete ./ "/usr/local/poudriere/ports/default/${CATEGORIES}/${PORTNAME}/"
-cd "/usr/local/poudriere/ports/default/${CATEGORIES}/${PORTNAME}/"
+sudo rsync -a --info=progress2 --delete ./ "/usr/local/poudriere/ports/default/${CATEGORY}/${PORTNAME}/"
+cd "${POUDRIERE_PORTS}/${CATEGORY}/${PORTNAME}/"
 
-git diff . | tee ~/diff/${PORTNAME}-${DISTVERSION}${PORTREVISION}.diff
+DIFF_FILE="${PORTNAME}-${DISTVERSION}${PORTREVISION}.diff"
+git diff . | tee ~/diff/"${DIFF_FILE}"
 
-sudo poudriere testport -j 142amd64-release -p default -b latest "${CATEGORIES}/${PORTNAME}"
+# ====== Test the port by using Poudriere ===================================
+sudo poudriere testport -j 142amd64-release -p default -b latest "${CATEGORY}/${PORTNAME}"
+
+# ====== Show FreeBSD Update Bug template ===================================
+# shellcheck disable=SC2001
+URL=$(echo "${MASTER_SITES}" | sed -e 's#download[/]*$##g')
+
+print-utf8 -s "\e[34m====== FreeBSD Update Bug template " "=" "=\e[0m"
+echo ""
+echo -e "Summary: \e[34m${CATEGORY}/${PORTNAME}: Update to new release ${DISTVERSION}\e[0m"
+echo ""
+echo -e "Product: \e[33mPorts & Packages\e[0m"
+echo -e "Component: \e[33mIndividual Ports\e[0m"
+echo -e "URL: \e[34m${URL}\e[0m"
+echo ""
+echo "Description:"
+echo -e "---\e[34m"
+echo "The latest upstream version of ${PORTNAME} is ${DISTVERSION}."
+echo "Therefore, the port ${CATEGORY}/${PORTNAME} needs an update."
+echo ""
+echo "Fix: The updated diff file ${DIFF_FILE} is attached."
+echo -e "\e[0m---"
+echo ""
+echo "============================================================================="
+print-utf8 -s "\e[34m=" "=" "=\e[0m"
+echo ""
+echo "Submit here: https://bugs.freebsd.org/bugzilla/enter_bug.cgi?product=Ports%20%26%20Packages&component=Individual%20Port%28s%29"
+echo ""
