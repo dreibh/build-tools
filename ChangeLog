@@ -1,3 +1,69 @@
+commit e9dd6fa33cc8cf0b9241ab8814344933ccd5bb24
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sun Mar 16 22:56:11 2025 +0100
+
+    Minor update.
+
+commit 5d10f666107aa3cb45122ba4d2d9d1122a69037f
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Feb 27 14:03:11 2025 +0100
+
+    ShellCheck improvements.
+
+commit 43be3db652e3e61ada323cda249f029723c7773e
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Feb 27 14:02:47 2025 +0100
+
+    Improved script.
+
+commit 8053185aec990ce6dc7c6fe33781fb41dc71d1ee
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Feb 27 12:52:03 2025 +0100
+
+    New release td-build-tools-0.1.0.
+
+commit ce3a0f976683a58dc970eb67da0539fc5fa2c843
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Feb 27 12:50:37 2025 +0100
+
+    Updated Debian standards version.
+
+commit a6c09f55a5527f513d26889bd313e4ec570de04f
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sun Feb 16 14:08:55 2025 +0100
+
+    Parameter fix.
+
+commit 678d4e81ecaf93993c14bc5bc27ac64b47b37233
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Dec 20 17:10:56 2024 +0100
+
+    Updated script.
+
+commit 2599edbd3ce63f3c662b7e885fefe066f462f67c
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Dec 20 15:23:55 2024 +0100
+
+    Added script.
+
+commit c673487acc67b071058f017a17a3810f58ea7dfe
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Dec 19 22:05:13 2024 +0100
+
+    Updated script.
+
+commit 1ae2709f9a44f65efc837b31b7c2dd0f454abd62
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Dec 13 23:24:12 2024 +0100
+
+    Added configuration file.
+
+commit d7bd8288a29c7ac654d9ddb763559dcf26134c0a
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Dec 13 21:34:26 2024 +0100
+
+    New release td-build-tools-0.0.0.
+
 commit 532701d1197b45fcdf6f627b9f8355e0b5c2c326
 Author: Thomas Dreibholz <dreibh@simula.no>
 Date:   Fri Dec 13 20:53:05 2024 +0100

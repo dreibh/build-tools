@@ -31,17 +31,17 @@ create-pbuilder ()
    local logfile="${name}.log"
 
    if [ ! -e "/var/cache/pbuilder/${name}-base.tgz" ] ; then
-      startTime=`date +%FT%H:%M:%S`
+      startTime=$(date +%FT%H:%M:%S)
       echo "${startTime}: Starting to build ${name}, logfile is ${logfile} ..."
 
       # ====== pbuilder =====================================================
       (
          (
             echo "OS=${os} DIST=${dist} ARCH=${arch}"
-            sudo OS=${os} DIST=${dist} ARCH=${arch} pbuilder create | \
+            sudo OS="${os}" DIST="${dist}" ARCH="${arch}" pbuilder create | \
                ( grep -v "^I: Retrieving\|^I: Validating\|^I: Unpacking\|^I: Extracting\|^I: Configuring\|^I: new cache content" || true )
 
-               sudo OS=${os} DIST=${dist} ARCH=${arch} pbuilder login --save-after-login <<EOF
+               sudo OS="${os}" DIST="${dist}" ARCH="${arch}" pbuilder login --save-after-login <<EOF
 # No need for sync:
 echo "force-unsafe-io" >/etc/dpkg/dpkg.cfg.d/force-unsafe-io
 # Enable official updates repository:
@@ -50,8 +50,10 @@ echo "force-unsafe-io" >/etc/dpkg/dpkg.cfg.d/force-unsafe-io
       echo "deb http://dk.archive.ubuntu.com/ubuntu/ ${dist}-updates main universe restricted "
       echo "# deb-src http://dk.archive.ubuntu.com/ubuntu/ ${dist}-updates main universe restricted"
    elif [ "${os}" == "debian" ] ; then
-      echo "deb http://security.debian.org/debian-security ${dist}-security main non-free-firmware"
-      echo "# deb-src http://security.debian.org/debian-security ${dist}-security main non-free-firmware"
+      if [ "${dist}" != "unstable" ] ; then
+         echo "deb http://security.debian.org/debian-security ${dist}-security main non-free-firmware"
+         echo "# deb-src http://security.debian.org/debian-security ${dist}-security main non-free-firmware"
+      fi
    fi
 ) >>/etc/apt/sources.list
 # Add PPA for Ubuntu:
@@ -64,11 +66,11 @@ apt-get dist-upgrade -y
 # Install common build tools:
 apt-get install -qy build-essential debhelper cmake
 EOF
-         ) >${logfile} 2>&1
+         ) >"${logfile}" 2>&1
 
-         finishTime=`date +%FT%H:%M:%S`
+         finishTime=$(date +%FT%H:%M:%S)
          echo "${finishTime}: Finished to build ${name}, logfile is ${logfile}"
-         grep ERROR ${logfile}
+         grep ERROR "${logfile}"
       ) &
 
    else
@@ -76,12 +78,12 @@ EOF
       (
          (
             echo "OS=${os} DIST=${dist} ARCH=${arch}"
-            sudo OS=${os} DIST=${dist} ARCH=${arch} pbuilder update
-         ) >${logfile} 2>&1
+            sudo OS="${os}" DIST="${dist}" ARCH="${arch}" pbuilder update
+         ) >"${logfile}" 2>&1
 
-         finishTime=`date +%FT%H:%M:%S`
+         finishTime=$(date +%FT%H:%M:%S)
          echo "${finishTime}: Finished to build ${name}, logfile is ${logfile}"
-         grep ERROR ${logfile}
+         grep ERROR "${logfile}"
       ) &
    fi
 }
@@ -102,7 +104,16 @@ if [ ! -e /usr/share/keyrings/debian-ports-archive-keyring.gpg ] ; then
 fi
 
 
-# # ====== Ubuntu =============================================================
+# !!!!!! TEST ONLY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+# create-pbuilder debian unstable amd64
+
+# wait
+# exit 1
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+# ====== Ubuntu =============================================================
 ubuntuDistributions="$( (
    ubuntu-distro-info --stable
    ubuntu-distro-info --supported
