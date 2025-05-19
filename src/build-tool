@@ -843,32 +843,41 @@ def fetchDebianChangelog(packageInfo, codename = 'unstable'):
 
    # ====== Get package status =================================================
    statusPageContents = None
-   sys.stderr.write('Looking for package status on ' + statusPageURL + ' ... ')
-   sys.stderr.flush()
-   try:
-      statusPage = urllib.request.urlopen(statusPageURL)
-      statusPageContents = statusPage.readlines()
-      statusPage.close()
+   maxTrials          = 10
+   for trial in range(0, maxTrials):
+      if trial > 0:
+         sys.stderr.write('\n')
+      sys.stderr.write('Looking for package status on ' + statusPageURL +
+                     ' (trial ' + str(trial + 1) + '/' + str(maxTrials) + ') ... ')
+      sys.stderr.flush()
 
-      re_debian_package = re.compile(r'.*Source Package: ' + packageInfo['debian_package_name'] + r' \(([0-9-+~\.a-z]+)\)')
-      re_debian_archive = re.compile(r'.*href="((http|https)://[a-zA-Z0-9\./+-]+/' + \
-                                       packageInfo['debian_package_name'][0:1] + '/' + \
-                                       packageInfo['debian_package_name'] + '/' + \
-                                       r')(' + packageInfo['debian_package_name'] + r'_[0-9-+~\.a-z]+\.debian\.tar\.[a-zA-Z]+)"')
-      for line in statusPageContents:
-         line = line.decode('utf-8')
-         match = re_debian_package.match(line)
-         if match != None:
-            debianVersion = match.group(1)
-         else:
-            match = re_debian_archive.match(line)
+      try:
+         statusPage = urllib.request.urlopen(statusPageURL)
+         statusPageContents = statusPage.readlines()
+         statusPage.close()
+
+         re_debian_package = re.compile(r'.*Source Package: ' + packageInfo['debian_package_name'] + r' \(([0-9-+~\.a-z]+)\)')
+         re_debian_archive = re.compile(r'.*href="((http|https)://[a-zA-Z0-9\./+-]+/' + \
+                                          packageInfo['debian_package_name'][0:1] + '/' + \
+                                          packageInfo['debian_package_name'] + '/' + \
+                                          r')(' + packageInfo['debian_package_name'] + r'_[0-9-+~\.a-z]+\.debian\.tar\.[a-zA-Z]+)"')
+         for line in statusPageContents:
+            line = line.decode('utf-8')
+            match = re_debian_package.match(line)
             if match != None:
-               debianLocation = match.group(1)
-               debianArchive  = match.group(3)
+               debianVersion = match.group(1)
+            else:
+               match = re_debian_archive.match(line)
+               if match != None:
+                  debianLocation = match.group(1)
+                  debianArchive  = match.group(3)
 
-   except urllib.error.HTTPError as e:
-      sys.stderr.write('not found (HTTP ' + str(e.code) + ')!\n')
-      sys.exit(1)
+         # Done!
+         break
+
+      except urllib.error.HTTPError as e:
+         sys.stderr.write('not found (HTTP ' + str(e.code) + ')!\n')
+         sys.exit(1)
 
    if (debianVersion == None) or (debianArchive == None):
       sys.stderr.write('not found!\n')
