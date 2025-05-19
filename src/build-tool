@@ -1367,7 +1367,7 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning, summaryFile):
 
 
 # ###### Build Debian binary package ########################################
-def buildDeb(packageInfo, codenames, architectures, skipPackageSigning, summaryFile):
+def buildDeb(packageInfo, codenames, architectures, skipPackageSigning, summaryFile, twice):
 
    # ====== Build for each distribution codename ============================
    printSection('Creating binary Debian packages')
@@ -1412,8 +1412,10 @@ def buildDeb(packageInfo, codenames, architectures, skipPackageSigning, summaryF
                              'pbuilder',
                                 'build',
                                 '--basetgz', basetgz,
-                                '--logfile', buildlog,
-                             dscFileName ]
+                                '--logfile', buildlog ]
+         if twice:
+            pbuilderCommand.append('--twice')
+         pbuilderCommand.append(dscFileName)
          print(pbuilderCommand)
          try:
             subprocess.run(pbuilderCommand, check=True)
@@ -1716,7 +1718,7 @@ if len(sys.argv) < 2:
    sys.stderr.write('\n* ' + sys.argv[0] + ' info\n')
    sys.stderr.write('\n* ' + sys.argv[0] + ' make-source-tarball [--skip-signing]\n')
    sys.stderr.write('\n* ' + sys.argv[0] + ' make-source-deb [--summary=file] [codename ...] [--skip-signing]\n')
-   sys.stderr.write('  ' + sys.argv[0] + ' build-deb [--summary=file]  [codename ...] [--skip-signing] [--architecture=arch[,...]]\n')
+   sys.stderr.write('  ' + sys.argv[0] + ' build-deb [--summary=file]  [codename ...] [--skip-signing] [--architecture=arch[,...]] [--twice]\n')
    sys.stderr.write('  ' + sys.argv[0] + ' fetch-debian-changelog [codename]\n')
    sys.stderr.write('\n* ' + sys.argv[0] + ' make-source-rpm [--summary=file]  [release ...] [--skip-signing]\n')
    sys.stderr.write('  ' + sys.argv[0] + ' build-rpm [--summary=file] [release ...] [--skip-signing] [--architecture=[,...]]\n')
@@ -1782,6 +1784,7 @@ elif tool == 'build-deb':
    summaryFile        = None
    codenames          = []
    architectures      = []
+   twice              = False
    for i in range(2, len(sys.argv)):
       if sys.argv[i][0] != '-':
          codenames.append(sys.argv[i])
@@ -1797,10 +1800,12 @@ elif tool == 'build-deb':
       elif sys.argv[i][0:15] == '--architecture=':
          for architecture in sys.argv[i][15:].split(','):
             architectures.append(architecture)
+      elif sys.argv[i] == '--twice':
+         twice = True
       else:
          sys.stderr.write('ERROR: Bad build-deb parameter ' + sys.argv[i] + '!\n')
          sys.exit(1)
-   buildDeb(packageInfo, codenames, architectures, skipPackageSigning, summaryFile)
+   buildDeb(packageInfo, codenames, architectures, skipPackageSigning, summaryFile, twice)
 
 # ====== Make source deb file ===============================================
 elif tool == 'make-source-rpm':
