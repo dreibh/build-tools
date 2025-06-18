@@ -27,7 +27,7 @@ DIFF_FILE="${PORTNAME}-${DISTVERSION}${PORTREVISION}.diff"
 git diff . | tee ~/diff/"${DIFF_FILE}"
 
 # ====== Test the port by using Poudriere ===================================
-sudo poudriere testport -j 142amd64-release -p default -b latest "${CATEGORY}/${PORTNAME}"
+sudo poudriere testport -j 143amd64-release -p default -b latest "${CATEGORY}/${PORTNAME}"
 
 # ====== Show FreeBSD Update Bug template ===================================
 # shellcheck disable=SC2001
