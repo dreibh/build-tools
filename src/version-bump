@@ -654,7 +654,7 @@ if rpmVersionString != None:
       else:
          if versionExtra == '':
             now = time.strftime('%a %b %d %Y', time.localtime())
-            rpmSpecFileNew.write('* ' + now + ' ' + packageMaintainer + ' - ' + versionString + '\n')
+            rpmSpecFileNew.write('* ' + now + ' ' + packageMaintainer + ' - ' + versionString + '-1\n')
             rpmSpecFileNew.write('- New upstream release.\n')
          rpmSpecFileNew.write(line)
          inChangeLog = False
