@@ -1,3 +1,9 @@
+td-build-tools (0.1.2-1ubuntu1) trixie; urgency=medium
+
+  * New upstream release.
+
+ -- Thomas Dreibholz <thomas.dreibholz@gmail.com>  Wed, 09 Jul 2025 11:44:03 +0200
+
 td-build-tools (0.1.1-1ubuntu1) trixie; urgency=medium
 
   * New upstream release.

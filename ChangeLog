@@ -1,3 +1,88 @@
+commit 8a3cb97f0209ea5b1ec87f336ff2ead5b67931a2
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Wed Jul 9 10:43:53 2025 +0200
+
+    Improved script.
+
+commit 7e114e7fa2c909dcde7b9f72a6d7457391eb6905
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sat Jul 5 16:29:37 2025 +0200
+
+    RPM handling fix.
+
+commit 2b0d509271a33af846a1aec8ebd6ca7251937286
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Wed Jun 18 11:17:27 2025 +0200
+
+    Minor update.
+
+commit a2c13a46c1d69b3c2fa510b9d2fb06077b55cfeb
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Mon May 19 12:14:22 2025 -0400
+
+    Make multiple trials to fetch Debian changelog, to word around unreliable Debian webserver.
+
+commit e4c025099a91c8e7c2a9f901b348783edf0842c9
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Mon May 19 12:09:14 2025 -0400
+
+    Added option for running pbuilder twice, to check reproducible build.
+
+commit 554d94e84b932cd089ccaf9f2cccc44744759f05
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue May 13 12:07:32 2025 +0200
+
+    Moved deprecated script.
+
+commit 888482aaa74d2fcfe992febc1a257ad1d8cf0cbd
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue May 13 12:07:15 2025 +0200
+
+    Improved script.
+
+commit 7197b33e9ee314fed863bbfde65ffcc745631781
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue May 13 11:15:51 2025 +0200
+
+    Improved script.
+
+commit 98f7ebb35298ef54240dfa75a79c27431abc112c
+Merge: 3e28e0a 9cb5713
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue May 13 11:11:00 2025 +0200
+
+    Merge branch 'master' of https://github.com/dreibh/build-tools
+
+commit 3e28e0ae3494ffed12ca4a15576bb05261f79099
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue May 13 11:10:49 2025 +0200
+
+    Improved script.
+
+commit aeb307f30376c73ea1729c76c311a82799dda61d
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue May 13 10:38:01 2025 +0200
+
+    Added helper script.
+
+commit c02a70c96566d5add15091c4ee8946dd1a656c15
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue May 13 10:37:50 2025 +0200
+
+    Updated script.
+
+commit 9cb57136a6e2e7280fcdc8a6b1b2dd0075de3536
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Apr 3 10:03:18 2025 +0200
+
+    Header updates.
+
+commit 771194507bf0b484ffdacf8d6fb9035b78ecfd32
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Apr 1 12:35:09 2025 +0200
+
+    New release td-build-tools-0.1.1.
+
 commit e9dd6fa33cc8cf0b9241ab8814344933ccd5bb24
 Author: Thomas Dreibholz <dreibh@simula.no>
 Date:   Sun Mar 16 22:56:11 2025 +0100
