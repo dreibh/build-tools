@@ -138,7 +138,7 @@ debianDistributions="$( (
 
 for distribution in ${debianDistributions} ; do
    # for architecture in amd64 arm64 armhf ; do
-   for architecture in amd64 arm64 ; do
+   for architecture in amd64 arm64 armhf ; do
       create-pbuilder debian "${distribution}" "${architecture}"
    done
 done
