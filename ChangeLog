@@ -1,3 +1,33 @@
+commit 08e7c448037d4f953e7a870f5db0a990064f8f8f
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sun Sep 21 17:03:24 2025 +0200
+
+    Added missing newline in usage string.
+
+commit b6968c2736937c7cdf9e8530bf2f0e08444ab164
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Wed Aug 13 13:22:20 2025 +0200
+
+    Using "ubuntu-rolling" for packaging CI workflow.
+
+commit 2a84c3cf9f63627b7725aa8b0d1e6ebcabfa2c2b
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Wed Aug 13 13:04:01 2025 +0200
+
+    Workflow update.
+
+commit f94181406c40ac5a03077bff766f4a8e553bdbd5
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Aug 12 14:24:10 2025 +0200
+
+    Updated script.
+
+commit 437cdc4f9c3ef4d903920efd2b7540ee02b265a3
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Wed Jul 9 11:44:11 2025 +0200
+
+    New release td-build-tools-0.1.2.
+
 commit 8a3cb97f0209ea5b1ec87f336ff2ead5b67931a2
 Author: Thomas Dreibholz <dreibh@simula.no>
 Date:   Wed Jul 9 10:43:53 2025 +0200
