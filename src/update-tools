@@ -19,9 +19,10 @@
 # Contact: thomas.dreibholz@gmail.com
 
 # Bash options:
-set -e
+set -eu
 
-TOOLS_DIRECTORY="$(dirname $0)/../../build-tools-template"
+
+TOOLS_DIRECTORY="$(dirname "$0")/../../build-tools-template"
 
 TOOLS="
    autogen.sh
@@ -89,14 +90,14 @@ if [ $GIT -ne 0 ] ; then
          toolsToCommit="${toolsToCommit} ${tool}"
       fi
    done
-   git commit -m "Updated build scripts" ${toolsToCommit} || true
+   git commit -m "Updated build scripts" "${toolsToCommit}" || true
 
    if [ -d ci/ ] ; then
       pushd ci/ >/dev/null
 
       echo "Committing CI tools ..."
-      git add ${CI_TOOLS}
-      git commit -m "Updated CI scripts" ${CI_TOOLS} || true
+      git add "${CI_TOOLS}"
+      git commit -m "Updated CI scripts" "${CI_TOOLS}" || true
 
       popd >/dev/null
    fi

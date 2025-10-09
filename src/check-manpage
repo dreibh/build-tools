@@ -18,6 +18,7 @@
 #
 # Contact: thomas.dreibholz@gmail.com
 
+# Bash options:
 set -eu
 
 while [ $# -gt 0 ] ; do
