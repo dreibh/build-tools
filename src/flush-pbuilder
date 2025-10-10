@@ -37,7 +37,7 @@ CLEANUP="
 for directory in ${CLEANUP} ; do
    if [ -e "${directory}" ] ; then
       echo "Cleaning up ${directory} ..."
-      find "${directory}" -type f | xargs -r rm -f
+      find "${directory}" -type f -print0 | xargs -0 -r rm -f
    fi
 done
 
