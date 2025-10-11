@@ -26,7 +26,7 @@ DPUT_DISTRIBUTIONS="
    trusty
    $(ubuntu-distro-info --supported)
    $(ubuntu-distro-info --supported-esm)
-   $(ubuntu-distro-info --devel)
+   $(ubuntu-distro-info --devel 2>/dev/null || echo "resolute")
    unstable
 "
 

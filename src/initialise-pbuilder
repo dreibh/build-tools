@@ -105,9 +105,8 @@ fi
 
 
 # !!!!!! TEST ONLY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
+# create-pbuilder ubuntu resolute amd64
 # create-pbuilder debian unstable amd64
-
 # wait
 # exit 1
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -118,7 +117,7 @@ ubuntuDistributions="$( (
    ubuntu-distro-info --stable
    ubuntu-distro-info --supported
    ubuntu-distro-info --supported-esm
-   ubuntu-distro-info --devel
+   ubuntu-distro-info --devel 2>/dev/null || echo "resolute"
 ) | sort -u)"
 
 for distribution in ${ubuntuDistributions} ; do
@@ -133,12 +132,11 @@ debianDistributions="$( (
    debian-distro-info --oldstable
    debian-distro-info --testing
    echo "unstable"
-   echo "trixie"
 ) | sort -u)"
 
 for distribution in ${debianDistributions} ; do
    # for architecture in amd64 arm64 armhf ; do
-   for architecture in amd64 arm64 armhf ; do
+   for architecture in amd64 arm64 ; do
       create-pbuilder debian "${distribution}" "${architecture}"
    done
 done
