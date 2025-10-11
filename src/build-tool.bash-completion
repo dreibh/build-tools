@@ -40,10 +40,36 @@ _build_tool()
       cword="${COMP_CWORD}"
    fi
 
-   # ====== Parameters ======================================================
-#   if [ "${cword}" -le 1 ] ; then
-#   fi
+   # ====== Tool ============================================================
+   if [ "${cword}" -eq 1 ] ; then
+      local tools="
+info
+make-source-tarball
+make-source-deb
+build-deb
+fetch-debian-changelog
+make-source-rpm
+build-rpm
+"
+      COMPREPLY=( $(compgen -W "${tools}" --  "${cur}") )
+      return
 
+   # ====== Options =========================================================
+   else
+      case "${cur}" in
+         # ====== Special case: architecture ================================
+         --architecture=*)
+            cur="${cur#*=}"
+            COMPREPLY=( $(compgen -W "amd64 arm64 riscv64 ppc64el s390x mipsel armhf i386 m68k" --  "${cur}") )
+            return
+            ;;
+         # ====== Special case: file ========================================
+         --summary=*)
+            _filedir '@(summary)'
+            return
+            ;;
+      esac
+   fi
 
    # ====== All options =====================================================
    local opts="
@@ -53,6 +79,7 @@ _build_tool()
 "
    # shellcheck disable=SC2207
    COMPREPLY=( $( compgen -W "${opts}" -- "${cur}" ) )
+   [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
 
    return 0
 }
