@@ -96,8 +96,10 @@ if [ $GIT -ne 0 ] ; then
       pushd ci/ >/dev/null
 
       echo "Committing CI tools ..."
-      git add "${CI_TOOLS}"
-      git commit -m "Updated CI scripts" "${CI_TOOLS}" || true
+      # shellcheck disable=SC2086
+      git add ${CI_TOOLS}
+      # shellcheck disable=SC2086
+      git commit -m "Updated CI scripts" ${CI_TOOLS} || true
 
       popd >/dev/null
    fi
