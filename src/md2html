@@ -28,7 +28,7 @@ while [ $# -gt 0 ] ; do
 
    if [ "${output}" != "${input}" ] ; then
       echo "Converting ${input} -> ${output} ..."
-      pandoc -t html --highlight-style=kate -s -o "${output}" "${input}"
+      pandoc -t html --metadata title="${output}" --highlight-style=kate -s -o "${output}" "${input}"
    else
       echo "ERROR: Unable to handle ${input}. No .md file?"
       exit 1
