@@ -148,10 +148,10 @@ def readPackagingConfiguration():
       sys.stderr.write('ERROR: Unable to read ' + packageInfo['packaging_config_name'] + ': ' + str(e) + '\n')
       sys.exit(1)
 
-   if packageInfo['packaging_maintainer'] == None:
+   if packageInfo['packaging_maintainer'] is None:
       sys.stderr.write('ERROR: Unable to find MAINTAINER in ' + packageInfo['packaging_config_name'] + '!\n')
       sys.exit(1)
-   elif packageInfo['packaging_make_dist'] == None:
+   elif packageInfo['packaging_make_dist'] is None:
       sys.stderr.write('ERROR: Unable to find MAKE_DIST in ' + packageInfo['packaging_config_name'] + '!\n')
       sys.exit(1)
 
@@ -322,7 +322,7 @@ def readDebianPackagingInformation():
 
             elif n > 1:
                match = re_debian_itp1.match(line)
-               if match == None:
+               if match is None:
                   match = re_debian_itp2.match(line)
                if match != None:
                   # print('ITP: ' + line)
@@ -334,7 +334,7 @@ def readDebianPackagingInformation():
          sys.stderr.write('ERROR: Unable to read ' + debianChangelogName + ': ' + str(e) + '\n')
          sys.exit(1)
 
-      if packageInfo['debian_package_name'] == None:
+      if packageInfo['debian_package_name'] is None:
          sys.stderr.write('ERROR: Cannot find required package versioning details in ' + debianChangelogName + '!\n')
          sys.exit(1)
 
@@ -666,7 +666,7 @@ def makeSourceTarball(packageInfo, skipPackageSigning, summaryFile):
          sys.stderr.write('ERROR: Unable to create source tarball!\n')
          return False
       sourcePackageInfo = findSourceTarball(packageInfo, quiet=(not skipPackageSigning))
-      if sourcePackageInfo == None:
+      if sourcePackageInfo is None:
          sys.stderr.write('ERROR: Unable to find source tarball!\n')
          return False
       # The source tarball is new, i.e. an existing signature is obsolete and
@@ -691,7 +691,7 @@ def makeSourceTarball(packageInfo, skipPackageSigning, summaryFile):
             sys.stderr.write('ERROR: Unable to sign source tarball!\n')
             return False
          sourcePackageInfo = findSourceTarball(packageInfo)
-         if ( (sourcePackageInfo == None) or
+         if ( (sourcePackageInfo is None) or
             (not 'source_tarball_name' in sourcePackageInfo) ):
             sys.stderr.write('ERROR: Unable to find signature of source tarball!\n')
 
@@ -777,7 +777,7 @@ def getDebianDefaultArchitecture():
 # ###### Get name of Debian DSC file name ###################################
 def getDebianDscName(packageInfo, debianVersionPackaging = None):
 
-   if debianVersionPackaging == None:
+   if debianVersionPackaging is None:
       debianVersionPackaging = packageInfo['debian_version_packaging']
    dscFileName = packageInfo['debian_package_name'] + '_' + \
                     packageInfo['debian_version_string'] + '-' + \
@@ -789,7 +789,7 @@ def getDebianDscName(packageInfo, debianVersionPackaging = None):
 def getDebianBuildinfoName(packageInfo, debianVersionPackaging = None,
                            architecture = 'source'):
 
-   if debianVersionPackaging == None:
+   if debianVersionPackaging is None:
       debianVersionPackaging = packageInfo['debian_version_packaging']
    sourceBuildInfoFileName = packageInfo['debian_package_name'] + '_' + \
                                 packageInfo['debian_version_string'] + '-' + \
@@ -802,7 +802,7 @@ def getDebianBuildinfoName(packageInfo, debianVersionPackaging = None,
 def getDebianChangesName(packageInfo, debianVersionPackaging = None,
                          architecture = 'source'):
 
-   if debianVersionPackaging == None:
+   if debianVersionPackaging is None:
       debianVersionPackaging = packageInfo['debian_version_packaging']
    changesFileName = packageInfo['debian_package_name'] + '_' + \
                         packageInfo['debian_version_string'] + '-' + \
@@ -814,7 +814,7 @@ def getDebianChangesName(packageInfo, debianVersionPackaging = None,
 # ###### Get name of Debian control tarball name ############################
 def getDebianControlTarballName(packageInfo, debianVersionPackaging = None):
 
-   if debianVersionPackaging == None:
+   if debianVersionPackaging is None:
       debianVersionPackaging = packageInfo['debian_version_packaging']
    controlTarballFileName = packageInfo['debian_package_name'] + '_' + \
                                packageInfo['debian_version_string'] + '-' + \
@@ -844,6 +844,7 @@ def fetchDebianChangelog(packageInfo, codename = 'unstable'):
    # ====== Get package status =================================================
    statusPageContents = None
    maxTrials          = 10
+
    for trial in range(0, maxTrials):
       if trial > 0:
          sys.stderr.write('\n')
@@ -852,16 +853,19 @@ def fetchDebianChangelog(packageInfo, codename = 'unstable'):
       sys.stderr.flush()
 
       try:
-         statusPage = urllib.request.urlopen(statusPageURL)
-         statusPageContents = statusPage.readlines()
-         statusPage.close()
+         statusPageRequest = urllib.request.Request(statusPageURL,
+                                                    headers = {
+                                                       'User-Agent': 'build-tool/0.2.0',
+                                                       'Accept':     '*/*'
+                                                    })
+         statusPage        = urllib.request.urlopen(statusPageRequest)
 
          re_debian_package = re.compile(r'.*Source Package: ' + packageInfo['debian_package_name'] + r' \(([0-9-+~\.a-z]+)\)')
          re_debian_archive = re.compile(r'.*href="((http|https)://[a-zA-Z0-9\./+-]+/' + \
                                           packageInfo['debian_package_name'][0:1] + '/' + \
                                           packageInfo['debian_package_name'] + '/' + \
                                           r')(' + packageInfo['debian_package_name'] + r'_[0-9-+~\.a-z]+\.debian\.tar\.[a-zA-Z]+)"')
-         for line in statusPageContents:
+         for line in statusPage:
             line = line.decode('utf-8')
             match = re_debian_package.match(line)
             if match != None:
@@ -872,14 +876,16 @@ def fetchDebianChangelog(packageInfo, codename = 'unstable'):
                   debianLocation = match.group(1)
                   debianArchive  = match.group(3)
 
-         # Done!
-         break
-
+         statusPage.close()
       except urllib.error.HTTPError as e:
          sys.stderr.write('not found (HTTP ' + str(e.code) + ')!\n')
          sys.exit(1)
 
-   if (debianVersion == None) or (debianArchive == None):
+      if (debianVersion is not None) or (debianArchive is not None):
+         # Done!
+         break
+
+   if (debianVersion is None) or (debianArchive is None):
       sys.stderr.write('not found!\n')
       return None
 
@@ -1020,7 +1026,7 @@ def mergeDebianChangelogs(ppaChangelogContents, distributorChangelogContents):
    # ------ Get latest entry from distribution changelog --------------------
    latestDistributionEntry = distributorChangelogContents[0]
    match = re_entry_header.match(latestDistributionEntry)
-   if match == None:
+   if match is None:
       sys.stderr.write('ERROR: Bad distributor changelog header!\n')
       sys.stderr.write('First distributor entry: "' + latestDistributionEntry.strip() + '"\n')
       sys.exit(1)
@@ -1281,7 +1287,7 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning, summaryFile):
       # ====== Build source Debian package ==================================
       if skipPackageSigning == False:
          # Build source package including signature:
-         if packageInfo['packaging_maintainer_key'] == None:
+         if packageInfo['packaging_maintainer_key'] is None:
             sys.stderr.write('ERROR: No MAINTAINER_KEY in ' + packageInfo['packaging_config_name'] + '\n')
             sys.exit(1)
          debuild = [ 'debuild', '--no-check-builddeps', '-sa', '-S', '-k' + packageInfo['packaging_maintainer_key'], '-i' ]
