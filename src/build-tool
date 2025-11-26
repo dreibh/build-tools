@@ -80,7 +80,7 @@ def printSubsection(title):
 # ###### Show difference between two files ##################################
 def showDiff(a, b):
    try:
-      subprocess.run( [ 'diff', '--color', a, b ] )
+      subprocess.run( [ 'diff', '--color=always', a, b ] )
    except Exception as e:
       sys.stderr.write('ERROR: Diff run failed: ' + str(e) + '\n')
       sys.exit(1)

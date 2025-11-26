@@ -88,7 +88,7 @@ sed -e "s/^\(Entered-date:[ \t]*\)\(.*\)$/\1$today/g" \
    <${LSM_ENTRY} >${LSM_ENTRY}.new
 
 echo "Update:"
-if diff --color ${LSM_ENTRY} ${LSM_ENTRY}.new ; then
+if diff --color=always ${LSM_ENTRY} ${LSM_ENTRY}.new ; then
    echo >&2 "Nothing to update?!"
    exit 1
 fi
