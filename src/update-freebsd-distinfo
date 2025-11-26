@@ -104,7 +104,7 @@ echo "Updating distinfo ..."
 ) >${DISTINFO_DIRECTORY}/distinfo.new
 
 echo "Update:"
-if ! colordiff -I '^TIMESTAMP.*$' ${DISTINFO_DIRECTORY}/distinfo ${DISTINFO_DIRECTORY}/distinfo.new ; then
+if ! diff --color -I '^TIMESTAMP.*$' ${DISTINFO_DIRECTORY}/distinfo ${DISTINFO_DIRECTORY}/distinfo.new ; then
    echo -en "\x1b[34mRun: Apply update? [yes/no]?\x1b[0m "
    read -er applyChanges
    if [ "$applyChanges" == "yes" -o "$applyChanges" == "y" ] ; then

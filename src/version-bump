@@ -41,7 +41,7 @@ def colorDiff(old, new):
    while len(h) < 78:
       h = h + '='
    sys.stdout.write(h + '\n')
-   subprocess.call(['colordiff', old, new ])
+   subprocess.call( [ 'diff', '--color', old, new ] )
 
 
 # ###### Apply update #######################################################
