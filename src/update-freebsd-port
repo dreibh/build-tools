@@ -31,6 +31,7 @@
 # Bash options:
 set -eu
 
+
 POUDRIERE_PORTS="/usr/local/poudriere/ports/default/"
 
 # ====== Get port default ===================================================

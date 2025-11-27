@@ -28,7 +28,9 @@
 #
 # Contact: thomas.dreibholz@gmail.com
 
+# Bash options:
 set -eux
+
 
 today="$(LC_ALL=C.UTF-8 date +"%B %d, %Y" | sed -e "s/ 0/ /")"
 # echo "${today}"
