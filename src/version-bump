@@ -18,7 +18,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Contact: thomas.dreibholz@gmail.com
-#
 
 import glob
 import os
@@ -37,13 +36,13 @@ from typing import Final, TextIO
 DEBIAN_STANDARDS_VERSION="4.7.2"
 
 
-# ###### Show differences ###################################################
-def colorDiff(old : str, new : str):
-   h = '====== Updates for ' + old + ': '
-   while len(h) < 78:
-      h = h + '='
-   sys.stdout.write(h + '\n')
-   subprocess.call( [ 'diff', '--color=always', old, new ] )
+# ###### Show difference between two files ##################################
+def showDiff(a : str, b : str):
+   try:
+      subprocess.run( [ 'diff', '--color=always', a, b ] )
+   except Exception as e:
+      sys.stderr.write('ERROR: Diff run failed: ' + str(e) + '\n')
+      sys.exit(1)
 
 
 # ###### Apply update #######################################################
@@ -717,18 +716,18 @@ if otherVersionString is not None:
 
 # ====== Check result =======================================================
 if cmakeVersionString is not None:
-   colorDiff(cmakeFileName, cmakeFileName + '.new')
+   showDiff(cmakeFileName, cmakeFileName + '.new')
 elif autoconfVersionString is not None:
-   colorDiff(autoconfFileName, autoconfFileName + '.new')
+   showDiff(autoconfFileName, autoconfFileName + '.new')
 
 if debianVersionString is not None:
-   colorDiff(debianChangeLogFileName, debianChangeLogFileName + '.new')
+   showDiff(debianChangeLogFileName, debianChangeLogFileName + '.new')
    if debianStandardsVersion != DEBIAN_STANDARDS_VERSION:
-      colorDiff(debianControlFileName, debianControlFileName + '.new')
+      showDiff(debianControlFileName, debianControlFileName + '.new')
 if rpmSpecFileName is not None:
-   colorDiff(rpmSpecFileName, rpmSpecFileName + '.new')
+   showDiff(rpmSpecFileName, rpmSpecFileName + '.new')
 if freeBSDMakefileName is not None:
-   colorDiff(freeBSDMakefileName, freeBSDMakefileName + '.new')
+   showDiff(freeBSDMakefileName, freeBSDMakefileName + '.new')
 
 
 # ====== Apply changes ======================================================

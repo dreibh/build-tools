@@ -32,19 +32,21 @@ import time
 import urllib.error
 import urllib.request
 
+from typing import Any, Final, TextIO
+
 
 # ###########################################################################
 # #### Constants                                                         ####
 # ###########################################################################
 
-TarballFormats = [ 'xz', 'bz2', 'gz' ]
-TarOptions = {
+TarballFormats : Final[list[str]]     = [ 'xz', 'bz2', 'gz' ]
+TarOptions     : Final[dict[str,str]] = {
    'xz':  'J',
    'bz2': 'j',
    'gz':  'z'
 }
 
-Systems = [
+Systems : Final[list[list[str]]] = [
    # Prefix       System Name         Configuration File
    [ 'cmake',    'CMake',             'cmake_lists_name'      ],
    [ 'autoconf', 'AutoConf/AutoMake', 'autoconf_config_name'  ],
@@ -54,10 +56,10 @@ Systems = [
    [ 'port',     'Port Makefile',     'port_makefile_name'    ]
 ]
 
-DebianCodenames = None   # Will be initialised later!
-UbuntuCodenames = None   # Will be initialised later!
+DebhelperLatestVersion : Final[int] = 13
 
-DebhelperLatestVersion = 13
+DebianCodenames        : list[str] | None = None   # Will be initialised later!
+UbuntuCodenames        : list[str] | None = None   # Will be initialised later!
 
 
 # ###########################################################################
@@ -66,19 +68,19 @@ DebhelperLatestVersion = 13
 
 
 # ###### Print section header ###############################################
-def printSection(title):
+def printSection(title : str) -> None:
    now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
    sys.stdout.write('\n\x1b[34m' + (now + ' ====== ' + title + ' ').ljust(132, '=') + '\x1b[0m\n\n')
 
 
 # ###### Print subsection header ############################################
-def printSubsection(title):
+def printSubsection(title : str) -> None:
    now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
    sys.stdout.write('\n\x1b[34m' + (now + ' ------ ' + title + ' ').ljust(132, '-') + '\x1b[0m\n')
 
 
 # ###### Show difference between two files ##################################
-def showDiff(a, b):
+def showDiff(a : str, b : str) -> None:
    try:
       subprocess.run( [ 'diff', '--color=always', a, b ] )
    except Exception as e:
@@ -87,24 +89,24 @@ def showDiff(a, b):
 
 
 # ###### Read file and return list of lines #################################
-def readTextFile(inputName):
+def readTextFile(inputName : str) -> list[str]:
 
-   inputFile = open(inputName, 'r', encoding='utf-8')
-   contents = inputFile.readlines()
+   inputFile : TextIO    = open(inputName, 'r', encoding='utf-8')
+   contents  : list[str] = inputFile.readlines()
    inputFile.close()
 
    return contents
 
 
 # ###### Write file by list of lines ########################################
-def writeTextFile(outputName, contents):
+def writeTextFile(outputName : str, contents : list[str]) -> None:
    outputFile = open(outputName, 'w', encoding='utf-8')
    for line in contents:
       outputFile.write(line)
 
 
 # ###### Get system architecture ############################################
-def getArchitecture():
+def getArchitecture() -> str:
    return os.uname().machine
 
 
@@ -114,34 +116,42 @@ def getArchitecture():
 # ###########################################################################
 
 
+# ###### Obtain distribution codenames ######################################
+def obtainDistributionCodenames() -> None:
+   global DebianCodenames
+   global UbuntuCodenames
+   DebianCodenames = getDistributionCodenames()
+   UbuntuCodenames = getDistributionCodenames('ubuntu')
+
+
 # ###### Read packaging configuration from packaging.conf ###################
-def readPackagingConfiguration():
+def readPackagingConfiguration() -> dict[str,Any]:
 
    # ====== Initialise ======================================================
-   packageInfo = {}
+   packageInfo : dict[str,Any] = { }
    packageInfo['packaging_maintainer']     = None
    packageInfo['packaging_maintainer_key'] = None
    packageInfo['packaging_make_dist']      = None
    packageInfo['packaging_config_name']    = 'packaging.conf'
 
    # ====== Obtain package configuration ====================================
-   re_package_maintainer     = re.compile(r'^(MAINTAINER=\")(.*)(\".*$)')
-   re_package_maintainer_key = re.compile(r'^(MAINTAINER_KEY=\")(.*)(\".*$)')
-   re_package_makedist       = re.compile(r'^(MAKE_DIST=\")(.*)(\".*$)')
+   re_package_maintainer     : Final[re.Pattern] = re.compile(r'^(MAINTAINER=\")(.*)(\".*$)')
+   re_package_maintainer_key : Final[re.Pattern] = re.compile(r'^(MAINTAINER_KEY=\")(.*)(\".*$)')
+   re_package_makedist       : Final[re.Pattern] = re.compile(r'^(MAKE_DIST=\")(.*)(\".*$)')
    try:
-      packagingConfFile = open(packageInfo['packaging_config_name'], 'r', encoding='utf-8')
-      packagingConfFileContents = packagingConfFile.readlines()
+      packagingConfFile         : TextIO    = open(packageInfo['packaging_config_name'], 'r', encoding='utf-8')
+      packagingConfFileContents : list[str] = packagingConfFile.readlines()
       for line in packagingConfFileContents:
-         match = re_package_maintainer.match(line)
-         if match != None:
+         match : re.Match | None = re_package_maintainer.match(line)
+         if match is not None:
             packageInfo['packaging_maintainer'] = match.group(2)
          else:
             match = re_package_maintainer_key.match(line)
-            if match != None:
+            if match is not None:
                packageInfo['packaging_maintainer_key'] = match.group(2)
             else:
                match = re_package_makedist.match(line)
-               if match != None:
+               if match is not None:
                   packageInfo['packaging_make_dist'] = match.group(2)
       packagingConfFile.close()
    except Exception as e:
@@ -159,39 +169,39 @@ def readPackagingConfiguration():
 
 
 # ###### Read CMake packaging information ###################################
-def readCMakePackagingInformation():
+def readCMakePackagingInformation() -> dict[str,Any]:
 
    # ====== Initialise ======================================================
-   packageInfo = {}
+   packageInfo : dict[str,Any] = { }
 
    # ====== Obtain package configuration ====================================
    cmakeListsFile = 'CMakeLists.txt'
    if os.path.isfile(cmakeListsFile):
-      re_cmake_project   = re.compile(r'[ \t]*[Pp][Rr][Oo][Jj][Ee][Cc][Tt][ \t]*\(([a-zA-Z0-9-+]+)')
-      re_cmakefile_major = re.compile(r'^[Ss][Ee][Tt]\((BUILD_MAJOR|PROJECT_MAJOR_VERSION)[ \t]*("|)(\d+)("|)[ \t]*\)')
-      re_cmakefile_minor = re.compile(r'^[Ss][Ee][Tt]\((BUILD_MINOR|PROJECT_MINOR_VERSION)[ \t]*("|)(\d+)("|)[ \t]*\)')
-      re_cmakefile_patch = re.compile(r'^[Ss][Ee][Tt]\((BUILD_PATCH|PROJECT_PATCH_VERSION)[ \t]*("|)(\d+)(~[a-zA-Z0-9\.+~]+|)("|)[ \t]*\)')
+      re_cmake_project   : Final[re.Pattern] = re.compile(r'[ \t]*[Pp][Rr][Oo][Jj][Ee][Cc][Tt][ \t]*\(([a-zA-Z0-9-+]+)')
+      re_cmakefile_major : Final[re.Pattern]= re.compile(r'^[Ss][Ee][Tt]\((BUILD_MAJOR|PROJECT_MAJOR_VERSION)[ \t]*("|)(\d+)("|)[ \t]*\)')
+      re_cmakefile_minor : Final[re.Pattern]= re.compile(r'^[Ss][Ee][Tt]\((BUILD_MINOR|PROJECT_MINOR_VERSION)[ \t]*("|)(\d+)("|)[ \t]*\)')
+      re_cmakefile_patch : Final[re.Pattern]= re.compile(r'^[Ss][Ee][Tt]\((BUILD_PATCH|PROJECT_PATCH_VERSION)[ \t]*("|)(\d+)(~[a-zA-Z0-9\.+~]+|)("|)[ \t]*\)')
 
       packageInfo['cmake_lists_name'] = cmakeListsFile
       try:
-         cmakeFile = open(packageInfo['cmake_lists_name'], 'r', encoding='utf-8')
-         cmakeFileContents = cmakeFile.readlines()
+         cmakeFile         : TextIO           = open(packageInfo['cmake_lists_name'], 'r', encoding='utf-8')
+         cmakeFileContents : Final[list[str]] = cmakeFile.readlines()
          for line in cmakeFileContents:
             match = re_cmakefile_major.match(line)
-            if match != None:
+            if match is not None:
                packageInfo['cmake_version_major'] = int(match.group(3))
             else:
                match = re_cmakefile_minor.match(line)
-               if match != None:
+               if match is not None:
                   packageInfo['cmake_version_minor'] = int(match.group(3))
                else:
                   match = re_cmakefile_patch.match(line)
-                  if match != None:
+                  if match is not None:
                      packageInfo['cmake_version_patch'] = int(match.group(3))
                      packageInfo['cmake_version_extra'] = match.group(4)
                   else:
                      match = re_cmake_project.match(line)
-                     if match != None:
+                     if match is not None:
                         packageInfo['cmake_package_name'] = match.group(1)
          cmakeFile.close()
 
@@ -219,25 +229,25 @@ def readCMakePackagingInformation():
 
 
 # ###### Read AutoConf packaging information ################################
-def readAutoConfPackagingInformation():
+def readAutoConfPackagingInformation() -> dict[str,Any]:
 
    # ====== Initialise ======================================================
-   packageInfo = {}
+   packageInfo : dict[str,Any] = { }
 
    # ====== Obtain package configuration ====================================
    for autoconfConfigName in [ 'configure.ac', 'configure.in' ]:
       if os.path.isfile(autoconfConfigName):
          break
    if os.path.isfile(autoconfConfigName):
-      re_autoconffile_version = re.compile(r'^AC_INIT\([ \t]*\[(.*)\][ \t]*,[ \t]*\[(\d).(\d).(\d+)([~+][a-zA-Z0-9\.+]+|)\][ \t]*,[ \t]*\[(.*)\][ \t]*\)')
+      re_autoconffile_version : Final[re.Pattern] = re.compile(r'^AC_INIT\([ \t]*\[(.*)\][ \t]*,[ \t]*\[(\d).(\d).(\d+)([~+][a-zA-Z0-9\.+]+|)\][ \t]*,[ \t]*\[(.*)\][ \t]*\)')
 
       packageInfo['autoconf_config_name'] = autoconfConfigName
       try:
-         autoconfFile = open(packageInfo['autoconf_config_name'], 'r', encoding='utf-8')
-         autoconfFileContents = autoconfFile.readlines()
+         autoconfFile         : TextIO           = open(packageInfo['autoconf_config_name'], 'r', encoding='utf-8')
+         autoconfFileContents : Final[list[str]] = autoconfFile.readlines()
          for line in autoconfFileContents:
             match = re_autoconffile_version.match(line)
-            if match != None:
+            if match is not None:
                packageInfo['autoconf_package']       = match.group(1)
                packageInfo['autoconf_version_major'] = int(match.group(2))
                packageInfo['autoconf_version_minor'] = int(match.group(3))
@@ -264,10 +274,10 @@ def readAutoConfPackagingInformation():
 
 
 # ###### Read Debian packaging information ##################################
-def readDebianPackagingInformation():
+def readDebianPackagingInformation() -> dict[str,Any]:
 
    # ====== Initialise ======================================================
-   packageInfo = {}
+   packageInfo : dict[str,Any] = { }
 
    # ====== Process changelog file ==========================================
    debianChangelogName = 'debian/changelog'
@@ -276,9 +286,9 @@ def readDebianPackagingInformation():
    if ( (os.path.isfile(debianChangelogName)) and
         (os.path.isfile(debianControlName)) and
         (os.path.isfile(debianRulesName)) ):
-      re_debian_version = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+:|)(\d+)\.(\d+)\.(\d+)([a-zA-Z0-9+~\.]*)(-|)(\d[a-zA-Z0-9-+~]*|)\)[ \t]*([a-zA-Z-+]+)[ \t]*;(.*)$')
-      re_debian_itp1    = re.compile(r'^ * .*ITP.*Closes: #([0-9]+).*$')
-      re_debian_itp2    = re.compile(r'^ * .*Closes: #([0-9]+).*ITP.*$')
+      re_debian_version : Final[re.Pattern] = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+:|)(\d+)\.(\d+)\.(\d+)([a-zA-Z0-9+~\.]*)(-|)(\d[a-zA-Z0-9-+~]*|)\)[ \t]*([a-zA-Z-+]+)[ \t]*;(.*)$')
+      re_debian_itp1    : Final[re.Pattern] = re.compile(r'^ * .*ITP.*Closes: #([0-9]+).*$')
+      re_debian_itp2    : Final[re.Pattern] = re.compile(r'^ * .*Closes: #([0-9]+).*ITP.*$')
 
       packageInfo['debian_changelog_name']    = debianChangelogName
       packageInfo['debian_control_name']      = debianControlName
@@ -291,14 +301,14 @@ def readDebianPackagingInformation():
       packageInfo['debian_status']            = None
 
       try:
-         debianChangeLogFile = open(debianChangelogName, 'r', encoding='utf-8')
-         debianChangeLogFileContents = debianChangeLogFile.readlines()
+         debianChangeLogFile         : TextIO           = open(debianChangelogName, 'r', encoding='utf-8')
+         debianChangeLogFileContents : Final[list[str]] = debianChangeLogFile.readlines()
          n = 0
          for line in debianChangeLogFileContents:
             n = n + 1
             if n == 1:
                match = re_debian_version.match(line)
-               if match != None:
+               if match is not None:
                   packageInfo['debian_package_name']      = match.group(1)
                   packageInfo['debian_version_prefix']    = match.group(2)
                   packageInfo['debian_version_major']     = int(match.group(3))
@@ -324,7 +334,7 @@ def readDebianPackagingInformation():
                match = re_debian_itp1.match(line)
                if match is None:
                   match = re_debian_itp2.match(line)
-               if match != None:
+               if match is not None:
                   # print('ITP: ' + line)
                   packageInfo['debian_itp'] = int(match.group(1))
                   break
@@ -344,13 +354,13 @@ def readDebianPackagingInformation():
          sys.exit(1)
 
       # ====== Process control file =========================================
-      re_debian_standards_version = re.compile(r'^Standards-Version:[ \t]*([0-9\.]*)[ \t]*$')
+      re_debian_standards_version : Final[re.Pattern] = re.compile(r'^Standards-Version:[ \t]*([0-9\.]*)[ \t]*$')
       try:
-         debianControlFile = open(debianControlName, 'r', encoding='utf-8')
-         debianControlFileContents = debianControlFile.readlines()
+         debianControlFile         : TextIO           = open(debianControlName, 'r', encoding='utf-8')
+         debianControlFileContents : Final[list[str]] = debianControlFile.readlines()
          for line in debianControlFileContents:
             match = re_debian_standards_version.match(line)
-            if match != None:
+            if match is not None:
                packageInfo['debian_standards_version'] = match.group(1)
          debianControlFile.close()
       except Exception as e:
@@ -361,10 +371,10 @@ def readDebianPackagingInformation():
 
 
 # ###### Read RPM packaging information #####################################
-def readRPMPackagingInformation():
+def readRPMPackagingInformation() -> dict[str,Any]:
 
    # ====== Initialise ======================================================
-   packageInfo = {}
+   packageInfo : dict[str,Any] = { }
 
    # ====== Obtain package configuration ====================================
    rpm_spec_names = glob.glob('rpm/*.spec')
@@ -372,17 +382,17 @@ def readRPMPackagingInformation():
       packageInfo['rpm_spec_name'] = rpm_spec_names[0]
       packageInfo['rpm_packages']  = [ ]
 
-      re_rpm_name    = re.compile(r'^(Name:[ \t]*)(\S+)')
-      re_rpm_version = re.compile(r'^(Version:[ \t]*)(\d+)\.(\d+)\.(\d+)(.*|)')
-      re_rpm_release = re.compile(r'^(Release:[ \t]*)(\d+)')
-      re_rpm_package = re.compile(r'^(%package[ \t]+)([a-zA-Z0-9+-]+)')
+      re_rpm_name    : Final[re.Pattern] = re.compile(r'^(Name:[ \t]*)(\S+)')
+      re_rpm_version : Final[re.Pattern] = re.compile(r'^(Version:[ \t]*)(\d+)\.(\d+)\.(\d+)(.*|)')
+      re_rpm_release : Final[re.Pattern] = re.compile(r'^(Release:[ \t]*)(\d+)')
+      re_rpm_package : Final[re.Pattern] = re.compile(r'^(%package[ \t]+)([a-zA-Z0-9+-]+)')
       try:
-         rpmSpecFile = open(packageInfo['rpm_spec_name'], 'r', encoding='utf-8')
-         rpmSpecFileContents = rpmSpecFile.readlines()
+         rpmSpecFile         : TextIO           = open(packageInfo['rpm_spec_name'], 'r', encoding='utf-8')
+         rpmSpecFileContents : Final[list[str]] = rpmSpecFile.readlines()
          packageInfo['rpm_version_packaging'] = None
          for line in rpmSpecFileContents:
             match = re_rpm_version.match(line)
-            if match != None:
+            if match is not None:
                packageInfo['rpm_version_major']  = int(match.group(2))
                packageInfo['rpm_version_minor']  = int(match.group(3))
                packageInfo['rpm_version_patch']  = int(match.group(4))
@@ -393,15 +403,15 @@ def readRPMPackagingInformation():
                   str(packageInfo['rpm_version_patch']) + packageInfo['rpm_version_extra']
             else:
                match = re_rpm_release.match(line)
-               if match != None:
+               if match is not None:
                   packageInfo['rpm_version_packaging'] = int(match.group(2))
                else:
                   match = re_rpm_name.match(line)
-                  if match != None:
+                  if match is not None:
                      packageInfo['rpm_package_name'] = match.group(2)
                   else:
                      match = re_rpm_package.match(line)
-                     if match != None:
+                     if match is not None:
                         packageInfo['rpm_packages'].append(
                            packageInfo['rpm_package_name'] + '-' + \
                            match.group(2) + '-' + \
@@ -434,22 +444,22 @@ def readRPMPackagingInformation():
 
 
 # ###### Read FreeBSD ports packaging information ###########################
-def readFreeBSDPackagingInformation():
+def readFreeBSDPackagingInformation() -> dict[str,Any]:
 
    # ====== Initialise ======================================================
-   packageInfo = {}
-   port_makefile_names = glob.glob('freebsd/*/Makefile')
+   packageInfo : dict[str,Any] = { }
+   port_makefile_names : Final[list[str]] = glob.glob('freebsd/*/Makefile')
 
    # ====== Obtain package configuration ====================================
    if len(port_makefile_names) > 0:
       packageInfo['port_makefile_name'] = port_makefile_names[0]
-      re_freebsd_version = re.compile(r'^(DISTVERSION=[ \t]*)(\d+)\.(\d+)\.(\d+)(.*|)')
+      re_freebsd_version : Final[re.Pattern] = re.compile(r'^(DISTVERSION=[ \t]*)(\d+)\.(\d+)\.(\d+)(.*|)')
       try:
-         freeBSDMakefileFile = open(packageInfo['port_makefile_name'], 'r', encoding='utf-8')
-         freeBSDMakefileFileContents = freeBSDMakefileFile.readlines()
+         freeBSDMakefileFile         : TextIO           = open(packageInfo['port_makefile_name'], 'r', encoding='utf-8')
+         freeBSDMakefileFileContents : Final[list[str]] = freeBSDMakefileFile.readlines()
          for line in freeBSDMakefileFileContents:
             match = re_freebsd_version.match(line)
-            if match != None:
+            if match is not None:
                packageInfo['port_version_major']  = int(match.group(2))
                packageInfo['port_version_minor']  = int(match.group(3))
                packageInfo['port_version_patch']  = int(match.group(4))
@@ -473,10 +483,10 @@ def readFreeBSDPackagingInformation():
 
 
 # ###### Read other packaging information ###################################
-def readOtherPackagingInformation():
+def readOtherPackagingInformation() -> dict[str,Any]:
 
    # ====== Initialise ======================================================
-   packageInfo = {}
+   packageInfo : dict[str,Any] = { }
 
    # ====== Obtain package configuration ====================================
    for otherFileName in [ 'version' ]:
@@ -485,13 +495,13 @@ def readOtherPackagingInformation():
 
    if os.path.isfile(otherFileName):
       packageInfo['other_file_name'] = otherFileName
-      re_otherfile_version = re.compile(r'(\S+) (\d).(\d).(\d+)([~+][a-zA-Z0-9\.+]+|)')
+      re_otherfile_version : Final[re.Pattern] = re.compile(r'(\S+) (\d).(\d).(\d+)([~+][a-zA-Z0-9\.+]+|)')
       try:
-         otherFile = open(otherFileName, 'r', encoding='utf-8')
-         otherFileContents = otherFile.readlines()
+         otherFile         : TextIO           = open(otherFileName, 'r', encoding='utf-8')
+         otherFileContents : Final[list[str]] = otherFile.readlines()
          line = otherFileContents[0]
          match = re_otherfile_version.match(line)
-         if match != None:
+         if match is not None:
             packageInfo['other_package']       = match.group(1)
             packageInfo['other_version_major'] = int(match.group(2))
             packageInfo['other_version_minor'] = int(match.group(3))
@@ -509,49 +519,40 @@ def readOtherPackagingInformation():
 
       # ====== Check whether information is complete ========================
       if not 'other_version_major' in packageInfo:
-         sys.stderr.write('ERROR: Cannot find required package versioning details in ' + debianChangelogName + '!\n')
+         sys.stderr.write('ERROR: Cannot find required package versioning details in ' + otherFileName + '!\n')
          sys.exit(1)
 
    return packageInfo
 
 
-
-# ###### Obtain distribution codenames ######################################
-def obtainDistributionCodenames():
-   global DebianCodenames
-   global UbuntuCodenames
-   DebianCodenames = getDistributionCodenames()
-   UbuntuCodenames = getDistributionCodenames('ubuntu')
-
-
 # ###### Read packaging information #########################################
-def readPackagingInformation():
+def readPackagingInformation() -> dict[str,Any]:
 
    # ====== Read information from different packaging system files ==========
    packageInfo = readPackagingConfiguration()
 
    cmakePackageInfo = readCMakePackagingInformation()
-   if cmakePackageInfo != None:
+   if cmakePackageInfo is not None:
       packageInfo.update(cmakePackageInfo)
 
    autoconfPackageInfo = readAutoConfPackagingInformation()
-   if autoconfPackageInfo != None:
+   if autoconfPackageInfo is not None:
       packageInfo.update(autoconfPackageInfo)
 
    debianPackageInfo = readDebianPackagingInformation()
-   if debianPackageInfo != None:
+   if debianPackageInfo is not None:
       packageInfo.update(debianPackageInfo)
 
    rpmPackageInfo = readRPMPackagingInformation()
-   if rpmPackageInfo != None:
+   if rpmPackageInfo is not None:
       packageInfo.update(rpmPackageInfo)
 
    freeBSDPackageInfo = readFreeBSDPackagingInformation()
-   if freeBSDPackageInfo != None:
+   if freeBSDPackageInfo is not None:
       packageInfo.update(freeBSDPackageInfo)
 
    otherPackageInfo = readOtherPackagingInformation()
-   if otherPackageInfo != None:
+   if otherPackageInfo is not None:
       packageInfo.update(otherPackageInfo)
 
 
@@ -588,7 +589,7 @@ def readPackagingInformation():
 
    # ====== Look for source tarball =========================================
    sourcePackageInfo = findSourceTarball(packageInfo)
-   if sourcePackageInfo != None:
+   if sourcePackageInfo is not None:
       packageInfo.update(sourcePackageInfo)
 
    return packageInfo
@@ -676,7 +677,7 @@ def makeSourceTarball(packageInfo, skipPackageSigning, summaryFile):
       except FileNotFoundError:
          pass
 
-   if summaryFile != None:
+   if summaryFile is not None:
       summaryFile.write('sourceTarballFile: ' + os.path.abspath(sourcePackageInfo['source_tarball_name']) + '\n')
 
    # ====== Sign tarball ====================================================
@@ -704,7 +705,7 @@ def makeSourceTarball(packageInfo, skipPackageSigning, summaryFile):
          sys.stderr.write('ERROR: Bad signature! Something is wrong!\n')
          return False
 
-      if summaryFile != None:
+      if summaryFile is not None:
          summaryFile.write('sourceTarballSignatureFile: ' + os.path.abspath(sourcePackageInfo['source_tarball_signature']) + '\n')
 
    packageInfo.update(sourcePackageInfo)
@@ -824,11 +825,13 @@ def getDebianControlTarballName(packageInfo, debianVersionPackaging = None):
 
 
 # ###### Fetch Debian changelog file ########################################
-def fetchDebianChangelog(packageInfo, codename = 'unstable'):
+def fetchDebianChangelog(packageInfo : dict[str,Any],
+                         codename    : str = 'unstable') -> list[str] | None:
    if not hasPackagingFor(packageInfo, 'debian'):
       sys.stderr.write('ERROR: Cannot find required Debian packaging information!\n')
       sys.exit(1)
 
+   assert DebianCodenames is not None
    if codename in DebianCodenames:
       # Debian
       statusPageURL = 'https://packages.debian.org/source/' + codename + '/' + packageInfo['debian_package_name']
@@ -845,6 +848,14 @@ def fetchDebianChangelog(packageInfo, codename = 'unstable'):
    statusPageContents = None
    maxTrials          = 10
 
+   re_debian_package : Final[re.Pattern] = \
+      re.compile(r'.*Source Package: ' + packageInfo['debian_package_name'] + r' \(([0-9-+~\.a-z]+)\)')
+   re_debian_archive : Final[re.Pattern] = \
+      re.compile(r'.*href="((http|https)://[a-zA-Z0-9\./+-]+/' + \
+                  packageInfo['debian_package_name'][0:1] + '/' + \
+                  packageInfo['debian_package_name'] + '/' + \
+                  r')(' + packageInfo['debian_package_name'] + r'_[0-9-+~\.a-z]+\.debian\.tar\.[a-zA-Z]+)"')
+
    for trial in range(0, maxTrials):
       if trial > 0:
          sys.stderr.write('\n')
@@ -860,19 +871,14 @@ def fetchDebianChangelog(packageInfo, codename = 'unstable'):
                                                     })
          statusPage        = urllib.request.urlopen(statusPageRequest)
 
-         re_debian_package = re.compile(r'.*Source Package: ' + packageInfo['debian_package_name'] + r' \(([0-9-+~\.a-z]+)\)')
-         re_debian_archive = re.compile(r'.*href="((http|https)://[a-zA-Z0-9\./+-]+/' + \
-                                          packageInfo['debian_package_name'][0:1] + '/' + \
-                                          packageInfo['debian_package_name'] + '/' + \
-                                          r')(' + packageInfo['debian_package_name'] + r'_[0-9-+~\.a-z]+\.debian\.tar\.[a-zA-Z]+)"')
          for line in statusPage:
-            line = line.decode('utf-8')
+            line  = line.decode('utf-8')
             match = re_debian_package.match(line)
-            if match != None:
+            if match is not None:
                debianVersion = match.group(1)
             else:
                match = re_debian_archive.match(line)
-               if match != None:
+               if match is not None:
                   debianLocation = match.group(1)
                   debianArchive  = match.group(3)
 
@@ -901,7 +907,7 @@ def fetchDebianChangelog(packageInfo, codename = 'unstable'):
    archiveFileURL =  debianLocation + debianArchive
    sys.stderr.write('Looking for \"debian\" archive at ' + archiveFileURL + ' ... ')
    sys.stderr.flush()
-   result = None
+   result : list[str] | None = None
    try:
       archiveFile = urllib.request.urlopen(archiveFileURL)
       debianArchiveFile = tempfile.NamedTemporaryFile(delete=False)
@@ -913,7 +919,8 @@ def fetchDebianChangelog(packageInfo, codename = 'unstable'):
       try:
          process = subprocess.Popen([ 'tar', 'x' + tarCompressionOption + 'fO', debianArchiveFile.name, 'debian/changelog'],
                                     stdout=subprocess.PIPE, universal_newlines=True)
-         result = process.stdout.readlines()
+         if ( (process is not None) and (process.stdout is not None) ):
+            result = process.stdout.readlines()
          os.unlink(debianArchiveFile.name)
 
       except Exception as e:
@@ -933,13 +940,14 @@ def fetchDebianChangelog(packageInfo, codename = 'unstable'):
 # * Empty entries get dropped.
 # * Stop, if entry matches regexp_for_last_entry argument.
 # * Stop after first entry, if regexp_for_last_entry = 1.
-def filterDebianChangelog(changeLogContents, re_last_entry = None):
+def filterDebianChangelog(changeLogContents : list[str],
+                          re_last_entry     : re.Pattern | None = None) -> list[str]:
 
-   re_begin_of_entry = re.compile(r'^[a-zA-Z].*$')
-   re_end_of_entry   = re.compile(r'^ --.*$')
-   re_empty          = re.compile(r'^$')
-   re_item           = re.compile(r'^ *')
-   re_item_is_itp    = re.compile(r'^(.*Closes:.*ITP.*|.*ITP.*Closes:.*)$')
+   re_begin_of_entry : Final[re.Pattern] = re.compile(r'^[a-zA-Z].*$')
+   re_end_of_entry   : Final[re.Pattern] = re.compile(r'^ --.*$')
+   re_empty          : Final[re.Pattern] = re.compile(r'^$')
+   re_item           : Final[re.Pattern] = re.compile(r'^ *')
+   re_item_is_itp    : Final[re.Pattern] = re.compile(r'^(.*Closes:.*ITP.*|.*ITP.*Closes:.*)$')
 
    resultingChangelog = []
    entries            = 0
@@ -980,7 +988,7 @@ def filterDebianChangelog(changeLogContents, re_last_entry = None):
                      i = i + 1
                      if (i <= 2) or (i >= len(splittedITPEntry) - 2):
                         resultingChangelog.append(itpLine + '\n')
-                     elif re_item_is_itp.match(itpLine) != None:
+                     elif re_item_is_itp.match(itpLine) is not None:
                         resultingChangelog.append(itpLine + '\n')
                   break   # ITP -> done!
 
@@ -988,8 +996,8 @@ def filterDebianChangelog(changeLogContents, re_last_entry = None):
                entryIsITP   = False
 
             # ------ Check for match with last entry regexp in argument -----
-            if re_last_entry != None:
-               if re_last_entry.match(line) != None:
+            if re_last_entry is not None:
+               if re_last_entry.match(line) is not None:
                   break
 
             entryContentLines = 0
@@ -1010,14 +1018,15 @@ def filterDebianChangelog(changeLogContents, re_last_entry = None):
 # 1. Import old entries from distributor's changelog
 # 2a. Get all newer entries from PPA changelog
 # 2b. Merge newer entries into a single entry
-def mergeDebianChangelogs(ppaChangelogContents, distributorChangelogContents):
+def mergeDebianChangelogs(ppaChangelogContents         : list[str],
+                          distributorChangelogContents : list[str]) -> list[str]:
 
    # ====== Merge changelogs ================================================
-   re_entry_header = re.compile(r'^([a-zA-Z0-9-]+ \([0-9a-zA-Z\.~+]+-)')
-   re_entry_footer = re.compile(r'^ -- .*')
-   re_empty        = re.compile(r'^\S*$')
+   re_entry_header : Final[re.Pattern] = re.compile(r'^([a-zA-Z0-9-]+ \([0-9a-zA-Z\.~+]+-)')
+   re_entry_footer : Final[re.Pattern] = re.compile(r'^ -- .*')
+   re_empty        : Final[re.Pattern] = re.compile(r'^\S*$')
 
-   topics = [
+   topics : Final[list[dict[str,Any]]] = [
       { 'regexp': re.compile(r'^  \* .*ew upstream (version|release).*$'), 'count': 0, 'max': 1 },
       { 'regexp': re.compile(r'^  \* .*standards version.*$'),             'count': 0, 'max': 1 },
       { 'regexp': re.compile(r'^  \* .*debian/compat:.*$'),                'count': 0, 'max': 0 }
@@ -1043,7 +1052,7 @@ def mergeDebianChangelogs(ppaChangelogContents, distributorChangelogContents):
 
       # ------ Begin of an entry --------------------------------------------
       match = re_entry_header.match(line)
-      if match != None:
+      if match is not None:
          entries = entries + 1
          if entries == 1:
             resultingChangelogContents.append(line)
@@ -1058,12 +1067,12 @@ def mergeDebianChangelogs(ppaChangelogContents, distributorChangelogContents):
 
       # ------ Empty line ---------------------------------------------------
       match = re_empty.match(line)
-      if match != None:
+      if match is not None:
          continue
 
       # ------ End of an entry ----------------------------------------------
       match = re_entry_footer.match(line)
-      if match != None:
+      if match is not None:
          if entries == 1:
             firstFooter = line
          continue
@@ -1072,7 +1081,7 @@ def mergeDebianChangelogs(ppaChangelogContents, distributorChangelogContents):
       skip = False
       for topic in topics:
          match = topic['regexp'].match(line)
-         if match != None:
+         if match is not None:
             topic['count'] = topic['count'] + 1
             if topic['count'] > topic['max']:
                skip = True
@@ -1091,7 +1100,8 @@ def mergeDebianChangelogs(ppaChangelogContents, distributorChangelogContents):
 
 
    resultingChangelogContents.append('\n')
-   resultingChangelogContents.append(firstFooter)
+   if firstFooter is not None:
+      resultingChangelogContents.append(firstFooter)
 
    if foundLatestDistributionEntryInPPA == False:
       # Distributor changelog is equal to PPA changelog?
@@ -1112,7 +1122,12 @@ def mergeDebianChangelogs(ppaChangelogContents, distributorChangelogContents):
 
 
 # ###### Make Debian source package #########################################
-def makeSourceDeb(packageInfo, codenames, skipPackageSigning, summaryFile):
+def makeSourceDeb(packageInfo        : dict[str,Any],
+                  codenames          : list[str],
+                  skipPackageSigning : bool,
+                  summaryFile        : TextIO | None) -> bool:
+
+   assert DebianCodenames is not None
 
    # ====== Make sure that the source tarball is available ==================
    if makeSourceTarball(packageInfo, skipPackageSigning, summaryFile) == False:
@@ -1122,8 +1137,12 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning, summaryFile):
 
 
    # ====== Build for each distribution codename ============================
-   changesFiles = {}
-   dscFiles     = {}
+   changesFiles : dict[str,str]     = { }
+   dscFiles     : dict[str,str]     = { }
+   re_launchpad : Final[re.Pattern] = re.compile(r'^.*\(LP: #[0-9]+')
+   re_debhelper : Final[re.Pattern] = re.compile(r'debhelper \(.* [0-9]+\)')
+   re_cmake3    : Final[re.Pattern] = re.compile(r'cmake .* \| cmake3')
+   re_parallel  : Final[re.Pattern] = re.compile(r' --parallel')
 
    printSection('Creating source Debian packages')
 
@@ -1194,9 +1213,9 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning, summaryFile):
 
 
       # ====== Adapt packaging ==============================================
-      changeLogContents = readTextFile(packageInfo['debian_changelog_name'])
-      controlContents   = readTextFile(packageInfo['debian_control_name'])
-      rulesContents     = readTextFile(packageInfo['debian_rules_name'])
+      changeLogContents : list[str] = readTextFile(packageInfo['debian_changelog_name'])
+      controlContents   : list[str] = readTextFile(packageInfo['debian_control_name'])
+      rulesContents     : list[str] = readTextFile(packageInfo['debian_rules_name'])
 
       newDebianVersionPackaging = modifyDebianVersionPackaging(packageInfo, codename)
       sys.stdout.write('Modifying packaging version from ' + \
@@ -1216,22 +1235,18 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning, summaryFile):
       # ------- Debian ------------------------------------------------------
       if codename in DebianCodenames:
          # Remove Launchpad entries:
-         re_launchpad = re.compile(r'^.*\(LP: #[0-9]+')
-         changeLogContents = [ line for line in changeLogContents if not re_launchpad.match(line) ]
+         changeLogContents = \
+            [ line for line in changeLogContents if not re_launchpad.match(line) ]
 
          # ------ Fetch distributor's latest changelog ----------------------
          distributorChangelogContents = fetchDebianChangelog(packageInfo, codename)
-         if distributorChangelogContents != None:
+         if distributorChangelogContents is not None:
             # Merge new entries from changelog into a single entry, and append
             # the distributor's changelog with the rest:
             changeLogContents = mergeDebianChangelogs(changeLogContents, distributorChangelogContents)
 
          # ------ Use latest Debhelper for Debian ----------------------------
          if codename in [ 'unstable', 'testing', 'stable', 'oldstable' ]:
-            # Update debhelper version:
-            re_debhelper = re.compile(r'debhelper \(.* [0-9]+\)')
-            # Ugly CMake 3.x version work-around for old Ubuntu versions:
-            re_cmake3    = re.compile(r'cmake .* \| cmake3')
             for i in range(0, len(controlContents)):
                controlContents[i] = re.sub(re_debhelper,
                                            'debhelper-compat (= ' + str(DebhelperLatestVersion) + ')',
@@ -1247,7 +1262,6 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning, summaryFile):
                pass
 
             # Newer debhelper does not need "--parallel" for building:
-            re_parallel = re.compile(r' --parallel')
             for i in range(0, len(rulesContents)):
                rulesContents[i] = re.sub(re_parallel, '', rulesContents[i])
 
@@ -1259,7 +1273,7 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning, summaryFile):
 
          # Remove Debian Bug entries:
          # FIXME: Is this still useful, since Ubuntu is based on Debian?
-         # re_launchpad = re.compile(r'^.*\(Closes: #[0-9]+')
+         # re_launchpad : Final[re.Pattern] = re.compile(r'^.*\(Closes: #[0-9]+')
          # changeLogContents = [ line for line in changeLogContents if not re_launchpad.match(line) ]
 
          # ------ Update control --------------------------------------------
@@ -1313,7 +1327,7 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning, summaryFile):
          sys.stdout.write('* DSC file is ' + dscFileName + '.\n')
          dscFiles[codename] = dscFileName
       else:
-         sys.stderr.write('ERROR: DSC file not found at expected location ' + workdir + '/' + dscFile + '!\n')
+         sys.stderr.write('ERROR: DSC file not found at expected location ' + workdir + '/' + dscFileName + '!\n')
          sys.exit(1)
       changesFiles[codename] = changesName
 
@@ -1339,7 +1353,7 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning, summaryFile):
          shutil.copyfile(workdir + '/' + fileName, fileName)
 
       # ====== Add files to summary =========================================
-      if summaryFile != None:
+      if summaryFile is not None:
          summaryFile.write('debSourceDscFile: '            + workdir + '/' + dscFileName        + ' ' + codename + '\n')
          summaryFile.write('debSourceBuildinfoFile: '      + workdir + '/' + buildinfoName      + ' ' + codename + '\n')
          summaryFile.write('debSourceChangesFile: '        + workdir + '/' + changesName        + ' ' + codename + '\n')
@@ -1382,7 +1396,14 @@ def makeSourceDeb(packageInfo, codenames, skipPackageSigning, summaryFile):
 
 
 # ###### Build Debian binary package ########################################
-def buildDeb(packageInfo, codenames, architectures, skipPackageSigning, summaryFile, twice):
+def buildDeb(packageInfo        : dict[str,Any],
+             codenames          : list[str],
+             architectures      : list[str],
+             skipPackageSigning : bool,
+             summaryFile        : TextIO | None,
+             twice              : bool) -> bool:
+
+   assert DebianCodenames is not None
 
    # ====== Build for each distribution codename ============================
    printSection('Creating binary Debian packages')
@@ -1461,7 +1482,7 @@ def buildDeb(packageInfo, codenames, architectures, skipPackageSigning, summaryF
 
          # ====== Run BLHC ==================================================
          # FIXME: BLHC < 0.14 does not properly handle D_FORTIFY_SOURCE=3!
-         if shutil.which('blhc') != None:
+         if shutil.which('blhc') is not None:
             blhcCommand = 'blhc ' + buildlog + ' | grep -v "^CPPFLAGS missing (-D_FORTIFY_SOURCE=2).*-D_FORTIFY_SOURCE=3.*"  | grep -v "^NONVERBOSE BUILD:"'
             printSubsection('Running BLHC')
             print('=> ' + blhcCommand)
@@ -1474,7 +1495,7 @@ def buildDeb(packageInfo, codenames, architectures, skipPackageSigning, summaryF
             sys.stderr.write('NOTE: BLHC is not installed -> checks skipped!\n')
 
          # ====== Run Lintian ===============================================
-         if shutil.which('lintian') != None:
+         if shutil.which('lintian') is not None:
             lintianCommand = 'lintian -v -i -I -E --pedantic' + \
                                 ' --profile ' + lintianProfile + \
                                 ' --suppress-tags malformed-deb-archive,bad-distribution-in-changes-file' + \
@@ -1490,7 +1511,7 @@ def buildDeb(packageInfo, codenames, architectures, skipPackageSigning, summaryF
             sys.stderr.write('NOTE: Lintian is not installed -> checks skipped!\n')
 
          # ====== Run LRC ===================================================
-         if shutil.which('lrc') != None:
+         if shutil.which('lrc') is not None:
             lrcCommand = 'lrc -t'
             printSubsection('Running LRC')
             print('=> ' + lrcCommand)
@@ -1503,14 +1524,16 @@ def buildDeb(packageInfo, codenames, architectures, skipPackageSigning, summaryF
             sys.stderr.write('NOTE: LRC is not installed -> checks skipped!\n')
 
          # ====== Add Changes file to summary ===============================
-         if summaryFile != None:
+         if summaryFile is not None:
             summaryFile.write('debBuildChangesFile: ' + foundChangesFiles[0] + ' ' + codename + ' ' + buildArchitecture + '\n')
 
    return True
 
 
 # ###### Make SRPM source package ###########################################
-def makeSourceRPM(packageInfo, skipPackageSigning, summaryFile):
+def makeSourceRPM(packageInfo        : dict[str,Any],
+                  skipPackageSigning : bool,
+                  summaryFile        : TextIO | None) -> bool:
 
    # ====== Make sure that the source tarball is available ==================
    if makeSourceTarball(packageInfo, skipPackageSigning, summaryFile) == False:
@@ -1519,7 +1542,9 @@ def makeSourceRPM(packageInfo, skipPackageSigning, summaryFile):
    printSection('Creating SRPM source packages')
 
    # ====== Initialise RPM build directories ================================
-   rpmbuildDir = os.environ.get('HOME') + '/rpmbuild'
+   homeDir     : Final[str | None] = os.environ.get('HOME')
+   assert homeDir is not None
+   rpmbuildDir : Final[str]        = os.path.join(homeDir, 'rpmbuild')
    for subdir in [ 'BUILD', 'BUILDROOT', 'RPMS', 'SOURCES', 'SPECS', 'SRPMS' ]:
       os.makedirs(rpmbuildDir + '/' + subdir, exist_ok = True)
 
@@ -1554,7 +1579,7 @@ def makeSourceRPM(packageInfo, skipPackageSigning, summaryFile):
       sys.exit(1)
 
    # ====== Create SRPM =====================================================
-   rpmbuild = [ 'rpmbuild', '-bs', packageInfo['rpm_spec_name'] ]
+   rpmbuild : Final[list[str]] = [ 'rpmbuild', '-bs', packageInfo['rpm_spec_name'] ]
    print(rpmbuild)
    try:
       subprocess.run(rpmbuild, check = True)
@@ -1583,7 +1608,7 @@ def makeSourceRPM(packageInfo, skipPackageSigning, summaryFile):
          sys.exit(1)
 
    # ====== Run RPM Lint ====================================================
-   if shutil.which('rpmlint') != None:
+   if shutil.which('rpmlint') is not None:
       rpmlintCommand = 'rpmlint -P ' + srpmFile
       printSubsection('Running RPM Lint')
       print('=> ' + rpmlintCommand)
@@ -1596,12 +1621,18 @@ def makeSourceRPM(packageInfo, skipPackageSigning, summaryFile):
       sys.stderr.write('NOTE: RPM Lint is not installed -> checks skipped!\n')
 
    # ====== Add SRPM file to summary ========================================
-   if summaryFile != None:
+   if summaryFile is not None:
       summaryFile.write('rpmSourceFile: ' + srpmFile + '\n')
+
+   return True
 
 
 # ###### Build RPM binary package ###########################################
-def buildRPM(packageInfo, releases, architectures, skipPackageSigning, summaryFile):
+def buildRPM(packageInfo        : dict[str,Any],
+             releases           : list[str],
+             architectures      : list[str],
+             skipPackageSigning : bool,
+             summaryFile        : TextIO | None) -> bool:
 
    # ====== Make sure that the source Debian files are available ============
    if len(releases) == 0:
@@ -1617,7 +1648,9 @@ def buildRPM(packageInfo, releases, architectures, skipPackageSigning, summaryFi
    printSection('Creating binary RPM packages')
 
    # ====== Check SRPM ======================================================
-   rpmbuildDir = os.environ.get('HOME') + '/rpmbuild'
+   homeDir     : Final[str | None] = os.environ.get('HOME')
+   assert homeDir is not None
+   rpmbuildDir : Final[str]        = os.path.join(homeDir, 'rpmbuild')
    srpmFile = rpmbuildDir + '/SRPMS/' + \
                  packageInfo['rpm_package_name'] + '-' + \
                  packageInfo['rpm_version_string'] + '-' + str(packageInfo['rpm_version_packaging']) + \
@@ -1664,7 +1697,7 @@ def buildRPM(packageInfo, releases, architectures, skipPackageSigning, summaryFi
          try:
             # NOTE: using old chroot instead of container, to allow running
             #       mock inside a container!
-            commands = [
+            commands : list[list[str]] = [
                   [ 'mock', '-r', configuration, '--isolation=auto', '--init' ],
                   [ 'mock', '-r', configuration, '--isolation=auto', '--installdeps', srpmFile ],
                   [ 'mock', '-r', configuration, '--isolation=auto', '--rebuild', '--no-clean', srpmFile ]
@@ -1679,11 +1712,12 @@ def buildRPM(packageInfo, releases, architectures, skipPackageSigning, summaryFi
          # ------ Check resulting RPM =======================================
          for rpmFilePrefix in packageInfo['rpm_packages']:
             rpmArchitecture = None
-            found = False
+            found           = False
             for architecture in [ 'noarch', buildArchitecture ]:
-               rpmFile = '/var/lib/mock/' + configuration + '/result/' + \
-                           rpmFilePrefix + '.' + \
-                           architecture + '.rpm'
+               rpmFile = \
+                  '/var/lib/mock/' + configuration + '/result/' + \
+                  rpmFilePrefix + '.' + \
+                  architecture + '.rpm'
                if os.path.isfile(rpmFile):
                   rpmArchitecture = architecture
                   found           = True
@@ -1694,9 +1728,10 @@ def buildRPM(packageInfo, releases, architectures, skipPackageSigning, summaryFi
 
             # ====== Sign SRPM ==============================================
             if skipPackageSigning == False:
-               rpmsign = [ 'rpmsign',
-                           '--define', '_gpg_name ' + packageInfo['packaging_maintainer_key'],
-                           '--addsign', rpmFile ]
+               rpmsign : list[str] = \
+                  [ 'rpmsign',
+                    '--define', '_gpg_name ' + packageInfo['packaging_maintainer_key'],
+                    '--addsign', rpmFile ]
                print(rpmsign)
                try:
                   subprocess.run(rpmsign, check = True)
@@ -1705,7 +1740,7 @@ def buildRPM(packageInfo, releases, architectures, skipPackageSigning, summaryFi
                   sys.exit(1)
 
             # ====== Run RPM Lint ===========================================
-            if shutil.which('rpmlint') != None:
+            if shutil.which('rpmlint') is not None:
                rpmlintCommand = 'rpmlint -P ' + rpmFile
                printSubsection('Running RPM Lint')
                print('=> ' + rpmlintCommand)
@@ -1718,8 +1753,10 @@ def buildRPM(packageInfo, releases, architectures, skipPackageSigning, summaryFi
                sys.stderr.write('NOTE: RPM Lint is not installed -> checks skipped!\n')
 
             # ====== Add RPM file to summary ================================
-            if summaryFile != None:
+            if summaryFile is not None:
                summaryFile.write('rpmFile: ' + rpmFile + ' ' + release + ' ' + rpmArchitecture + '\n')
+
+   return True
 
 
 
@@ -1740,9 +1777,13 @@ if len(sys.argv) < 2:
    sys.exit(1)
 
 
-packageInfo = readPackagingInformation()
-
-tool = sys.argv[1]
+packageInfo        : dict[str,Any] = readPackagingInformation()
+tool               : Final[str]    = sys.argv[1]
+summaryFile        : TextIO | None = None
+skipPackageSigning : bool          = False
+codenames          : list[str]     = [ ]
+releases           : list[str]     = [ ]
+architectures      : list[str]     = [ ]
 
 # ====== Print information ==================================================
 if tool == 'info':
@@ -1750,8 +1791,6 @@ if tool == 'info':
 
 # ====== Make source tarball ================================================
 elif tool == 'make-source-tarball':
-   skipPackageSigning = False
-   summaryFile        = None
    for i in range(2, len(sys.argv)):
       if sys.argv[i] == '--skip-signing':
          skipPackageSigning = True
@@ -1772,9 +1811,6 @@ elif tool == 'make-source-tarball':
 # ====== Make source deb file ===============================================
 elif tool == 'make-source-deb':
    obtainDistributionCodenames()
-   skipPackageSigning = False
-   codenames          = []
-   summaryFile        = None
    for i in range(2, len(sys.argv)):
       if sys.argv[i][0] != '-':
          codenames.append(sys.argv[i])
@@ -1795,11 +1831,7 @@ elif tool == 'make-source-deb':
 # ====== Build deb file =====================================================
 elif tool == 'build-deb':
    obtainDistributionCodenames()
-   skipPackageSigning = False
-   summaryFile        = None
-   codenames          = []
-   architectures      = []
-   twice              = False
+   twice : bool = False
    for i in range(2, len(sys.argv)):
       if sys.argv[i][0] != '-':
          codenames.append(sys.argv[i])
@@ -1824,8 +1856,6 @@ elif tool == 'build-deb':
 
 # ====== Make source deb file ===============================================
 elif tool == 'make-source-rpm':
-   skipPackageSigning = False
-   summaryFile        = None
    for i in range(2, len(sys.argv)):
       if sys.argv[i] == '--skip-signing':
          skipPackageSigning = True
@@ -1843,10 +1873,6 @@ elif tool == 'make-source-rpm':
 
 # ====== Build deb file =====================================================
 elif tool == 'build-rpm':
-   skipPackageSigning = False
-   summaryFile        = None
-   releases           = []
-   architectures      = []
    for i in range(2, len(sys.argv)):
       if sys.argv[i][0] != '-':
          releases.append(sys.argv[i])
@@ -1870,12 +1896,11 @@ elif tool == 'build-rpm':
 # ====== Fetch Debian changelog file ========================================
 elif tool == 'fetch-debian-changelog':
    obtainDistributionCodenames()
-   skipPackageSigning = False
-   codename           = 'unstable'
+   codename : str = 'unstable'
    if len(sys.argv) >= 3:
       codename = sys.argv[2]
    result = fetchDebianChangelog(packageInfo, codename)
-   if result != None:
+   if result is not None:
       sys.stdout.write('\n')
       for line in result:
          sys.stdout.write(line)
