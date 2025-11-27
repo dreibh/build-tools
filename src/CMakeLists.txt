@@ -1,5 +1,16 @@
-# System-Tools
-# Copyright (C) 2013-2025 by Thomas Dreibholz
+# ==========================================================================
+#              ____        _ _     _     _____           _
+#             | __ ) _   _(_) | __| |   |_   _|__   ___ | |___
+#             |  _ \| | | | | |/ _` |_____| |/ _ \ / _ \| / __|
+#             | |_) | |_| | | | (_| |_____| | (_) | (_) | \__ \
+#             |____/ \__,_|_|_|\__,_|     |_|\___/ \___/|_|___/
+#
+#                           --- Build-Tools ---
+#                https://www.nntb.no/~dreibh/system-tools/
+# ==========================================================================
+#
+# Build-Tools
+# Copyright (C) 2024-2025 by Thomas Dreibholz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Bash options:
 set -eu
 
 # ====== Get package configuration ==========================================
