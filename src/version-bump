@@ -29,6 +29,8 @@ import time
 import urllib.error
 import urllib.request
 
+from typing import Final, TextIO
+
 
 # Set current Debian standards version here
 # (See https://www.debian.org/doc/debian-policy/ for latest version!)
@@ -36,7 +38,7 @@ DEBIAN_STANDARDS_VERSION="4.7.2"
 
 
 # ###### Show differences ###################################################
-def colorDiff(old, new):
+def colorDiff(old : str, new : str):
    h = '====== Updates for ' + old + ': '
    while len(h) < 78:
       h = h + '='
@@ -50,10 +52,14 @@ def applyUpdate(new, old):
    os.rename(new, old)
 
 
+
+# ###### Main program #######################################################
+
 # ====== Read packaging configuration =======================================
-packageMaintainer     = None
-packageMakeDist       = None
-packagingConfFileName = 'packaging.conf'
+packageMaintainer     : str | None           = None
+packageMakeDist       : str | None           = None
+packagingConfFileName : Final[str]           = 'packaging.conf'
+match                 : re.Match[str] | None = None
 re_package_maintainer = re.compile(r'^(MAINTAINER=\")(.*)(\".*$)')
 re_package_makedist   = re.compile(r'^(MAKE_DIST=\")(.*)(\".*$)')
 try:
@@ -61,33 +67,33 @@ try:
    packagingConfFileContents = packagingConfFile.readlines()
    for line in packagingConfFileContents:
       match = re_package_maintainer.match(line)
-      if match != None:
+      if match is not None:
          packageMaintainer = match.group(2)
       else:
          match = re_package_makedist.match(line)
-         if match != None:
+         if match is not None:
             packageMakeDist = match.group(2)
    packagingConfFile.close()
 except Exception as e:
    sys.stderr.write('ERROR: Unable to read ' + packagingConfFileName + ': ' + str(e) + '\n')
    sys.exit(1)
-if packageMaintainer == None:
-   sys.stderr.write('ERROR: Unable to find MAINTAINER in ' + packagingConfFileName + ': ' + str(e) + '\n')
+if packageMaintainer is None:
+   sys.stderr.write('ERROR: Unable to find MAINTAINER in ' + packagingConfFileName + '!\n')
    sys.exit(1)
-elif packageMakeDist == None:
-   sys.stderr.write('ERROR: Unable to find MAKE_DIST in ' + packagingConfFileName + ': ' + str(e) + '\n')
+elif packageMakeDist is None:
+   sys.stderr.write('ERROR: Unable to find MAKE_DIST in ' + packagingConfFileName + '!\n')
    sys.exit(1)
 
 
 # ====== Read Debian configuration ==========================================
-debianChangeLogFileName = 'debian/changelog'
-debianControlFileName   = 'debian/control'
-debianPackage           = None
-debianVersionString     = None
-debianStandardsVersion  = None
-debianDistribution      = None
-debianITP               = None
-debianPackageStatus     = None
+debianChangeLogFileName : Final[str] = 'debian/changelog'
+debianControlFileName   : Final[str] = 'debian/control'
+debianPackage           : str | None = None
+debianVersionString     : str | None = None
+debianStandardsVersion  : str | None = None
+debianDistribution      : str | None = None
+debianITP               : int | None = None
+debianPackageStatus     : str | None = None
 
 if os.path.isfile(debianChangeLogFileName):
    re_debian_version = re.compile(r'^([a-zA-Z0-9-+]+)[ \t]*\((\d+:|)(\d+)\.(\d+)\.(\d+)(.*|)-(\d|\d[a-zA-Z-+~]+\d|)\)[ \t]*([a-zA-Z-+]+)[ \t]*;')
@@ -101,7 +107,7 @@ if os.path.isfile(debianChangeLogFileName):
          n = n + 1
          if n == 1:
             match = re_debian_version.match(line)
-            if match != None:
+            if match is not None:
                 debianPackage          = match.group(1)
                 debianVersionPrefix    = match.group(2)
                 debianVersionMajor     = int(match.group(3))
@@ -115,9 +121,9 @@ if os.path.isfile(debianChangeLogFileName):
                                         str(debianVersionPatch) + debianVersionExtra
          elif n > 1:
             match = re_debian_itp1.match(line)
-            if match == None:
+            if match is None:
                match = re_debian_itp2.match(line)
-            if match != None:
+            if match is not None:
                # print('ITP: ' + line)
                debianITP = int(match.group(1))
                break
@@ -126,7 +132,7 @@ if os.path.isfile(debianChangeLogFileName):
       sys.stderr.write('ERROR: Unable to read ' + debianChangeLogFileName + ': ' + str(e) + '\n')
       sys.exit(1)
 
-   if debianPackage == None:
+   if debianPackage is None:
       sys.stderr.write('ERROR: Cannot find required package versioning details in ' + debianChangeLogFileName + '!\n')
       sys.exit(1)
 
@@ -136,7 +142,7 @@ if os.path.isfile(debianChangeLogFileName):
       debianControlFileContents = debianControlFile.readlines()
       for line in debianControlFileContents:
          match = re_debian_standards_version.match(line)
-         if match != None:
+         if match is not None:
             debianStandardsVersion = match.group(1)
       debianControlFile.close()
    except Exception as e:
@@ -161,7 +167,7 @@ if len(rpmSpecFileNames) > 0:
       rpmSpecFileContents = rpmSpecFile.readlines()
       for line in rpmSpecFileContents:
          match = re_rpm_version.match(line)
-         if match != None:
+         if match is not None:
             rpmVersionMajor = int(match.group(2))
             rpmVersionMinor = int(match.group(3))
             rpmVersionPatch = int(match.group(4))
@@ -171,11 +177,11 @@ if len(rpmSpecFileNames) > 0:
                                str(rpmVersionPatch) + rpmVersionExtra
          else:
             match = re_rpm_release.match(line)
-            if match != None:
+            if match is not None:
                rpmVersionPackaging = int(match.group(2))
             else:
                match = re_rpm_name.match(line)
-               if match != None:
+               if match is not None:
                   rpmPackage = match.group(2)
       rpmSpecFile.close()
    except Exception as e:
@@ -184,9 +190,9 @@ if len(rpmSpecFileNames) > 0:
 
 
 # ====== Read FreeBSD configuration =========================================
-freeBSDMakefileName  = None
-freeBSDVersionString = None
-freeBSDMakefileNames = glob.glob('freebsd/*/Makefile')
+freeBSDMakefileName  : str | None = None
+freeBSDVersionString : str | None = None
+freeBSDMakefileNames : list[str]  = glob.glob('freebsd/*/Makefile')
 if len(freeBSDMakefileNames) > 0:
    freeBSDMakefileName = freeBSDMakefileNames[0]
    re_freebsd_version = re.compile(r'^(DISTVERSION=[ \t]*)(\d+)\.(\d+)\.(\d+)(.*|)')
@@ -195,7 +201,7 @@ if len(freeBSDMakefileNames) > 0:
       freeBSDMakefileFileContents = freeBSDMakefileFile.readlines()
       for line in freeBSDMakefileFileContents:
          match = re_freebsd_version.match(line)
-         if match != None:
+         if match is not None:
             freeBSDVersionMajor = int(match.group(2))
             freeBSDVersionMinor = int(match.group(3))
             freeBSDVersionPatch = int(match.group(4))
@@ -210,14 +216,14 @@ if len(freeBSDMakefileNames) > 0:
 
 
 # ====== Read CMakeLists.txt configuration ==================================
-cmakeFileName      = 'CMakeLists.txt'
-cmakeFoundVersion  = False
-cmakePackage       = None
-cmakeVersionMajor  = None
-cmakeVersionMinor  = None
-cmakeVersionPatch  = None
-cmakeVersionExtra  = None
-cmakeVersionString = None
+cmakeFileName      : Final[str] = 'CMakeLists.txt'
+cmakeFoundVersion  : bool       = False
+cmakePackage       : str | None = None
+cmakeVersionMajor  : int | None = None
+cmakeVersionMinor  : int | None = None
+cmakeVersionPatch  : int | None = None
+cmakeVersionExtra  : str | None = None
+cmakeVersionString : str | None = None
 
 if os.path.isfile(cmakeFileName):
    re_cmake_project   = re.compile(r'[ \t]*PROJECT[ \t]*\(([a-zA-Z0-9-+]+)')
@@ -229,26 +235,26 @@ if os.path.isfile(cmakeFileName):
       cmakeFileContents = cmakeFile.readlines()
       for line in cmakeFileContents:
          match = re_cmakefile_major.match(line)
-         if match != None:
+         if match is not None:
             cmakeVersionMajor = int(match.group(1))
          else:
             match = re_cmakefile_minor.match(line)
-            if match != None:
+            if match is not None:
                cmakeVersionMinor = int(match.group(1))
             else:
                match = re_cmakefile_patch.match(line)
-               if match != None:
+               if match is not None:
                   cmakeVersionPatch = int(match.group(1))
                   cmakeVersionExtra = match.group(2)
                else:
                   match = re_cmake_project.match(line)
-                  if match != None:
+                  if match is not None:
                      cmakePackage = match.group(1)
       cmakeFile.close()
-      if (cmakeVersionMajor != None) and \
-         (cmakeVersionMinor != None) and \
-         (cmakeVersionPatch != None) and \
-         (cmakeVersionExtra != None):
+      if (cmakeVersionMajor is not None) and \
+         (cmakeVersionMinor is not None) and \
+         (cmakeVersionPatch is not None) and \
+         (cmakeVersionExtra is not None):
          cmakeVersionString = str(cmakeVersionMajor) + '.' + \
                               str(cmakeVersionMinor) + '.' + \
                               str(cmakeVersionPatch) + cmakeVersionExtra
@@ -258,13 +264,13 @@ if os.path.isfile(cmakeFileName):
 
 
 # ====== Read configure.ac configuration ====================================
-autoconfFoundVersion  = False
-autoconfPackage       = None
-autoconfVersionMajor  = None
-autoconfVersionMinor  = None
-autoconfVersionPatch  = None
-autoconfVersionExtra  = None
-autoconfVersionString = None
+autoconfFoundVersion  : bool       = False
+autoconfPackage       : str | None = None
+autoconfVersionMajor  : int | None = None
+autoconfVersionMinor  : int | None = None
+autoconfVersionPatch  : int | None = None
+autoconfVersionExtra  : str | None = None
+autoconfVersionString : str | None = None
 
 for autoconfFileName in [ 'configure.ac', 'configure.in' ]:
    if os.path.isfile(autoconfFileName):
@@ -277,7 +283,7 @@ if os.path.isfile(autoconfFileName):
       autoconfFileContents = autoconfFile.readlines()
       for line in autoconfFileContents:
          match = re_autoconffile_version.match(line)
-         if match != None:
+         if match is not None:
             autoconfPackage      = match.group(1)
             autoconfVersionMajor = int(match.group(2))
             autoconfVersionMinor = int(match.group(3))
@@ -313,7 +319,7 @@ if os.path.isfile(otherFileName):
       otherFileContents = otherFile.readlines()
       line = otherFileContents[0]
       match = re_otherfile_version.match(line)
-      if match != None:
+      if match is not None:
          otherPackage      = match.group(1)
          otherVersionMajor = int(match.group(2))
          otherVersionMinor = int(match.group(3))
@@ -329,21 +335,37 @@ if os.path.isfile(otherFileName):
 
 
 # ====== Check versions =====================================================
-if cmakeVersionString != None:
+versionMajor : int = 0
+versionMinor : int = 0
+versionPatch : int = 0
+versionExtra : str = ""
+if cmakeVersionString is not None:
+   assert cmakeVersionMajor is not None
+   assert cmakeVersionMinor is not None
+   assert cmakeVersionPatch is not None
+   assert cmakeVersionExtra is not None
    package       = cmakePackage
    versionString = cmakeVersionString
    versionMajor  = cmakeVersionMajor
    versionMinor  = cmakeVersionMinor
    versionPatch  = cmakeVersionPatch
    versionExtra  = cmakeVersionExtra
-elif autoconfVersionString != None:
+elif autoconfVersionString is not None:
+   assert autoconfVersionMajor is not None
+   assert autoconfVersionMinor is not None
+   assert autoconfVersionPatch is not None
+   assert autoconfVersionExtra is not None
    package       = autoconfPackage
    versionString = autoconfVersionString
    versionMajor  = autoconfVersionMajor
    versionMinor  = autoconfVersionMinor
    versionPatch  = autoconfVersionPatch
    versionExtra  = autoconfVersionExtra
-elif otherVersionString != None:
+elif otherVersionString is not None:
+   assert otherVersionMajor is not None
+   assert otherVersionMinor is not None
+   assert otherVersionPatch is not None
+   assert otherVersionExtra is not None
    package       = otherPackage
    versionString = otherVersionString
    versionMajor  = otherVersionMajor
@@ -354,32 +376,32 @@ else:
    sys.stderr.write('ERROR: Unable to find version in ' + cmakeFileName + ', ' + autoconfFileName + ' or ' + otherFileName + '!\n')
    sys.exit(1)
 
-if cmakeVersionString != None:
+if cmakeVersionString is not None:
    sys.stdout.write('Version from CMakefile file:         ' + cmakeVersionString + '   (in ' + cmakeFileName + ')\n')
-elif autoconfVersionString != None:
+elif autoconfVersionString is not None:
    sys.stdout.write('Version from autoconf/automake file: ' + autoconfVersionString + '   (in ' + autoconfFileName + ')\n')
 
-if debianVersionString != None:
+if debianVersionString is not None:
    sys.stdout.write('Version from Debian changelog file:  ' + debianVersionString + '   (in ' + debianChangeLogFileName + ')\n')
    if debianVersionString != versionString:
       sys.stderr.write('ERROR: Debian version does not match build version!\n')
       sys.exit(1)
 
-if rpmVersionString != None:
+if ( (rpmSpecFileName is not None) and (rpmVersionString is not None) ):
    sys.stdout.write('Version from RPM spec file:          ' + rpmVersionString + '   (in ' + rpmSpecFileName + ')\n')
    if rpmVersionString != versionString:
       sys.stderr.write('ERROR: RPM version does not match build version!\n')
       sys.exit(1)
 
-if freeBSDVersionString != None:
+if ( (freeBSDMakefileName is not None) and (freeBSDVersionString is not None) ):
    sys.stdout.write('Version from FreeBSD ports Makefile: ' + freeBSDVersionString + '   (in ' + freeBSDMakefileName + ')\n')
    if freeBSDVersionString != versionString:
       sys.stderr.write('WARNING: FreeBSD ports version does not match build version!\n')
 
-if package == None:
-   if debianPackage != None:
+if package is None:
+   if debianPackage is not None:
       package = debianPackage
-   elif rpmPackage != None:
+   elif rpmPackage is not None:
       package = rpmPackage
    else:
       sys.stderr.write('ERROR: Unable to find package name!\n')
@@ -414,13 +436,13 @@ for i in range(1, len(sys.argv)):
             else:
                versionExtra = '~' + sys.argv[i][8:]
             match = re.match(r'^([~+].*)(\d+)$', versionExtra)
-            if match == None:
+            if match is None:
                versionExtra = versionExtra + '0'
       else:
          match = re.match(r'^([~+].*[^\d])(\d+)$', versionExtra)
-         if match != None:
-            e = int(match.group(2)) + 1
-            versionExtra = match.group(1) + str(e)
+         if match is not None:
+            extra : int = int(match.group(2)) + 1
+            versionExtra = match.group(1) + str(extra)
          else:
             sys.stderr.write('ERROR: Unable to increment extra version ' + versionExtra + '!\n')
             sys.exit(1)
@@ -442,14 +464,14 @@ versionString = str(versionMajor) + '.' + str(versionMinor) + '.' + \
                 str(versionPatch) + versionExtra
 sys.stdout.write('New version:                         ' + versionString + '\n')
 
-if cmakeVersionString != None:
+if cmakeVersionString is not None:
    if (versionMajor == cmakeVersionMajor) and \
       (versionMinor == cmakeVersionMinor) and \
       (versionPatch == cmakeVersionPatch) and \
       (versionExtra == cmakeVersionExtra):
       sys.stdout.write('No change -> exiting.\n')
       sys.exit(1)
-elif autoconfVersionString != None:
+elif autoconfVersionString is not None:
    if (versionMajor == autoconfVersionMajor) and \
       (versionMinor == autoconfVersionMinor) and \
       (versionPatch == autoconfVersionPatch) and \
@@ -459,7 +481,7 @@ elif autoconfVersionString != None:
 
 
 # ====== Check, whether ITP has been fulfilled  =============================
-if debianITP != None:
+if ( (debianPackage is not None) and (debianITP is not None) ):
    sys.stdout.write('Searching package in Debian (ITP #' + str(debianITP) + ') ... ')
    try:
       webFile = urllib.request.urlopen('https://tracker.debian.org/pkg/' + debianPackage)
@@ -481,12 +503,12 @@ if debianITP != None:
          # => Package is and was not in Debian!
          sys.stdout.write('NO -> ITP\n')
          debianPackageStatus = 'ITP'
-elif debianPackage != None:
+elif debianPackage is not None:
    sys.stdout.write('No Debian ITP found.\n')
 
 
 # ====== Update CMakeLists.txt ==============================================
-if cmakeVersionString != None:
+if cmakeVersionString is not None:
    cmakeFileNew = open(cmakeFileName + '.new', 'w', encoding='utf-8')
 
    updatedMajor = False
@@ -494,17 +516,17 @@ if cmakeVersionString != None:
    updatedPatch = False
    for line in cmakeFileContents:
       match = re_cmakefile_major.match(line)
-      if match != None:
+      if match is not None:
          cmakeFileNew.write('SET(BUILD_MAJOR "' + str(versionMajor) + '")\n')
          updatedMajor = True
       else:
          match = re_cmakefile_minor.match(line)
-         if match != None:
+         if match is not None:
             cmakeFileNew.write('SET(BUILD_MINOR "' + str(versionMinor) + '")\n')
             updatedMinor = True
          else:
             match = re_cmakefile_patch.match(line)
-            if match != None:
+            if match is not None:
                cmakeFileNew.write('SET(BUILD_PATCH "' + str(versionPatch) + versionExtra + '")\n')
                updatedPatch = True
             else:
@@ -517,7 +539,7 @@ if cmakeVersionString != None:
 
 
 # ====== Update configure.ac ================================================
-elif autoconfVersionString != None:
+elif autoconfVersionString is not None:
    autoconfFileNew = open(autoconfFileName + '.new', 'w', encoding='utf-8')
 
    updatedMajor = False
@@ -525,7 +547,7 @@ elif autoconfVersionString != None:
    updatedPatch = False
    for line in autoconfFileContents:
       match = re_autoconffile_version.match(line)
-      if match != None:
+      if match is not None:
          autoconfFileNew.write('AC_INIT([' + match.group(1) + '], ' +
                                '[' + str(versionMajor) + '.' + str(versionMinor) + '.' + str(versionPatch) + versionExtra + '], ' +
                                '[' + match.group(6) + '])\n')
@@ -540,22 +562,25 @@ elif autoconfVersionString != None:
 
 
 # ====== Update debian/changelog ============================================
-if debianVersionString != None:
-   debianNewChangeLogEntry = (cmakeVersionExtra == '') or (autoconfVersionExtra == '')
-   debianNewChangeLogFile = open(debianChangeLogFileName + '.new', 'w', encoding='utf-8')
+if debianVersionString is not None:
+   assert debianPackage       is not None
+   assert debianVersionPrefix is not None
+   assert debianDistribution  is not None
+   debianNewChangeLogEntry : bool   = (cmakeVersionExtra == '') or (autoconfVersionExtra == '')
+   debianNewChangeLogFile  : TextIO = open(debianChangeLogFileName + '.new', 'w', encoding='utf-8')
 
-   n = 0
-   e = 0
-   inFirstEntry = True
-   re_empty_line   = re.compile(r'^[\s]*$')
-   re_end_of_entry = re.compile(r'^ -- .* +[\d][\d][\d][\d]')
+   nn              : int        = 0
+   ee              : int        = 0
+   inFirstEntry    : bool       = True
+   re_empty_line   : re.Pattern = re.compile(r'^[\s]*$')
+   re_end_of_entry : re.Pattern = re.compile(r'^ -- .* +[\d][\d][\d][\d]')
    for line in debianChangeLogFileContents:
-      n = n + 1
+      nn = nn + 1
 
        # ------ Update existing entry ---------------------------------------
-      if n == 1:
+      if nn == 1:
          match = re.search('[a-zA-Z-+~]+', debianVersionPackaging)
-         if match != None:
+         if match is not None:
             newVersionPackaging = '1' + match.group(0) + '1'
          else:
             newVersionPackaging = '1'
@@ -567,9 +592,9 @@ if debianVersionString != None:
             now = time.strftime('%a, %d %b %Y %H:%M:%S %z', time.localtime())
             debianNewChangeLogFile.write('\n')
             debianNewChangeLogFile.write('  * New upstream release.\n')
-            if debianITP != None:
+            if debianITP is not None:
                debianNewChangeLogFile.write('  * Closes: #' + str(debianITP) + ' (ITP).\n')
-            if ((debianStandardsVersion != None) and
+            if ((debianStandardsVersion is not None) and
                 (debianStandardsVersion != DEBIAN_STANDARDS_VERSION)):
                debianNewChangeLogFile.write('  * debian/control: Updated standards version to ' + DEBIAN_STANDARDS_VERSION + '.\n')
             debianNewChangeLogFile.write('\n')
@@ -577,20 +602,20 @@ if debianVersionString != None:
             inFirstEntry = False
 
 
-      if ((n > 1) or (debianNewChangeLogEntry == True)):
+      if ((nn > 1) or (debianNewChangeLogEntry == True)):
          # ------ Not a new entry: update maintainer and time ---------------
          if ((inFirstEntry == True) and (debianNewChangeLogEntry == False)):
             match = re_empty_line.match(line)
-            if match != None:
-               e = e + 1
-               if (e == 2) and (debianITP != None):
+            if match is not None:
+               ee = ee + 1
+               if (ee == 2) and (debianITP is not None):
                   debianNewChangeLogFile.write('  * Closes: #' + str(debianITP) + ' (ITP).\n')
-               if ((e == 2) and
-                   (debianStandardsVersion != None) and
+               if ((ee == 2) and
+                   (debianStandardsVersion is not None) and
                    (debianStandardsVersion != DEBIAN_STANDARDS_VERSION)):
                   debianNewChangeLogFile.write('  * debian/control: Updated standards version to ' + DEBIAN_STANDARDS_VERSION + '.\n')
             match = re_end_of_entry.match(line)
-            if match != None:
+            if match is not None:
                now = time.strftime('%a, %d %b %Y %H:%M:%S %z', time.localtime())
                debianNewChangeLogFile.write(' -- ' + packageMaintainer + '  ' + now + '\n')
                inFirstEntry = False
@@ -598,11 +623,11 @@ if debianVersionString != None:
 
          # ------ Is there is an existing ITP entry, do not add it ----------
          # The new ITP entry has been written above!
-         if debianITP != None:
+         if debianITP is not None:
             match = re_debian_itp1.match(line)
-            if match == None:
+            if match is None:
                match = re_debian_itp2.match(line)
-            if match != None:
+            if match is not None:
                # Drop old ITP line. Only the latest entry should contain an ITP!
                continue
 
@@ -612,14 +637,14 @@ if debianVersionString != None:
    debianNewChangeLogFile.close()
 
    # ------ Update standards version in debian/control ----------------------
-   if ((debianStandardsVersion != None) and
+   if ((debianStandardsVersion is not None) and
        (debianStandardsVersion != DEBIAN_STANDARDS_VERSION)):
 
       debianNewControlFile = open(debianControlFileName + '.new', 'w', encoding='utf-8')
 
       for line in debianControlFileContents:
          match = re_debian_standards_version.match(line)
-         if match != None:
+         if match is not None:
             debianNewControlFile.write('Standards-Version: ' + DEBIAN_STANDARDS_VERSION + '\n')
          else:
             debianNewControlFile.write(line)
@@ -628,7 +653,7 @@ if debianVersionString != None:
 
 
 # ====== Update RPM spec file ===============================================
-if rpmVersionString != None:
+if ( (rpmSpecFileName is not None) and (rpmVersionString is not None) ):
    rpmSpecFileNew = open(rpmSpecFileName + '.new', 'w', encoding='utf-8')
 
    re_rpm_changelog = re.compile(r'^%changelog[ \t]*$')
@@ -637,15 +662,15 @@ if rpmVersionString != None:
    for line in rpmSpecFileContents:
       if inChangeLog == False:
          match = re_rpm_version.match(line)
-         if match != None:
+         if match is not None:
             rpmSpecFileNew.write(match.group(1) + versionString + '\n')
          else:
             match = re_rpm_release.match(line)
-            if match != None:
+            if match is not None:
                rpmSpecFileNew.write(match.group(1) + '1\n')
             else:
                match = re_rpm_changelog.match(line)
-               if match != None:
+               if match is not None:
                   inChangeLog = True
                # ------ Copy line from original file ------------------------
                rpmSpecFileNew.write(line)
@@ -663,7 +688,7 @@ if rpmVersionString != None:
 
 
 # ====== Update FreeBSD ports Makefile ======================================
-if freeBSDVersionString != None:
+if ( (freeBSDMakefileName is not None) and (freeBSDVersionString is not None) ):
    freeBSDMakefileFileNew = open(freeBSDMakefileName + '.new', 'w', encoding='utf-8')
 
    re_rpm_changelog = re.compile(r'^%changelog[ \t]*$')
@@ -671,7 +696,7 @@ if freeBSDVersionString != None:
 
    for line in freeBSDMakefileFileContents:
       match = re_freebsd_version.match(line)
-      if match != None:
+      if match is not None:
          freeBSDMakefileFileNew.write(match.group(1) + versionString + '\n')
       else:
          # ------ Copy line from original file ------------------------------
@@ -681,7 +706,9 @@ if freeBSDVersionString != None:
 
 
 # ====== Update version file ================================================
-if otherVersionString != None:
+if otherVersionString is not None:
+   assert otherFileName is not None
+   assert otherPackage is not None
    otherFileNew = open(otherFileName + '.new', 'w', encoding='utf-8')
    otherFileNew.write(otherPackage + ' ' +
                       str(versionMajor) + '.' + str(versionMinor) + '.' + str(versionPatch) + versionExtra + '\n')
@@ -689,18 +716,18 @@ if otherVersionString != None:
 
 
 # ====== Check result =======================================================
-if cmakeVersionString != None:
+if cmakeVersionString is not None:
    colorDiff(cmakeFileName, cmakeFileName + '.new')
-elif autoconfVersionString != None:
+elif autoconfVersionString is not None:
    colorDiff(autoconfFileName, autoconfFileName + '.new')
 
-if debianVersionString != None:
+if debianVersionString is not None:
    colorDiff(debianChangeLogFileName, debianChangeLogFileName + '.new')
    if debianStandardsVersion != DEBIAN_STANDARDS_VERSION:
       colorDiff(debianControlFileName, debianControlFileName + '.new')
-if rpmVersionString != None:
+if rpmSpecFileName is not None:
    colorDiff(rpmSpecFileName, rpmSpecFileName + '.new')
-if freeBSDVersionString != None:
+if freeBSDMakefileName is not None:
    colorDiff(freeBSDMakefileName, freeBSDMakefileName + '.new')
 
 
@@ -710,20 +737,20 @@ if ((applyChanges != 'yes') and (applyChanges != 'y')):
    sys.exit(0)
 
 # ------ Update files -------------------------------------------------------
-if cmakeVersionString != None:
+if cmakeVersionString is not None:
    applyUpdate(cmakeFileName + '.new', cmakeFileName)
-elif autoconfVersionString != None:
+elif autoconfVersionString is not None:
    applyUpdate(autoconfFileName + '.new', autoconfFileName)
 
-if debianVersionString != None:
+if debianVersionString is not None:
    applyUpdate(debianChangeLogFileName + '.new', debianChangeLogFileName)
    if debianStandardsVersion != DEBIAN_STANDARDS_VERSION:
       applyUpdate(debianControlFileName + '.new', debianControlFileName)
-if rpmVersionString != None:
+if ( (rpmSpecFileName is not None) and (rpmVersionString is not None) ):
    applyUpdate(rpmSpecFileName + '.new', rpmSpecFileName)
-if freeBSDVersionString != None:
+if ( (freeBSDMakefileName is not None) and (freeBSDVersionString is not None) ):
    applyUpdate(freeBSDMakefileName + '.new', freeBSDMakefileName)
-if otherVersionString != None:
+if otherVersionString is not None:
    applyUpdate(otherFileName + '.new', otherFileName)
 sys.stdout.write('Done!\n')
 
