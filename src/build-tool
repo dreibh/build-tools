@@ -927,7 +927,7 @@ def fetchDebianChangelog(packageInfo : dict[str,Any],
    sys.stderr.flush()
    result : list[str] | None = None
    try:
-      archiveFile = urllib.request.urlopen(archiveFileURL)
+      archiveFile       = urllib.request.urlopen(archiveFileURL)
       debianArchiveFile = tempfile.NamedTemporaryFile(delete=False)
       shutil.copyfileobj(archiveFile, debianArchiveFile)
       debianArchiveFile.close()
@@ -959,19 +959,20 @@ def fetchDebianChangelog(packageInfo : dict[str,Any],
 # * Stop, if entry matches regexp_for_last_entry argument.
 # * Stop after first entry, if regexp_for_last_entry = 1.
 def filterDebianChangelog(changeLogContents : list[str],
-                          re_last_entry     : re.Pattern | None = None) -> list[str]:
+                          re_last_entry     : re.Pattern | None,
+                          isDebian          : bool) -> list[str]:
 
-   re_begin_of_entry : Final[re.Pattern] = re.compile(r'^[a-zA-Z].*$')
-   re_end_of_entry   : Final[re.Pattern] = re.compile(r'^ --.*$')
-   re_empty          : Final[re.Pattern] = re.compile(r'^$')
-   re_item           : Final[re.Pattern] = re.compile(r'^ *')
-   re_item_is_itp    : Final[re.Pattern] = re.compile(r'^(.*Closes:.*ITP.*|.*ITP.*Closes:.*)$')
+   re_begin_of_entry  : Final[re.Pattern] = re.compile(r'^[a-zA-Z].*$')
+   re_end_of_entry    : Final[re.Pattern] = re.compile(r'^ --.*$')
+   re_empty           : Final[re.Pattern] = re.compile(r'^$')
+   re_item            : Final[re.Pattern] = re.compile(r'^ *')
+   re_item_is_itp     : Final[re.Pattern] = re.compile(r'^(.*Closes:.*ITP.*|.*ITP.*Closes:.*)$')
 
-   resultingChangelog = [ ]
-   entries            = 0
-   entryContentLines  = 0
-   entryContent       = ''
-   entryIsITP         = False
+   resultingChangelog : list[str] = [ ]
+   entries            : int       = 0
+   entryContentLines  : int       = 0
+   entryContent       : str       = ''
+   entryIsITP         : bool      = False
 
    for line in changeLogContents:
 
@@ -1000,15 +1001,16 @@ def filterDebianChangelog(changeLogContents : list[str],
                # Special case: The ITP package for Debian must only contain the
                #               ITP entry with ITP item and nothing else!
                else:
-                  splittedITPEntry = entryContent.splitlines()
-                  i = 0
-                  for itpLine in splittedITPEntry:
-                     i = i + 1
-                     if (i <= 2) or (i >= len(splittedITPEntry) - 2):
-                        resultingChangelog.append(itpLine + '\n')
-                     elif re_item_is_itp.match(itpLine) is not None:
-                        resultingChangelog.append(itpLine + '\n')
-                  break   # ITP -> done!
+                  if isDebian:
+                     splittedITPEntry = entryContent.splitlines()
+                     i = 0
+                     for itpLine in splittedITPEntry:
+                        i = i + 1
+                        if (i <= 2) or (i >= len(splittedITPEntry) - 2):
+                           resultingChangelog.append(itpLine + '\n')
+                        elif re_item_is_itp.match(itpLine) is not None:
+                           resultingChangelog.append(itpLine + '\n')
+                     break   # ITP -> done!
 
                entryContent = ''
                entryIsITP   = False
@@ -1027,6 +1029,10 @@ def filterDebianChangelog(changeLogContents : list[str],
                entryContentLines = entryContentLines + 1
                if re_item_is_itp.match(line):
                   entryIsITP = True
+
+   for l in resultingChangelog:
+    print(l)
+   sys.exit(1)
 
    return resultingChangelog
 
@@ -1282,7 +1288,8 @@ def makeSourceDeb(packageInfo        : dict[str,Any],
 
 
       # ====== Clean up empty lines =========================================
-      changeLogContents = filterDebianChangelog(changeLogContents, None)
+      changeLogContents = filterDebianChangelog(changeLogContents, None,
+                                                codename in DebianCodenames)
       writeTextFile(upstreamSourceDir + '/debian/changelog', changeLogContents)
       writeTextFile(upstreamSourceDir + '/debian/control',   controlContents)
       writeTextFile(upstreamSourceDir + '/debian/rules',     rulesContents)
