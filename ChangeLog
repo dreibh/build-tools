@@ -1,3 +1,111 @@
+commit 8f59d5f178a195b2250d90adb67298ef51525fa5
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Nov 28 15:42:15 2025 +0100
+
+    Added compatibility handling of DEB_HOST_MULTIARCH.
+
+commit 5598e55b59039ac6bf12a742fc46e9dc9f5553fc
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Nov 28 15:03:15 2025 +0100
+
+    Packaging improvements.
+
+commit c6f3c22b77dc7482f1220ba0e509e44c1c6027fe
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Nov 28 14:57:02 2025 +0100
+
+    Debian packaging improvements.
+
+commit 1d39158ad394749dcd04512af41d652772e63cad
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Nov 28 14:54:29 2025 +0100
+
+    Also added typing annotations to "get-dependencies".
+
+commit e2c93623d0b077c949a4f48355280287a6a67a10
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Nov 28 14:35:48 2025 +0100
+
+    Some more typing hints.
+
+commit 5d12d3c4ca2829c8082f3748e4523496b8c32fd2
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Nov 28 14:34:16 2025 +0100
+
+    Added further typing hints.
+
+commit 3453d66a00357f5be3d2417f2f57e201bfd70f6e
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Nov 28 14:13:20 2025 +0100
+
+    Simplified Debian changelog processing.
+
+commit 59afb9f08039e1c71a09ce7f1b3e1e755b5427b1
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Nov 28 14:03:53 2025 +0100
+
+    Ubuntu packaging fix.
+
+commit af9311ddf1f4dde4ec428b8832ddc54349ed34ab
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Nov 28 13:53:42 2025 +0100
+
+    Further improvements and clean-ups.
+
+commit d88c7721398df834400e1f74e73a816ddbb0cb74
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Nov 28 13:38:00 2025 +0100
+
+    Ubuntu Debhelper compatibility handling improvements.
+
+commit 139fe12ba32c37b788e7bc12f1b143dd48601646
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Nov 28 11:09:19 2025 +0100
+
+    Dependency fix for Debian Trixie.
+
+commit 09a96b1fb3d16802ca68b0fd00e1e0a8716d95da
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Nov 28 10:48:16 2025 +0100
+
+    Workflow update.
+
+commit 5aa19955256ceb414b376e070e68fbaf2bae4915
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Nov 27 12:56:16 2025 +0100
+
+    Some clean-ups.
+
+commit 4f3d9c48148071bddc3951991db9e5affb6b2c15
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Nov 27 12:53:59 2025 +0100
+
+    Header updates.
+
+commit 77fada95c4187aa23480174aa9b227a2473e629e
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Nov 27 12:02:30 2025 +0100
+
+    Added more Python type-hinting.
+
+commit 3744b8dfd295a7640a485f53cc33aaa01cfaec3e
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Nov 27 11:03:50 2025 +0100
+
+    Improved Python typing.
+
+commit 69a832cbbddfaaef81acbf041da558512fddda1c
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Wed Nov 26 16:17:15 2025 +0100
+
+    Fixed fetching of Debian changelog for package.
+
+commit 024cbb33d041348f5b19adc81b223096874a4579
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Wed Nov 26 13:57:55 2025 +0100
+
+    New release td-build-tools-0.1.4.
+
 commit be090a4f63c5d754e51bfb651a59c054847cbba0
 Author: Thomas Dreibholz <dreibh@simula.no>
 Date:   Wed Nov 26 13:54:15 2025 +0100
