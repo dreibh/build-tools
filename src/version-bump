@@ -46,7 +46,7 @@ DEBIAN_STANDARDS_VERSION="4.7.2"
 
 
 # ###### Show difference between two files ##################################
-def showDiff(a : str, b : str):
+def showDiff(a : str, b : str) -> None:
    try:
       subprocess.run( [ 'diff', '--color=always', a, b ] )
    except Exception as e:
@@ -55,7 +55,7 @@ def showDiff(a : str, b : str):
 
 
 # ###### Apply update #######################################################
-def applyUpdate(new, old):
+def applyUpdate(new : str, old : str) -> None:
    sys.stdout.write('Updating ' + old + ' ...\n')
    os.rename(new, old)
 
@@ -580,8 +580,8 @@ if debianVersionString is not None:
    nn              : int        = 0
    ee              : int        = 0
    inFirstEntry    : bool       = True
-   re_empty_line   : re.Pattern = re.compile(r'^[\s]*$')
-   re_end_of_entry : re.Pattern = re.compile(r'^ -- .* +[\d][\d][\d][\d]')
+   re_empty_line   : re.Pattern[str] = re.compile(r'^[\s]*$')
+   re_end_of_entry : re.Pattern[str] = re.compile(r'^ -- .* +[\d][\d][\d][\d]')
    for line in debianChangeLogFileContents:
       nn = nn + 1
 
