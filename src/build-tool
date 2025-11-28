@@ -953,14 +953,8 @@ def fetchDebianChangelog(packageInfo : dict[str,Any],
 
 
 # ###### Filter Debian changelog ############################################
-# This function filters debian/changelog entries:
-# regexp_for_last_entry: None (no filtering), 1 (first entry), RegExp
-# * Empty entries get dropped.
-# * Stop, if entry matches regexp_for_last_entry argument.
-# * Stop after first entry, if regexp_for_last_entry = 1.
-def filterDebianChangelog(changeLogContents : list[str],
-                          re_last_entry     : re.Pattern | None,
-                          isDebian          : bool) -> list[str]:
+# Filter Debian changelog: obtain entries until ITP entry.
+def filterDebianChangelog(changeLogContents : list[str]) -> list[str]:
 
    re_begin_of_entry  : Final[re.Pattern] = re.compile(r'^[a-zA-Z].*$')
    re_end_of_entry    : Final[re.Pattern] = re.compile(r'^ --.*$')
@@ -1001,24 +995,18 @@ def filterDebianChangelog(changeLogContents : list[str],
                # Special case: The ITP package for Debian must only contain the
                #               ITP entry with ITP item and nothing else!
                else:
-                  if isDebian:
-                     splittedITPEntry = entryContent.splitlines()
-                     i = 0
-                     for itpLine in splittedITPEntry:
-                        i = i + 1
-                        if (i <= 2) or (i >= len(splittedITPEntry) - 2):
-                           resultingChangelog.append(itpLine + '\n')
-                        elif re_item_is_itp.match(itpLine) is not None:
-                           resultingChangelog.append(itpLine + '\n')
-                     break   # ITP -> done!
+                  splittedITPEntry = entryContent.splitlines()
+                  i = 0
+                  for itpLine in splittedITPEntry:
+                     i = i + 1
+                     if (i <= 2) or (i >= len(splittedITPEntry) - 2):
+                        resultingChangelog.append(itpLine + '\n')
+                     elif re_item_is_itp.match(itpLine) is not None:
+                        resultingChangelog.append(itpLine + '\n')
+                  break   # ITP -> done!
 
                entryContent = ''
                entryIsITP   = False
-
-            # ------ Check for match with last entry regexp in argument -----
-            if re_last_entry is not None:
-               if re_last_entry.match(line) is not None:
-                  break
 
             entryContentLines = 0
 
@@ -1027,9 +1015,8 @@ def filterDebianChangelog(changeLogContents : list[str],
             if re_item.match(line):
                entryContent      = entryContent + line
                entryContentLines = entryContentLines + 1
-               if isDebian:
-                  if re_item_is_itp.match(line):
-                     entryIsITP = True
+               if re_item_is_itp.match(line):
+                  entryIsITP = True
 
    return resultingChangelog
 
@@ -1265,6 +1252,8 @@ def makeSourceDeb(packageInfo        : dict[str,Any],
             # the distributor's changelog with the rest:
             changeLogContents = mergeDebianChangelogs(changeLogContents, distributorChangelogContents)
 
+         changeLogContents = filterDebianChangelog(changeLogContents)
+
       # ------- Ubuntu ------------------------------------------------------
       else:
          # ------ Translate Debian debhelper configuration to Ubuntu --------
@@ -1285,8 +1274,6 @@ def makeSourceDeb(packageInfo        : dict[str,Any],
 
 
       # ====== Clean up empty lines =========================================
-      changeLogContents = filterDebianChangelog(changeLogContents, None,
-                                                codename in DebianCodenames)
       writeTextFile(upstreamSourceDir + '/debian/changelog', changeLogContents)
       writeTextFile(upstreamSourceDir + '/debian/control',   controlContents)
       writeTextFile(upstreamSourceDir + '/debian/rules',     rulesContents)
