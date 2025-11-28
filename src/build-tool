@@ -1138,7 +1138,7 @@ def mergeDebianChangelogs(ppaChangelogContents         : list[str],
    if foundLatestDistributionEntryInPPA == False:
       # Distributor changelog is equal to PPA changelog?
       if ppaChangelogContents[0] != latestDistributionEntry:
-         sys.stderr.write('ERROR: Did not found the latest distribution entry in the PPA changelog!\n')
+         sys.stderr.write('ERROR: Did not find the latest distribution entry in the PPA changelog!\n')
          sys.stderr.write('Latest distributor entry: "' + latestDistributionEntry.strip() + '"\n')
          sys.stderr.write('First PPA entry:          "' + ppaChangelogContents[0].strip() + '"\n')
          sys.exit(1)
