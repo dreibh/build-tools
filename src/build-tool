@@ -1027,12 +1027,9 @@ def filterDebianChangelog(changeLogContents : list[str],
             if re_item.match(line):
                entryContent      = entryContent + line
                entryContentLines = entryContentLines + 1
-               if re_item_is_itp.match(line):
-                  entryIsITP = True
-
-   for l in resultingChangelog:
-    print(l)
-   sys.exit(1)
+               if isDebian:
+                  if re_item_is_itp.match(line):
+                     entryIsITP = True
 
    return resultingChangelog
 
