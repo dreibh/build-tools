@@ -30,6 +30,7 @@
 
 import distro
 import glob
+import http.client
 import os
 import pprint
 import random
@@ -774,11 +775,12 @@ def getDistributionCodenames(distribution : str = 'debian') -> list[str]:
    else:
       distroInfo = 'ubuntu-distro-info'
    try:
-      process = subprocess.Popen([ distroInfo, '--all'],
-                                 stdout=subprocess.PIPE, universal_newlines=True)
+      process : subprocess.Popen = \
+         subprocess.Popen([ distroInfo, '--all'],
+                          stdout=subprocess.PIPE, universal_newlines=True)
       assert process is not None
       assert process.stdout is not None
-      result = process.stdout.readlines()
+      result : Final[list[str]] = process.stdout.readlines()
    except Exception as e:
       sys.stderr.write('ERROR: Unable to obtain Debian codenames: ' + str(e) + '\n')
       sys.exit(1)
@@ -797,11 +799,12 @@ def getDistributionCodenames(distribution : str = 'debian') -> list[str]:
 # ###### Get Debian default architecture ####################################
 def getDebianDefaultArchitecture() -> str:
    try:
-      process = subprocess.Popen([ 'dpkg', '--print-architecture'],
-                                 stdout=subprocess.PIPE, universal_newlines=True)
+      process : subprocess.Popen = \
+         subprocess.Popen([ 'dpkg', '--print-architecture'],
+                          stdout=subprocess.PIPE, universal_newlines=True)
       assert process is not None
       assert process.stdout is not None
-      result = process.stdout.readlines()[0].strip()
+      result : Final[str] = process.stdout.readlines()[0].strip()
    except Exception as e:
       sys.stderr.write('ERROR: Unable to obtain Debian default architecture: ' + str(e) + '\n')
       sys.exit(1)
@@ -815,9 +818,10 @@ def getDebianDscName(packageInfo            : dict[str,Any],
    if debianVersionPackaging is None:
       debianVersionPackaging = packageInfo['debian_version_packaging']
    assert debianVersionPackaging is not None
-   dscFileName = str(packageInfo['debian_package_name']) + '_' + \
-                    str(packageInfo['debian_version_string']) + '-' + \
-                    debianVersionPackaging + '.dsc'
+   dscFileName : Final[str] = \
+      str(packageInfo['debian_package_name']) + '_' + \
+      str(packageInfo['debian_version_string']) + '-' + \
+      debianVersionPackaging + '.dsc'
    return dscFileName
 
 
@@ -829,10 +833,11 @@ def getDebianBuildinfoName(packageInfo            : dict[str,Any],
    if debianVersionPackaging is None:
       debianVersionPackaging = packageInfo['debian_version_packaging']
    assert debianVersionPackaging is not None
-   sourceBuildInfoFileName = str(packageInfo['debian_package_name']) + '_' + \
-                                str(packageInfo['debian_version_string']) + '-' + \
-                                debianVersionPackaging + '_' +  \
-                                architecture + '.buildinfo'
+   sourceBuildInfoFileName : Final[str] = \
+      str(packageInfo['debian_package_name']) + '_' + \
+      str(packageInfo['debian_version_string']) + '-' + \
+      debianVersionPackaging + '_' +  \
+      architecture + '.buildinfo'
    return sourceBuildInfoFileName
 
 
@@ -844,10 +849,11 @@ def getDebianChangesName(packageInfo            : dict[str,Any],
    if debianVersionPackaging is None:
       debianVersionPackaging = packageInfo['debian_version_packaging']
    assert debianVersionPackaging is not None
-   changesFileName = str(packageInfo['debian_package_name']) + '_' + \
-                        str(packageInfo['debian_version_string']) + '-' + \
-                        debianVersionPackaging + '_' + \
-                        architecture + '.changes'
+   changesFileName : Final[str] = \
+      str(packageInfo['debian_package_name']) + '_' + \
+      str(packageInfo['debian_version_string']) + '-' + \
+      debianVersionPackaging + '_' + \
+      architecture + '.changes'
    return changesFileName
 
 
@@ -858,10 +864,11 @@ def getDebianControlTarballName(packageInfo            : dict[str,Any],
    if debianVersionPackaging is None:
       debianVersionPackaging = packageInfo['debian_version_packaging']
    assert debianVersionPackaging is not None
-   controlTarballFileName = str(packageInfo['debian_package_name']) + '_' + \
-                               str(packageInfo['debian_version_string']) + '-' + \
-                               debianVersionPackaging + '.debian.tar.' + \
-                               'xz'   # FIXME: Check packageInfo['source_tarball_format'] with ".tar.gz" package!
+   controlTarballFileName  : Final[str] =\
+      str(packageInfo['debian_package_name']) + '_' + \
+      str(packageInfo['debian_version_string']) + '-' + \
+      debianVersionPackaging + '.debian.tar.' + \
+      'xz'   # FIXME: Check packageInfo['source_tarball_format'] with ".tar.gz" package!
    return controlTarballFileName
 
 
@@ -875,7 +882,7 @@ def fetchDebianChangelog(packageInfo : dict[str,Any],
    assert DebianCodenames is not None
    if codename in DebianCodenames:
       # Debian
-      statusPageURL = 'https://packages.debian.org/source/' + codename + '/' + packageInfo['debian_package_name']
+      statusPageURL : str = 'https://packages.debian.org/source/' + codename + '/' + packageInfo['debian_package_name']
    else:
       # Ubuntu
       statusPageURL = 'https://packages.ubuntu.com/source/' + codename + '/' + packageInfo['debian_package_name']
@@ -886,8 +893,8 @@ def fetchDebianChangelog(packageInfo : dict[str,Any],
    debianArchiveFormat : str | None = None
 
    # ====== Get package status =================================================
-   statusPageContents : str | None = None
-   maxTrials          : int        = 10
+   statusPageContents  : str | None = None
+   maxTrials           : int        = 10
 
    re_debian_package : Final[re.Pattern[str]] = \
       re.compile(r'.*Source Package: ' + packageInfo['debian_package_name'] + r' \(([0-9-+~\.a-z]+)\)')
@@ -896,6 +903,10 @@ def fetchDebianChangelog(packageInfo : dict[str,Any],
                   packageInfo['debian_package_name'][0:1] + '/' + \
                   packageInfo['debian_package_name'] + '/' + \
                   r')(' + packageInfo['debian_package_name'] + r'_[0-9-+~\.a-z]+\.debian\.tar\.[a-zA-Z]+)"')
+   httpHeders : Final[dict[str,str]] = {
+                                          'User-Agent': 'Build-Tool/0.2.0',
+                                          'Accept':     '*/*'
+                                       }
 
    for trial in range(0, maxTrials):
       if trial > 0:
@@ -905,15 +916,12 @@ def fetchDebianChangelog(packageInfo : dict[str,Any],
       sys.stderr.flush()
 
       try:
-         statusPageRequest = urllib.request.Request(statusPageURL,
-                                                    headers = {
-                                                       'User-Agent': 'build-tool/0.2.0',
-                                                       'Accept':     '*/*'
-                                                    })
-         statusPage        = urllib.request.urlopen(statusPageRequest)
+         statusPageRequest : urllib.request.Request   = urllib.request.Request(statusPageURL,
+                                                                               headers = httpHeders)
+         statusPage        : http.client.HTTPResponse = urllib.request.urlopen(statusPageRequest)
 
-         for line in statusPage:
-            line  = line.decode('utf-8')
+         for statusPageLine in statusPage:
+            line  = statusPageLine.decode('utf-8')
             match = re_debian_package.match(line)
             if match is not None:
                debianVersion = match.group(1)
@@ -950,21 +958,25 @@ def fetchDebianChangelog(packageInfo : dict[str,Any],
 
 
    # ====== Fetch debian archive ===============================================
-   archiveFileURL =  debianLocation + debianArchive
+   archiveFileURL : Final[str]       = debianLocation + debianArchive
+   result         : list[str] | None = None
    sys.stderr.write('Looking for \"debian\" archive at ' + archiveFileURL + ' ... ')
    sys.stderr.flush()
-   result : list[str] | None = None
    try:
-      archiveFile       = urllib.request.urlopen(archiveFileURL)
-      debianArchiveFile = tempfile.NamedTemporaryFile(delete=False)
+      archiveFileRequest : urllib.request.Request         = urllib.request.Request(archiveFileURL,
+                                                                                   headers = httpHeders)
+      archiveFile        : http.client.HTTPResponse       = urllib.request.urlopen(archiveFileRequest)
+      debianArchiveFile  : tempfile._TemporaryFileWrapper = tempfile.NamedTemporaryFile(delete = False)
+
       shutil.copyfileobj(archiveFile, debianArchiveFile)
       debianArchiveFile.close()
       archiveFile.close()
       sys.stderr.write('found!\n')
 
       try:
-         process = subprocess.Popen([ 'tar', 'x' + tarCompressionOption + 'fO', debianArchiveFile.name, 'debian/changelog'],
-                                    stdout=subprocess.PIPE, universal_newlines=True)
+         process : subprocess.Popen = \
+            subprocess.Popen([ 'tar', 'x' + tarCompressionOption + 'fO', debianArchiveFile.name, 'debian/changelog'],
+                             stdout=subprocess.PIPE, universal_newlines=True)
          if ( (process is not None) and (process.stdout is not None) ):
             result = process.stdout.readlines()
          os.unlink(debianArchiveFile.name)
