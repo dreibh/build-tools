@@ -87,13 +87,13 @@ DebhelperCompatFixes   : Final[dict[str,int]] = {
 
 # ###### Print section header ###############################################
 def printSection(title : str) -> None:
-   now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+   now : Final[str] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
    sys.stdout.write('\n\x1b[34m' + (now + ' ====== ' + title + ' ').ljust(132, '=') + '\x1b[0m\n\n')
 
 
 # ###### Print subsection header ############################################
 def printSubsection(title : str) -> None:
-   now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+   now : Final[str] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
    sys.stdout.write('\n\x1b[34m' + (now + ' ------ ' + title + ' ').ljust(132, '-') + '\x1b[0m\n')
 
 
@@ -295,12 +295,12 @@ def readAutoConfPackagingInformation() -> dict[str,Any]:
 def readDebianPackagingInformation() -> dict[str,Any]:
 
    # ====== Initialise ======================================================
-   packageInfo : dict[str,Any] = { }
+   packageInfo         : dict[str,Any] = { }
+   debianChangelogName : Final[str]    = 'debian/changelog'
+   debianControlName   : Final[str]    = 'debian/control'
+   debianRulesName     : Final[str]    = 'debian/rules'
 
    # ====== Process changelog file ==========================================
-   debianChangelogName = 'debian/changelog'
-   debianControlName   = 'debian/control'
-   debianRulesName     = 'debian/rules'
    if ( (os.path.isfile(debianChangelogName)) and
         (os.path.isfile(debianControlName)) and
         (os.path.isfile(debianRulesName)) ):
@@ -321,7 +321,7 @@ def readDebianPackagingInformation() -> dict[str,Any]:
       try:
          debianChangeLogFile         : TextIO           = open(debianChangelogName, 'r', encoding='utf-8')
          debianChangeLogFileContents : Final[list[str]] = debianChangeLogFile.readlines()
-         n = 0
+         n : int = 0
          for line in debianChangeLogFileContents:
             n = n + 1
             if n == 1:
@@ -341,12 +341,12 @@ def readDebianPackagingInformation() -> dict[str,Any]:
                      str(packageInfo['debian_version_patch']) + packageInfo['debian_version_extra']
                   packageInfo['debian_urgency'] = 'low'
 
-                  options = match.group(9).split(';')
+                  options : list[str] = match.group(9).split(';')
                   for option in options:
-                     option = option.strip().split('=')
-                     if len(option) == 2:
-                        if option[0].strip() == 'urgency':
-                           packageInfo['debian_urgency'] = option[1].strip()
+                     optionSplit : list[str] = option.strip().split('=')
+                     if len(optionSplit) == 2:
+                        if optionSplit[0].strip() == 'urgency':
+                           packageInfo['debian_urgency'] = optionSplit[1].strip()
 
             elif n > 1:
                match = re_debian_itp1.match(line)
@@ -392,12 +392,12 @@ def readDebianPackagingInformation() -> dict[str,Any]:
 def readRPMPackagingInformation() -> dict[str,Any]:
 
    # ====== Initialise ======================================================
-   packageInfo : dict[str,Any] = { }
+   packageInfo  : dict[str,Any]    = { }
+   rpmSpecNames : Final[list[str]] = glob.glob('rpm/*.spec')
 
    # ====== Obtain package configuration ====================================
-   rpm_spec_names = glob.glob('rpm/*.spec')
-   if len(rpm_spec_names) == 1:
-      packageInfo['rpm_spec_name'] = rpm_spec_names[0]
+   if len(rpmSpecNames) == 1:
+      packageInfo['rpm_spec_name'] = rpmSpecNames[0]
       packageInfo['rpm_packages']  = [ ]
 
       re_rpm_name    : Final[re.Pattern[str]] = re.compile(r'^(Name:[ \t]*)(\S+)')
@@ -409,7 +409,7 @@ def readRPMPackagingInformation() -> dict[str,Any]:
          rpmSpecFileContents : Final[list[str]] = rpmSpecFile.readlines()
          packageInfo['rpm_version_packaging'] = None
          for line in rpmSpecFileContents:
-            match = re_rpm_version.match(line)
+            match : re.Match[str] | None = re_rpm_version.match(line)
             if match is not None:
                packageInfo['rpm_version_major']  = int(match.group(2))
                packageInfo['rpm_version_minor']  = int(match.group(3))
@@ -454,8 +454,8 @@ def readRPMPackagingInformation() -> dict[str,Any]:
          str(packageInfo['rpm_version_packaging']))
       print(packageInfo['rpm_packages'])
 
-   elif len(rpm_spec_names) > 1:
-      sys.stderr.write('ERROR: More than one spec file found: ' + str(rpm_spec_names) + '!\n')
+   elif len(rpmSpecNames) > 1:
+      sys.stderr.write('ERROR: More than one spec file found: ' + str(rpmSpecNames) + '!\n')
       sys.exit(1)
 
    return packageInfo
@@ -465,7 +465,7 @@ def readRPMPackagingInformation() -> dict[str,Any]:
 def readFreeBSDPackagingInformation() -> dict[str,Any]:
 
    # ====== Initialise ======================================================
-   packageInfo : dict[str,Any] = { }
+   packageInfo         : dict[str,Any]    = { }
    port_makefile_names : Final[list[str]] = glob.glob('freebsd/*/Makefile')
 
    # ====== Obtain package configuration ====================================
@@ -476,7 +476,7 @@ def readFreeBSDPackagingInformation() -> dict[str,Any]:
          freeBSDMakefileFile         : TextIO           = open(packageInfo['port_makefile_name'], 'r', encoding='utf-8')
          freeBSDMakefileFileContents : Final[list[str]] = freeBSDMakefileFile.readlines()
          for line in freeBSDMakefileFileContents:
-            match = re_freebsd_version.match(line)
+            match : re.Match[str] | None = re_freebsd_version.match(line)
             if match is not None:
                packageInfo['port_version_major']  = int(match.group(2))
                packageInfo['port_version_minor']  = int(match.group(3))
@@ -513,12 +513,13 @@ def readOtherPackagingInformation() -> dict[str,Any]:
 
    if os.path.isfile(otherFileName):
       packageInfo['other_file_name'] = otherFileName
-      re_otherfile_version : Final[re.Pattern[str]] = re.compile(r'(\S+) (\d).(\d).(\d+)([~+][a-zA-Z0-9\.+]+|)')
+      re_otherfile_version : Final[re.Pattern[str]] = \
+         re.compile(r'(\S+) (\d).(\d).(\d+)([~+][a-zA-Z0-9\.+]+|)')
       try:
-         otherFile         : TextIO           = open(otherFileName, 'r', encoding='utf-8')
-         otherFileContents : Final[list[str]] = otherFile.readlines()
-         line = otherFileContents[0]
-         match = re_otherfile_version.match(line)
+         otherFile         : TextIO               = open(otherFileName, 'r', encoding='utf-8')
+         otherFileContents : Final[list[str]]     = otherFile.readlines()
+         line              : str                  = otherFileContents[0]
+         match             : re.Match[str] | None = re_otherfile_version.match(line)
          if match is not None:
             packageInfo['other_package']       = match.group(1)
             packageInfo['other_version_major'] = int(match.group(2))
@@ -547,38 +548,38 @@ def readOtherPackagingInformation() -> dict[str,Any]:
 def readPackagingInformation() -> dict[str,Any]:
 
    # ====== Read information from different packaging system files ==========
-   packageInfo = readPackagingConfiguration()
+   packageInfo : dict[str,Any] = readPackagingConfiguration()
 
-   cmakePackageInfo = readCMakePackagingInformation()
+   cmakePackageInfo : Final[dict[str,Any]] = readCMakePackagingInformation()
    if cmakePackageInfo is not None:
       packageInfo.update(cmakePackageInfo)
 
-   autoconfPackageInfo = readAutoConfPackagingInformation()
+   autoconfPackageInfo : Final[dict[str,Any]] = readAutoConfPackagingInformation()
    if autoconfPackageInfo is not None:
       packageInfo.update(autoconfPackageInfo)
 
-   debianPackageInfo = readDebianPackagingInformation()
+   debianPackageInfo : Final[dict[str,Any]] = readDebianPackagingInformation()
    if debianPackageInfo is not None:
       packageInfo.update(debianPackageInfo)
 
-   rpmPackageInfo = readRPMPackagingInformation()
+   rpmPackageInfo : Final[dict[str,Any]] = readRPMPackagingInformation()
    if rpmPackageInfo is not None:
       packageInfo.update(rpmPackageInfo)
 
-   freeBSDPackageInfo = readFreeBSDPackagingInformation()
+   freeBSDPackageInfo : Final[dict[str,Any]] = readFreeBSDPackagingInformation()
    if freeBSDPackageInfo is not None:
       packageInfo.update(freeBSDPackageInfo)
 
-   otherPackageInfo = readOtherPackagingInformation()
+   otherPackageInfo : Final[dict[str,Any]] = readOtherPackagingInformation()
    if otherPackageInfo is not None:
       packageInfo.update(otherPackageInfo)
 
 
    # ====== Obtain master packaging information =============================
    for system in Systems:
-      systemPrefix     = system[0]
-      systemName       = system[1]
-      systemConfigFile = system[2]
+      systemPrefix     : str = system[0]
+      systemName       : str = system[1]
+      systemConfigFile : str = system[2]
       if hasPackagingFor(packageInfo, systemPrefix):
          sys.stdout.write('Using master versioning from ' + systemName + '.\n')
          for entry in [ 'package_name', 'version_string',  'version_major',  'version_minor',  'version_patch',  'version_extra' ]:
@@ -606,7 +607,7 @@ def readPackagingInformation() -> dict[str,Any]:
 
 
    # ====== Look for source tarball =========================================
-   sourcePackageInfo = findSourceTarball(packageInfo)
+   sourcePackageInfo : dict[str,Any] | None = findSourceTarball(packageInfo)
    if sourcePackageInfo is not None:
       packageInfo.update(sourcePackageInfo)
 
@@ -621,10 +622,13 @@ def findSourceTarball(packageInfo : dict[str,Any],
    sourceInfo : dict[str,Any] = { }
 
    # ====== Obtain package configuration ====================================
-   tarballPattern = packageInfo['master_package_name'] + '-' + packageInfo['master_version_string'] + '.tar.*'
+   tarballPattern : Final[str] = \
+      packageInfo['master_package_name'] + '-' + \
+      packageInfo['master_version_string'] + '.tar.*'
    if not quiet:
       sys.stdout.write('Looking for tarball ' + tarballPattern + ' ... ')
-   tarballs = glob.glob(tarballPattern)   # NOTE: This will also find .tar.xz.asc, etc.!
+   tarballs : Final[list[str]] = \
+      glob.glob(tarballPattern)   # NOTE: This will also find .tar.xz.asc, etc.!
    for tarball in tarballs:
       extension = os.path.splitext(tarball)[1][1:]
       if extension in TarballFormats:
@@ -1607,13 +1611,13 @@ def makeSourceRPM(packageInfo        : dict[str,Any],
    shutil.copyfile(os.path.abspath(packageInfo['source_tarball_name']),
                    rpmbuildDir + '/SOURCES/' + packageInfo['source_tarball_name'])
 
-   rpm_spec_names = glob.glob('rpm/*.spec')
-   if len(rpm_spec_names) == 1:
-      packageInfo['rpm_spec_name'] = rpm_spec_names[0]
+   rpmSpecNames : Final[list[str]] = glob.glob('rpm/*.spec')
+   if len(rpmSpecNames) == 1:
+      packageInfo['rpm_spec_name'] = rpmSpecNames[0]
       shutil.copyfile(packageInfo['rpm_spec_name'],
                       rpmbuildDir + '/SPECS/' + packageInfo['rpm_package_name'] + '.spec')
-   elif len(rpm_spec_names) > 1:
-      sys.stderr.write('ERROR: More than one spec file found: ' + str(rpm_spec_names) + '!\n')
+   elif len(rpmSpecNames) > 1:
+      sys.stderr.write('ERROR: More than one spec file found: ' + str(rpmSpecNames) + '!\n')
       sys.exit(1)
    else:
       sys.stderr.write('ERROR: No spec file found!\n')
