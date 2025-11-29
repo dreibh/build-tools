@@ -1091,7 +1091,7 @@ def mergeDebianChangelogs(ppaChangelogContents         : list[str],
       sys.stderr.write('ERROR: Bad distributor changelog header!\n')
       sys.stderr.write('First distributor entry: "' + latestDistributionEntry.strip() + '"\n')
       sys.exit(1)
-   latestDistributionEntry : Final[str] = match.group(1)
+   latestDistributionEntry = match.group(1)
 
    # ------ Join all new entries from PPA changelog -------------------------
    resultingChangelogContents        : list[str]  = [ ]
@@ -1103,7 +1103,7 @@ def mergeDebianChangelogs(ppaChangelogContents         : list[str],
    for line in ppaChangelogContents:
 
       # ------ Begin of an entry --------------------------------------------
-      match : re.Match[str] | None = re_entry_header.match(line)
+      match = re_entry_header.match(line)
       if match is not None:
          entries = entries + 1
          if entries == 1:
@@ -1111,7 +1111,7 @@ def mergeDebianChangelogs(ppaChangelogContents         : list[str],
             resultingChangelogContents.append('\n')
 
          # ------ Done? -----------------------------------------------------
-         elif match.group(1) == latestDistributionEntry:
+         if match.group(1) == latestDistributionEntry:
             foundLatestDistributionEntryInPPA = True
             break
 
