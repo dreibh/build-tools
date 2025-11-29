@@ -897,8 +897,12 @@ def fetchDebianChangelog(packageInfo : dict[str,Any],
    debianArchiveFormat : str | None = None
 
    # ====== Get package status =================================================
-   statusPageContents  : str | None = None
-   maxTrials           : int        = 10
+   # NOTE: https://packages.debian.org is well-known for being quite unreliable:
+   # HTTP 503 "No healthy backends"; see also
+   # https://www.reddit.com/r/debian/comments/1e0foqv/is_packagesdebianorg_inaccessible/
+   # => Work-around: Retry with random waiting time:
+   maxTrials         : int        = 50
+   avgWaitingTime    : Final[int] = 15
 
    re_debian_package : Final[re.Pattern[str]] = \
       re.compile(r'.*Source Package: ' + packageInfo['debian_package_name'] + r' \(([0-9-+~\.a-z]+)\)')
@@ -945,7 +949,7 @@ def fetchDebianChangelog(packageInfo : dict[str,Any],
       except urllib.error.HTTPError as e:
          sys.stderr.write('not found (HTTP ' + str(e.code) + ')')
          if trial + 1 < maxTrials:
-            time.sleep(random.uniform(0, 30))
+            time.sleep(random.uniform(0, 2 * avgWaitingTime))
 
    if (debianVersion is None) or (debianArchive is None):
       sys.stderr.write('not found!\n')
