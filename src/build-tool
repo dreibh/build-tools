@@ -196,9 +196,9 @@ def readCMakePackagingInformation() -> dict[str,Any]:
    cmakeListsFile = 'CMakeLists.txt'
    if os.path.isfile(cmakeListsFile):
       re_cmake_project   : Final[re.Pattern[str]] = re.compile(r'[ \t]*[Pp][Rr][Oo][Jj][Ee][Cc][Tt][ \t]*\(([a-zA-Z0-9-+]+)')
-      re_cmakefile_major : Final[re.Pattern[str]]= re.compile(r'^[Ss][Ee][Tt]\((BUILD_MAJOR|PROJECT_MAJOR_VERSION)[ \t]*("|)(\d+)("|)[ \t]*\)')
-      re_cmakefile_minor : Final[re.Pattern[str]]= re.compile(r'^[Ss][Ee][Tt]\((BUILD_MINOR|PROJECT_MINOR_VERSION)[ \t]*("|)(\d+)("|)[ \t]*\)')
-      re_cmakefile_patch : Final[re.Pattern[str]]= re.compile(r'^[Ss][Ee][Tt]\((BUILD_PATCH|PROJECT_PATCH_VERSION)[ \t]*("|)(\d+)(~[a-zA-Z0-9\.+~]+|)("|)[ \t]*\)')
+      re_cmakefile_major : Final[re.Pattern[str]] = re.compile(r'^[Ss][Ee][Tt]\((BUILD_MAJOR|PROJECT_MAJOR_VERSION)[ \t]*("|)(\d+)("|)[ \t]*\)')
+      re_cmakefile_minor : Final[re.Pattern[str]] = re.compile(r'^[Ss][Ee][Tt]\((BUILD_MINOR|PROJECT_MINOR_VERSION)[ \t]*("|)(\d+)("|)[ \t]*\)')
+      re_cmakefile_patch : Final[re.Pattern[str]] = re.compile(r'^[Ss][Ee][Tt]\((BUILD_PATCH|PROJECT_PATCH_VERSION)[ \t]*("|)(\d+)(~[a-zA-Z0-9\.+~]+|)("|)[ \t]*\)')
 
       packageInfo['cmake_lists_name'] = cmakeListsFile
       try:
@@ -1472,28 +1472,28 @@ def buildDeb(packageInfo        : dict[str,Any],
             sys.stderr.write('ERROR: DSC file ' + dscFileName + ' does not exist!\n')
             sys.exit(1)
 
-         buildDistribution = codename
+         buildDistribution : str = codename
          if codename in DebianCodenames:
-            buildSystem    = 'debian'
-            lintianProfile = 'debian'
+            buildSystem    : str = 'debian'
+            lintianProfile : str = 'debian'
          else:
             buildSystem    = 'ubuntu'
             lintianProfile = 'ubuntu'
-         basetgz = '/var/cache/pbuilder/' + buildSystem + '-' + codename + '-' + buildArchitecture + '-base.tgz'
+         basetgz : str = '/var/cache/pbuilder/' + buildSystem + '-' + codename + '-' + buildArchitecture + '-base.tgz'
          if not os.path.isfile(basetgz):
             sys.stderr.write('ERROR: Base tgz ' + basetgz + ' for pbuilder is not available!\nCheck pbuilder installation and configuration!\n')
             sys.exit(1)
-         buildlog = 'build-' + buildSystem + '-' + codename + '-' + buildArchitecture + '.log'
+         buildlog : str = 'build-' + buildSystem + '-' + codename + '-' + buildArchitecture + '.log'
 
          # ====== Run pbuilder ==============================================
-         pbuilderCommand = [ 'sudo',
-                                'OS='   + buildSystem,
-                                'ARCH=' + buildArchitecture,
-                                'DIST=' + codename,
-                             'pbuilder',
-                                'build',
-                                '--basetgz', basetgz,
-                                '--logfile', buildlog ]
+         pbuilderCommand : list[str] = [ 'sudo',
+                                            'OS='   + buildSystem,
+                                            'ARCH=' + buildArchitecture,
+                                            'DIST=' + codename,
+                                         'pbuilder',
+                                            'build',
+                                            '--basetgz', basetgz,
+                                            '--logfile', buildlog ]
          if twice:
             pbuilderCommand.append('--twice')
          pbuilderCommand.append(dscFileName)
@@ -1505,15 +1505,16 @@ def buildDeb(packageInfo        : dict[str,Any],
             sys.exit(1)
 
          # ====== Check for changes file ====================================
-         changesFileName = getDebianChangesName(packageInfo, newDebianVersionPackaging,
-                                                buildArchitecture)
-         changesFileGlobs = [
+         changesFileName : str = getDebianChangesName(packageInfo,
+                                                      newDebianVersionPackaging,
+                                                      buildArchitecture)
+         changesFileGlobs : list[str] = [
             '/var/cache/pbuilder/result/' + buildSystem + '-' + codename + '-' + buildArchitecture + '/' + changesFileName,
             '/var/cache/pbuilder/result/' + changesFileName,
             '/var/cache/pbuilder/result/*/' + changesFileName
          ]
          for changesFileGlob in changesFileGlobs:
-            foundChangesFiles = glob.glob(changesFileGlob)
+            foundChangesFiles : list[str] = glob.glob(changesFileGlob)
             if len(foundChangesFiles) != 0:
                break
          if len(foundChangesFiles) < 1:
@@ -1528,7 +1529,7 @@ def buildDeb(packageInfo        : dict[str,Any],
          # ====== Run BLHC ==================================================
          # FIXME: BLHC < 0.14 does not properly handle D_FORTIFY_SOURCE=3!
          if shutil.which('blhc') is not None:
-            blhcCommand = 'blhc ' + buildlog + ' | grep -v "^CPPFLAGS missing (-D_FORTIFY_SOURCE=2).*-D_FORTIFY_SOURCE=3.*"  | grep -v "^NONVERBOSE BUILD:"'
+            blhcCommand : str = 'blhc ' + buildlog + ' | grep -v "^CPPFLAGS missing (-D_FORTIFY_SOURCE=2).*-D_FORTIFY_SOURCE=3.*"  | grep -v "^NONVERBOSE BUILD:"'
             printSubsection('Running BLHC')
             print('=> ' + blhcCommand)
             try:
@@ -1541,10 +1542,10 @@ def buildDeb(packageInfo        : dict[str,Any],
 
          # ====== Run Lintian ===============================================
          if shutil.which('lintian') is not None:
-            lintianCommand = 'lintian -v -i -I -E --pedantic' + \
-                                ' --profile ' + lintianProfile + \
-                                ' --suppress-tags malformed-deb-archive,bad-distribution-in-changes-file' + \
-                                ' ' + foundChangesFiles[0]
+            lintianCommand : str = 'lintian -v -i -I -E --pedantic' + \
+                                   ' --profile ' + lintianProfile + \
+                                   ' --suppress-tags malformed-deb-archive,bad-distribution-in-changes-file' + \
+                                   ' ' + foundChangesFiles[0]
             printSubsection('Running Lintian')
             print('=> ' + lintianCommand)
             try:
@@ -1557,7 +1558,7 @@ def buildDeb(packageInfo        : dict[str,Any],
 
          # ====== Run LRC ===================================================
          if shutil.which('lrc') is not None:
-            lrcCommand = 'lrc -t'
+            lrcCommand : str = 'lrc -t'
             printSubsection('Running LRC')
             print('=> ' + lrcCommand)
             try:
@@ -1756,8 +1757,8 @@ def buildRPM(packageInfo        : dict[str,Any],
 
          # ------ Check resulting RPM =======================================
          for rpmFilePrefix in packageInfo['rpm_packages']:
-            rpmArchitecture = None
-            found           = False
+            rpmArchitecture : str | None = None
+            found           : bool       = False
             for architecture in [ 'noarch', buildArchitecture ]:
                rpmFile = \
                   '/var/lib/mock/' + configuration + '/result/' + \
@@ -1849,8 +1850,7 @@ elif tool == 'make-source-tarball':
       else:
          sys.stderr.write('ERROR: Bad make-source-tarball parameter ' + sys.argv[i] + '!\n')
          sys.exit(1)
-   result = makeSourceTarball(packageInfo, skipPackageSigning, summaryFile)
-   if result == False:
+   if makeSourceTarball(packageInfo, skipPackageSigning, summaryFile) == False:
       sys.exit(1)
 
 # ====== Make source deb file ===============================================
