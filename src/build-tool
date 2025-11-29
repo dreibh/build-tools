@@ -945,7 +945,7 @@ def fetchDebianChangelog(packageInfo : dict[str,Any],
       except urllib.error.HTTPError as e:
          sys.stderr.write('not found (HTTP ' + str(e.code) + ')')
          if trial + 1 < maxTrials:
-            time.sleep(random.uniform(0, 6))
+            time.sleep(random.uniform(0, 30))
 
    if (debianVersion is None) or (debianArchive is None):
       sys.stderr.write('not found!\n')
@@ -1085,13 +1085,13 @@ def mergeDebianChangelogs(ppaChangelogContents         : list[str],
    ]
 
    # ------ Get latest entry from distribution changelog --------------------
-   latestDistributionEntry : str             = distributorChangelogContents[0]
+   latestDistributionEntry : str                  = distributorChangelogContents[0]
    match                   : re.Match[str] | None = re_entry_header.match(latestDistributionEntry)
    if match is None:
       sys.stderr.write('ERROR: Bad distributor changelog header!\n')
       sys.stderr.write('First distributor entry: "' + latestDistributionEntry.strip() + '"\n')
       sys.exit(1)
-   latestDistributionEntry = match.group(1)
+   latestDistributionEntry : Final[str] = match.group(1)
 
    # ------ Join all new entries from PPA changelog -------------------------
    resultingChangelogContents        : list[str]  = [ ]
@@ -1103,7 +1103,7 @@ def mergeDebianChangelogs(ppaChangelogContents         : list[str],
    for line in ppaChangelogContents:
 
       # ------ Begin of an entry --------------------------------------------
-      match = re_entry_header.match(line)
+      match : re.Match[str] | None = re_entry_header.match(line)
       if match is not None:
          entries = entries + 1
          if entries == 1:
