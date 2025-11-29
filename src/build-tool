@@ -32,6 +32,7 @@ import distro
 import glob
 import os
 import pprint
+import random
 import re
 import shutil
 import subprocess
@@ -923,13 +924,16 @@ def fetchDebianChangelog(packageInfo : dict[str,Any],
                   debianArchive  = match.group(3)
 
          statusPage.close()
-      except urllib.error.HTTPError as e:
-         sys.stderr.write('not found (HTTP ' + str(e.code) + ')!\n')
-         sys.exit(1)
 
-      if (debianVersion is not None) or (debianArchive is not None):
-         # Done!
+         # A status page has been downloaded successfully -> Done!
+         # NOTE: The status page may say "No such package", if there is no package.
+         #       There is *no* HTTP 404 in this case!
          break
+
+      except urllib.error.HTTPError as e:
+         sys.stderr.write('not found (HTTP ' + str(e.code) + ')')
+         if trial + 1 < maxTrials:
+            time.sleep(random.uniform(0, 6))
 
    if (debianVersion is None) or (debianArchive is None):
       sys.stderr.write('not found!\n')
