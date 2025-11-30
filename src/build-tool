@@ -452,7 +452,7 @@ def readRPMPackagingInformation() -> dict[str,Any]:
          packageInfo['rpm_package_name'] + '-' +
          packageInfo['rpm_version_string'] + '-' +
          str(packageInfo['rpm_version_packaging']))
-      print(packageInfo['rpm_packages'])
+      # print(packageInfo['rpm_packages'])
 
    elif len(rpmSpecNames) > 1:
       sys.stderr.write('ERROR: More than one spec file found: ' + str(rpmSpecNames) + '!\n')
