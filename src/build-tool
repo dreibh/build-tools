@@ -891,6 +891,7 @@ def fetchDebianChangelog(packageInfo : dict[str,Any],
       # Ubuntu
       statusPageURL = 'https://packages.ubuntu.com/source/' + codename + '/' + packageInfo['debian_package_name']
 
+   debianNoSuchPackage : bool       = False
    debianVersion       : str | None = None
    debianLocation      : str | None = None
    debianArchive       : str | None = None
@@ -901,13 +902,15 @@ def fetchDebianChangelog(packageInfo : dict[str,Any],
    # HTTP 503 "No healthy backends"; see also
    # https://www.reddit.com/r/debian/comments/1e0foqv/is_packagesdebianorg_inaccessible/
    # => Work-around: Retry with random waiting time:
-   maxTrials         : int        = 50
-   avgWaitingTime    : Final[int] = 15
+   maxTrials      : Final[int] = 50
+   avgWaitingTime : Final[int] = 15
 
+   re_no_such_package : Final[re.Pattern[str]] = \
+      re.compile(r'^.*<p>No such package.</p>.*$')
    re_debian_package : Final[re.Pattern[str]] = \
-      re.compile(r'.*Source Package: ' + packageInfo['debian_package_name'] + r' \(([0-9-+~\.a-z]+)\)')
+      re.compile(r'^.*Source Package: ' + packageInfo['debian_package_name'] + r' \(([0-9-+~\.a-z]+)\)')
    re_debian_archive : Final[re.Pattern[str]] = \
-      re.compile(r'.*href="((http|https)://[a-zA-Z0-9\./+-]+/' + \
+      re.compile(r'^.*href="((http|https)://[a-zA-Z0-9\./+-]+/' + \
                   packageInfo['debian_package_name'][0:1] + '/' + \
                   packageInfo['debian_package_name'] + '/' + \
                   r')(' + packageInfo['debian_package_name'] + r'_[0-9-+~\.a-z]+\.debian\.tar\.[a-zA-Z]+)"')
@@ -930,14 +933,19 @@ def fetchDebianChangelog(packageInfo : dict[str,Any],
 
          for statusPageLine in statusPage:
             line  = statusPageLine.decode('utf-8')
-            match = re_debian_package.match(line)
+
+            match = re_no_such_package.match(line)
             if match is not None:
-               debianVersion = match.group(1)
+               debianNoSuchPackage = True
             else:
-               match = re_debian_archive.match(line)
+               match = re_debian_package.match(line)
                if match is not None:
-                  debianLocation = match.group(1)
-                  debianArchive  = match.group(3)
+                  debianVersion = match.group(1)
+               else:
+                  match = re_debian_archive.match(line)
+                  if match is not None:
+                     debianLocation = match.group(1)
+                     debianArchive  = match.group(3)
 
          statusPage.close()
 
@@ -951,11 +959,13 @@ def fetchDebianChangelog(packageInfo : dict[str,Any],
          if trial + 1 < maxTrials:
             time.sleep(random.uniform(0, 2 * avgWaitingTime))
 
-   if (debianVersion is None) or (debianArchive is None):
-      sys.stderr.write('not found!\n')
+   if debianNoSuchPackage == True:
+      sys.stderr.write('not in Debian!\n')
       return None
-   assert debianLocation is not None
-   assert debianArchive  is not None
+
+   if ( (debianVersion is None) or (debianLocation is None) or (debianArchive is None) ):
+      sys.stderr.write('ERROR: Unable to determinate package status in Debian (https://packages.ubuntu.com/ may be malfunctioning)!\n')
+      sys.exit(1)
 
    sys.stderr.write('Version in ' + codename + ' is ' + debianVersion + '\n')
 
