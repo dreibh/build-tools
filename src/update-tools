@@ -32,7 +32,8 @@
 set -eu
 
 
-TOOLS_DIRECTORY="$(dirname "$0")/../../build-tools-template"
+TOOLS_DIRECTORY="$(dirname "$0")/../../build-tools"
+WORKFLOWS_DIRECTORY="$(dirname "$0")/../../build-tools-template"
 
 TOOLS="
    autogen.sh
@@ -83,7 +84,7 @@ if [ -d .github/workflows ] ; then
    for workflow in ${WORKFLOWS} ; do
       echo "Copying ci/${workflow} ..."
       if [ -e ".github/workflows/${workflow}" ] ; then
-         cp "${TOOLS_DIRECTORY}/.github/workflows/${workflow}" ".github/workflows/${workflow}"
+         cp "${WORKFLOWS_DIRECTORY}/.github/workflows/${workflow}" ".github/workflows/${workflow}"
       else
          echo "SKIPPING workflow ${workflow}!"
       fi
