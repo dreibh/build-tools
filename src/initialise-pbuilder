@@ -131,7 +131,7 @@ ubuntuDistributions="$( (
 ) | sort -u)"
 
 for distribution in ${ubuntuDistributions} ; do
-   for architecture in amd64 arm64 ; do
+   for architecture in amd64 arm64 armhf riscv64 s390x ; do
       create-pbuilder ubuntu "${distribution}" "${architecture}"
    done
 done
