@@ -257,7 +257,8 @@ def readAutoConfPackagingInformation() -> dict[str,Any]:
       if os.path.isfile(autoconfConfigName):
          break
    if os.path.isfile(autoconfConfigName):
-      re_autoconffile_version : Final[re.Pattern[str]] = re.compile(r'^AC_INIT\([ \t]*\[(.*)\][ \t]*,[ \t]*\[(\d).(\d).(\d+)([~+][a-zA-Z0-9\.+]+|)\][ \t]*,[ \t]*\[(.*)\][ \t]*\)')
+      re_autoconffile_version : Final[re.Pattern[str]] = \
+         re.compile(r'^AC_INIT\([ \t]*\[(.*)\][ \t]*,[ \t]*\[(\d).(\d).(\d+)([~+][a-zA-Z0-9\.+]+|)\][ \t]*,[ \t]*\[(.*)\][ \t]*\)')
 
       packageInfo['autoconf_config_name'] = autoconfConfigName
       try:
@@ -266,7 +267,7 @@ def readAutoConfPackagingInformation() -> dict[str,Any]:
          for line in autoconfFileContents:
             match = re_autoconffile_version.match(line)
             if match is not None:
-               packageInfo['autoconf_package']       = match.group(1)
+               packageInfo['autoconf_package_name']  = match.group(1)
                packageInfo['autoconf_version_major'] = int(match.group(2))
                packageInfo['autoconf_version_minor'] = int(match.group(3))
                packageInfo['autoconf_version_patch'] = int(match.group(4))
@@ -283,7 +284,7 @@ def readAutoConfPackagingInformation() -> dict[str,Any]:
          sys.exit(1)
 
       # ====== Check whether information is complete ========================
-      if ( ( not 'autoconf_package' in packageInfo) or
+      if ( ( not 'autoconf_package_name'   in packageInfo) or
            ( not 'autoconf_version_string' in packageInfo ) ):
          sys.stderr.write('ERROR: Cannot find required package versioning details in ' + packageInfo['autoconf_config_name'] + '!\n')
          sys.exit(1)
@@ -521,7 +522,7 @@ def readOtherPackagingInformation() -> dict[str,Any]:
          line              : str                  = otherFileContents[0]
          match             : re.Match[str] | None = re_otherfile_version.match(line)
          if match is not None:
-            packageInfo['other_package']       = match.group(1)
+            packageInfo['other_package_name']  = match.group(1)
             packageInfo['other_version_major'] = int(match.group(2))
             packageInfo['other_version_minor'] = int(match.group(3))
             packageInfo['other_version_patch'] = int(match.group(4))
@@ -537,7 +538,7 @@ def readOtherPackagingInformation() -> dict[str,Any]:
          sys.exit(1)
 
       # ====== Check whether information is complete ========================
-      if not 'other_version_major' in packageInfo:
+      if not 'other_package_name' in packageInfo:
          sys.stderr.write('ERROR: Cannot find required package versioning details in ' + otherFileName + '!\n')
          sys.exit(1)
 
@@ -577,12 +578,13 @@ def readPackagingInformation() -> dict[str,Any]:
 
    # ====== Obtain master packaging information =============================
    for system in Systems:
-      systemPrefix     : str = system[0]
-      systemName       : str = system[1]
-      systemConfigFile : str = system[2]
+      systemPrefix : str = system[0]
       if hasPackagingFor(packageInfo, systemPrefix):
+         systemName       : str = system[1]
+         systemConfigFile : str = system[2]
          sys.stdout.write('Using master versioning from ' + systemName + '.\n')
          for entry in [ 'package_name', 'version_string',  'version_major',  'version_minor',  'version_patch',  'version_extra' ]:
+            assert systemPrefix + '_' + entry in packageInfo
             packageInfo['master_' + entry] = packageInfo[systemPrefix + '_' + entry]
          break
    if not hasPackagingFor(packageInfo, 'master'):
@@ -592,10 +594,10 @@ def readPackagingInformation() -> dict[str,Any]:
 
    # ====== Check master packaging information ==============================
    for system in Systems:
-      systemPrefix     = system[0]
-      systemName       = system[1]
-      systemConfigFile = system[2]
+      systemPrefix = system[0]
       if hasPackagingFor(packageInfo, systemPrefix):
+         systemName       = system[1]
+         systemConfigFile = system[2]
          sys.stdout.write(('Version from ' + systemName + ': ').ljust(32, ' ') + \
                           packageInfo[systemPrefix + '_version_string'] + \
                           ' (from ' + packageInfo[systemConfigFile] + ')\n')
