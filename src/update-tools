@@ -50,9 +50,9 @@ CI_TOOLS="
 
 WORKFLOWS="
    freebsd.yml
-   linux.yml
-   multiarch.yml
-   packaging.yml
+   linux-debian.yml
+   linux-fedora.yml
+   linux-ubuntu.yml
 "
 
 
