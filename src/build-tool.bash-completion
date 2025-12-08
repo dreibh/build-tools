@@ -58,9 +58,11 @@ make-source-tarball
 make-source-deb
 build-deb
 fetch-debian-changelog
+fetch-debian-control
 make-source-rpm
 build-rpm
 "
+      # shellcheck disable=SC2207
       COMPREPLY=( $(compgen -W "${tools}" --  "${cur}") )
       return
 
@@ -70,6 +72,7 @@ build-rpm
          # ====== Special case: architecture ================================
          --architecture=*)
             cur="${cur#*=}"
+            # shellcheck disable=SC2207
             COMPREPLY=( $(compgen -W "amd64 arm64 riscv64 ppc64el s390x mipsel armhf i386 m68k" --  "${cur}") )
             return
             ;;
