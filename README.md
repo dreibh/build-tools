@@ -12,7 +12,7 @@ The Build-Tools are a collection of scripts to help packaging open source softwa
 
 - Debian Linux packages
 - Ubuntu Linux packages
-- Fedora Core Linux packages
+- Fedora Linux packages
 - FreeBSD Ports packages
 - Maintaining [Continuous Integration&nbsp;(CI)](https://en.wikipedia.org/wiki/Continuous_integration) workflows
 
@@ -26,7 +26,7 @@ Furthermore, the Build-Tools provide helpful tools for:
 - as well as some other features
 
 
-# 😀 A Detailed Example
+# 😀 Software Packaging Example
 
 <p align="center">
 <span style="font-size:200%">
@@ -34,6 +34,41 @@ Furthermore, the Build-Tools provide helpful tools for:
   <br/>WORK IN PROGRESS!
 </span>
 </p>
+
+
+## Example Template
+
+Build-Tools Template: [https://github.com/dreibh/build-tools-template](https://github.com/dreibh/build-tools-template)
+
+
+## Build System
+
+[CMake](https://cmake.org/) ...
+
+
+## Debian/Ubuntu Linux Packaging
+
+TBD ...
+
+
+## Fedora Linux Packaging
+
+TBD ...
+
+
+## FreeBSD Ports Packaging
+
+TBD ...
+
+
+## CI Workflows
+
+TBD ...
+
+
+## Other Tasks
+
+TBD ...
 
 
 # 📦 Binary Package Installation
