@@ -14,20 +14,21 @@ The Build-Tools are a collection of scripts to help packaging open source softwa
 - Ubuntu Linux packages
 - Fedora Core Linux packages
 - FreeBSD Ports packages
+- Maintaining [Continuous Integration&nbsp;(CI)](https://en.wikipedia.org/wiki/Continuous_integration) workflows
 
 Furthermore, the Build-Tools provide helpful tools for:
 
 - Versioning packages
 - Checking manpages
 - Preparing shell completion files
-- Maintaining Linux Software Map (LSM) entries
-- Create Debian Intent to Package (ITP) and Request for Sponsorship (RFS) mails
+- Maintaining [Linux Software Map&nbsp;(LSM)](https://lsm.qqx.org/) entries
+- Create Debian [Intent to Package&nbsp;(ITP)](https://wiki.debian.org/ITP) and [Request for Sponsorship&nbsp;(RFS)](https://mentors.debian.net/sponsors/rfs-howto/) mails
 - as well as some other features
 
 
 # 😀 A Detailed Example
 
-<p class="center">
+<p align="center">
 <span style="font-size:200%">
   <br/><img alt="" src="https://www.nntb.no/~dreibh/graphics/NO-RoadSign-Work.svg" width="40%" />
   <br/>WORK IN PROGRESS!
