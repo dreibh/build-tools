@@ -124,6 +124,7 @@ See [https://www.nntb.no/~dreibh/build-tools/#current-stable-release](https://ww
 * [FractGen – An extensible Fractal Generator software](https://www.nntb.no/~dreibh/fractalgenerator/)
 * [HiPerConTracer – High-Performance Connectivity Tracer](https://www.nntb.no/~dreibh/hipercontracer/)
 * [NetPerfMeter – A TCP/MPTCP/UDP/SCTP/DCCP Network Performance Meter Tool](https://www.nntb.no/~dreibh/netperfmeter/)
+* [NEAT – A New, Evolutive API and Transport-Layer Architecture for the Internet](https://github.com/NEAT-project/neat)
 * [RSPLIB RSerPool Implementation and RSerPool Demo Tool](https://www.nntb.no/~dreibh/rserpool/)
 * [RTP Audio – An Audio Streaming System for Transport Protocol and QoS Research Purposes](https://www.nntb.no/~dreibh/rtpaudio/)
 * [SCTPLIB User-Space SCTP Implementation and Socket-API for SCTPLIB](https://www.nntb.no/~dreibh/sctplib/)
