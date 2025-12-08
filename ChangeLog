@@ -1,3 +1,189 @@
+commit c765552a2edb532be91385b438b4dc90e9dafd6c
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Mon Dec 8 21:10:30 2025 +0100
+
+    Further documentation progress.
+
+commit af7802759015bc9f121b42f5d3510c1a23dcf8ad
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Mon Dec 8 20:57:43 2025 +0100
+
+    Added missing SVG logo file.
+
+commit 0991924c13f490945f9417860a74cc995ba605b6
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Mon Dec 8 20:46:46 2025 +0100
+
+    Added link.
+
+commit 313e50e85ecb37f106bd9717b90bf957c608b8de
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Mon Dec 8 20:40:09 2025 +0100
+
+    Improved documentation.
+
+commit 72eb16e4deb270a27c947b29c864fd2de241beb7
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Mon Dec 8 20:35:05 2025 +0100
+
+    Added README.md.
+
+commit 6f7c9f6ade9aefb3f2cae29b5ca4420801b9df40
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Mon Dec 8 20:14:37 2025 +0100
+
+    Added logo files.
+
+commit 61520c1b92862902314625096fb243abd4968193
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Mon Dec 8 19:46:17 2025 +0100
+
+    Added command-line option to fetch Debian control file.
+
+commit 1f88b7a0b4103ebef6a55fb26a7b8d810d4559a3
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Dec 5 15:39:41 2025 +0100
+
+    Improved Debian control fields handling.
+
+commit 70b4ec116853ca851f4639a1c2ebf7173f70c4e4
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Dec 5 13:29:56 2025 +0100
+
+    Workflow update.
+
+commit b76ccbf2b219bd034d6b2b3367e7e5611cf538e3
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Dec 5 13:29:44 2025 +0100
+
+    Updated CI scripts.
+
+commit f0c732e8155766fce5abd260c13f55e2e970aaa2
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Dec 5 11:22:04 2025 +0100
+
+    Minor clean-ups.
+
+commit 455fa04704efcacc94d241ef08f679e46c803fab
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Dec 5 10:50:06 2025 +0100
+
+    Minor clean-ups.
+
+commit 27d44b419150efd64a487ef358e01406abe95e4f
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Dec 4 17:44:37 2025 +0100
+
+    Minor clean-up.
+
+commit f74d6e81cbd357e8438eb6286659251e8c96f3ec
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Dec 4 17:42:00 2025 +0100
+
+    Minor update.
+
+commit 4b3c680b83e8897bb15f273846c99f58ad04f8cc
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Dec 4 15:26:38 2025 +0100
+
+    Fedora fix.
+
+commit 5b78f4e449c0d518f9ecd5542307796e6a94a05b
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Dec 4 14:20:00 2025 +0100
+
+    Updated workflow.
+
+commit 0c5a9ebfdf90fef616ff823b933aad6101e04123
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Dec 4 12:07:42 2025 +0100
+
+    Header updates.
+
+commit fb38793892344f16361929eaa9649d7be67ea7a2
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Dec 4 12:07:01 2025 +0100
+
+    Improved script.
+
+commit 2ca244f9fb360d3e14ab028ed3944333888f2285
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Dec 4 11:35:23 2025 +0100
+
+    Some fixes.
+
+commit c7a177e73a990222267d3595e53832c69e6faf1c
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sun Nov 30 21:19:28 2025 +0100
+
+    Minor clean-up.
+
+commit c10d6a6b5eb5a9aa4fde7544010622344d9766dd
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sun Nov 30 21:16:41 2025 +0100
+
+    Further Debian changelog handling improvements.
+
+commit 5805274ff65979c24de52d502f1a7bce96228c61
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sat Nov 29 18:06:24 2025 +0100
+
+    Further Debian changelog fetching improvements.
+
+commit 61791bf5abd0c336b0ac71de37475968ccc21e01
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sat Nov 29 17:49:18 2025 +0100
+
+    Properly handling re-builds of the same version for CI tool-chain.
+
+commit fe516fd973876428890bac3bf2f9abf5cc29c487
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sat Nov 29 17:32:43 2025 +0100
+
+    A fix.
+
+commit 5e6de83751ca8c31a995f6289ad91919d9277b3c
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sat Nov 29 17:31:45 2025 +0100
+
+    Further clean-ups.
+
+commit 334e052f773802b69aae95ca013705a0f1beaef3
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sat Nov 29 17:06:22 2025 +0100
+
+    Some clean-ups.
+
+commit 54364f4675d2f21066003b501d21ba6e60e80c53
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sat Nov 29 16:59:24 2025 +0100
+
+    Some more type-hinting improvements.
+
+commit 48b504e5d99c2cd0d030961b3db37b10f40567ca
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sat Nov 29 16:44:35 2025 +0100
+
+    Further improvements of type-hinting.
+
+commit 1786a4d38434ade56491ad16edd1481e1de287ee
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sat Nov 29 16:17:55 2025 +0100
+
+    Improved fetching procedure for Debian changelog.
+
+commit 4eaf9552a9eb03367d02447784a7b0caabefc259
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Nov 28 17:01:58 2025 +0100
+
+    Fixed typo.
+
+commit d75d4a9dacb2f7c3597fc55f31c248cb98b738f8
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Nov 28 15:45:45 2025 +0100
+
+    New release td-build-tools-0.2.0.
+
 commit 8f59d5f178a195b2250d90adb67298ef51525fa5
 Author: Thomas Dreibholz <dreibh@simula.no>
 Date:   Fri Nov 28 15:42:15 2025 +0100
