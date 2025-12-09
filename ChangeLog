@@ -1,3 +1,69 @@
+commit 74fdf7d18e59eb91d15a3c81b358ba87c83da6ff
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Dec 9 15:27:53 2025 +0100
+
+    Dependency fix.
+
+commit 7fab042816b6b70e8e91dd378ad1e16352785a9a
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Dec 9 15:23:27 2025 +0100
+
+    Improved CI scripts.
+
+commit 9a6b5962dffb3c2f8c939e2b90435ceb3beaa980
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Dec 9 15:06:51 2025 +0100
+
+    RPM spec fix.
+
+commit 5d6571f417db246f74ce29610570a972c0de936d
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Dec 9 14:46:33 2025 +0100
+
+    Packaging updates.
+
+commit f3db84d48e00e5c159fb3443aa530c90467b59bd
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Dec 9 14:46:12 2025 +0100
+
+    Minimum Python version is 3.9, not 3.8.
+
+commit 194ef65a3d2c355f396a0cc47e92592194d9a9d5
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Dec 9 14:29:18 2025 +0100
+
+    Added Python version and package check.
+
+commit b3591a6f60320ec943af9a1f7d6070ac89fe13b3
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Dec 9 14:29:02 2025 +0100
+
+    Updated manpage.
+
+commit 3fab82d0d170f3935678f00e1512a24f0768c984
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Dec 9 14:24:38 2025 +0100
+
+    Added Python version and package check.
+
+commit 3ed6157d8ea2ea1d1165f4e59133247a6bf66b96
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Mon Dec 8 21:19:23 2025 +0100
+
+    Minor update.
+
+commit 3091c9db39170fa9ffd82f3934d415c8af313ae1
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Mon Dec 8 21:19:17 2025 +0100
+
+    Packaging update.
+
+commit 187dae6c742525306f3e6909d48f396bbdc32d5a
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Mon Dec 8 21:11:02 2025 +0100
+
+    New release td-build-tools-0.3.0.
+
 commit c765552a2edb532be91385b438b4dc90e9dafd6c
 Author: Thomas Dreibholz <dreibh@simula.no>
 Date:   Mon Dec 8 21:10:30 2025 +0100
