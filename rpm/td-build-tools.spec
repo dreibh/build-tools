@@ -45,10 +45,14 @@ This package is a metapackage for the build tools.
 %package build-tool
 Summary: Build Tool
 BuildArch: noarch
-Requires: python3
 Requires: mock
+Requires: python3 (>= 3.9)
+Requires: python3-distro
+Requires: python3-urllib3
 Requires: rpm
 Requires: rpmlint
+Recommends: td-system-info
+Recommends: td-system-maintenance
 
 %description build-tool
 Build Tool is a tool to help creating and maintaining package
@@ -69,7 +73,9 @@ cross-architecture builds).
 %package version-bump
 Summary: Version Bump
 BuildArch: noarch
-Requires: python3
+Requires: python3 (>= 3.9)
+Requires: python3-distro
+Requires: python3-urllib3
 Recommends: %{name}-build-tool = %{version}-%{release}
 
 %description version-bump
