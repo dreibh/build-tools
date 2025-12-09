@@ -38,13 +38,13 @@ if sys.version_info < (3, 8):
    sys.stderr.write('ERROR: ' + sys.argv[0] + ' requires Python 3.8 or later!\n')
    sys.exit(1)
 
+from typing import Final, TextIO
+
 try:
    import distro
 except ImportError:
    sys.stderr.write('ERROR: ' + sys.argv[0] + ' requires the Python distro package!\n')
    sys.exit(1)
-
-from typing import Final, TextIO
 
 
 # ###### Extract Deb file dependencies ######################################
