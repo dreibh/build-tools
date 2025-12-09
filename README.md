@@ -156,7 +156,7 @@ See [https://www.nntb.no/~dreibh/build-tools/#current-stable-release](https://ww
 
 * [BibTeXConv – A BibTeX File Converter](https://www.nntb.no/~dreibh/bibtexconv/)
 * [Dynamic Multi-Homing Setup (DynMHS)](https://www.nntb.no/~dreibh/dynmhs/)
-* [FractGen – An extensible Fractal Generator software](https://www.nntb.no/~dreibh/fractalgenerator/)
+* [FractGen – An Extensible Fractal Generator Software](https://www.nntb.no/~dreibh/fractalgenerator/)
 * [HiPerConTracer – High-Performance Connectivity Tracer](https://www.nntb.no/~dreibh/hipercontracer/)
 * [NetPerfMeter – A TCP/MPTCP/UDP/SCTP/DCCP Network Performance Meter Tool](https://www.nntb.no/~dreibh/netperfmeter/)
 * [NEAT – A New, Evolutive API and Transport-Layer Architecture for the Internet](https://github.com/NEAT-project/neat)
