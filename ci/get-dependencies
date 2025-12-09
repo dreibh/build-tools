@@ -34,8 +34,8 @@ import re
 import subprocess
 import sys
 
-if sys.version_info < (3, 8):
-   sys.stderr.write('ERROR: ' + sys.argv[0] + ' requires Python 3.8 or later!\n')
+if sys.version_info < (3, 9):
+   sys.stderr.write('ERROR: ' + sys.argv[0] + ' requires Python 3.9 or later!\n')
    sys.exit(1)
 
 from typing import Final, TextIO
