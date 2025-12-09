@@ -21,7 +21,7 @@ Depends: blhc,
          pigz,
          python3 (>= 3.9),
          python3-distro,
-         python3-urllib,
+         python3-urllib3,
          reprepro,
          ${misc:Depends}
 Recommends: licenserecon,
@@ -42,7 +42,7 @@ Package: td-version-bump
 Architecture: all
 Depends: python3 (>= 3.9),
          python3-distro,
-         python3-urllib,
+         python3-urllib3,
          ${misc:Depends}
 Recommends: td-build-tool
 Description: Version Bump
