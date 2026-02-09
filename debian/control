@@ -5,7 +5,7 @@ Maintainer: Thomas Dreibholz <thomas.dreibholz@gmail.com>
 Homepage: https://www.nntb.no/~dreibh/build-tools/
 Build-Depends: cmake,
                debhelper-compat (= 13)
-Standards-Version: 4.7.2
+Standards-Version: 4.7.3
 Rules-Requires-Root: no
 
 Package: td-build-tool

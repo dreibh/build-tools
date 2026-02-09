@@ -1,3 +1,39 @@
+commit d676a97f4c9ec7eee5901300525b090c7bc2064e
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Mon Feb 9 15:14:02 2026 +0100
+
+    Minor update.
+
+commit 2a382512ccc3b7d743feb89ad8606f14c89179a5
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Mon Feb 9 15:13:47 2026 +0100
+
+    Updated Debian standards version.
+
+commit f4e40c7e242ab089233c31d24024400344e2d574
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Mon Feb 9 15:13:35 2026 +0100
+
+    Improved script.
+
+commit 9d282aa769f6a0072e08bddc723a860e6606b31c
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Dec 12 18:55:32 2025 +0100
+
+    Updated documentation.
+
+commit 7e5c92c597470547518ea910e1cee182cea8708b
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Dec 9 17:41:09 2025 +0100
+
+    Updated link.
+
+commit 85348000df03eca539a3af8b1946a9d748010c8a
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Dec 9 16:46:00 2025 +0100
+
+    New release td-build-tools-0.3.1.
+
 commit 74fdf7d18e59eb91d15a3c81b358ba87c83da6ff
 Author: Thomas Dreibholz <dreibh@simula.no>
 Date:   Tue Dec 9 15:27:53 2025 +0100

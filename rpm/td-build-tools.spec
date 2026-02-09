@@ -1,5 +1,5 @@
 Name: td-build-tools
-Version: 0.3.1
+Version: 0.3.2
 Release: 1
 Summary: Build tools
 Group: Applications/System
@@ -89,6 +89,8 @@ with Git and Build Tool.
 
 
 %changelog
+* Mon Feb 09 2026 Thomas Dreibholz <thomas.dreibholz@gmail.com> - 0.3.2-1
+- New upstream release.
 * Tue Dec 09 2025 Thomas Dreibholz <thomas.dreibholz@gmail.com> - 0.3.1-1
 - New upstream release.
 * Mon Dec 08 2025 Thomas Dreibholz <thomas.dreibholz@gmail.com> - 0.3.0-1
