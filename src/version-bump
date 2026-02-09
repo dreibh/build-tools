@@ -46,7 +46,7 @@ from typing import Final, TextIO
 
 # Set current Debian standards version here
 # (See https://www.debian.org/doc/debian-policy/ for latest version!)
-DEBIAN_STANDARDS_VERSION="4.7.2"
+DEBIAN_STANDARDS_VERSION="4.7.3"
 
 
 # ###### Show difference between two files ##################################
