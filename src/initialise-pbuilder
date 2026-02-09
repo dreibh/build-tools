@@ -124,6 +124,7 @@ fi
 
 # ====== Ubuntu =============================================================
 ubuntuDistributions="$( (
+   echo "trusty"
    ubuntu-distro-info --stable
    ubuntu-distro-info --supported
    ubuntu-distro-info --supported-esm
