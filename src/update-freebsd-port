@@ -32,6 +32,7 @@
 set -eu
 
 
+POUDRIERE_JAIL="150amd64-release"
 POUDRIERE_PORTS="/usr/local/poudriere/ports/default/"
 
 # ====== Get port default ===================================================
@@ -57,7 +58,7 @@ DIFF_FILE="${PORTNAME}-${DISTVERSION}${PORTREVISION}.diff"
 git diff . | tee ~/diff/"${DIFF_FILE}"
 
 # ====== Test the port by using Poudriere ===================================
-sudo poudriere testport -j 143amd64-release -p default -b latest "${CATEGORY}/${PORTNAME}"
+sudo poudriere testport -j "${POUDRIERE_JAIL}" -p default -b latest "${CATEGORY}/${PORTNAME}"
 
 # ====== Show FreeBSD Update Bug template ===================================
 # shellcheck disable=SC2001
@@ -86,5 +87,6 @@ print-utf8 -s "\e[34m=" "=" "=\e[0m"
 echo ""
 echo "Submit here:"
 echo ""
+# shellcheck disable=SC2001
 echo -e "\e[33mhttps://bugs.freebsd.org/bugzilla/enter_bug.cgi?product=Ports%20%26%20Packages&component=Individual%20Port%28s%29&short_desc=$(echo "${SUMMARY}" | sed -e 's/ /%20/g')&comment=$(echo "${COMMENT}" | sed -e 's/\\n/%0A/g' -e 's/ /%20/g')&bug_severity=Affects%20Some%20People&bug_file_loc=${URL}\e[0m"
 echo ""
