@@ -37,30 +37,34 @@ if [ ! -e "CMakeCache.txt" ] ; then
 fi
 
 grep "^CMAKE_PROJECT_" CMakeCache.txt | (
-   VERSION_MAJOR=""
-   VERSION_MINOR=""
-   VERSION_PATCH=""
-   VERSION_TWEAK=""
+   PROJECT_NAME=""
+   PROJECT_VERSION_MAJOR=""
+   PROJECT_VERSION_MINOR=""
+   PROJECT_VERSION_PATCH=""
+   PROJECT_VERSION_TWEAK=""
    while read -r line ; do
-      if [[ "${line}" =~ ^(CMAKE_PROJECT_VERSION_MAJOR:)(STATIC)(=)([0-9]+)([ \t]*)$ ]] ; then
-         VERSION_MAJOR="${BASH_REMATCH[4]}"
-      elif [[ "${line}" =~ ^(CMAKE_PROJECT_VERSION_MINOR:)(STATIC)(=)([0-9]+)([ \t]*)$ ]] ; then
-         VERSION_MINOR="${BASH_REMATCH[4]}"
-      elif [[ "${line}" =~ ^(CMAKE_PROJECT_VERSION_PATCH:)(STATIC)(=)([0-9]+)([ \t]*)$ ]] ; then
-         VERSION_PATCH="${BASH_REMATCH[4]}"
-      elif [[ "${line}" =~ ^(CMAKE_PROJECT_VERSION_TWEAK:)(STATIC)(=)([0-9]+)([ \t]*)$ ]] ; then
-         VERSION_TWEAK="${BASH_REMATCH[4]}"
+      if [[ "${line}" =~ ^(CMAKE_PROJECT_NAME:)(STATIC)(=)([^\s]+)([\s]*)$ ]] ; then
+         PROJECT_NAME="${BASH_REMATCH[4]}"
+      elif [[ "${line}" =~ ^(CMAKE_PROJECT_VERSION_MAJOR:)(STATIC)(=)([0-9]+)([\s]*)$ ]] ; then
+         PROJECT_VERSION_MAJOR="${BASH_REMATCH[4]}"
+      elif [[ "${line}" =~ ^(CMAKE_PROJECT_VERSION_MINOR:)(STATIC)(=)([0-9]+)([\s]*)$ ]] ; then
+         PROJECT_VERSION_MINOR="${BASH_REMATCH[4]}"
+      elif [[ "${line}" =~ ^(CMAKE_PROJECT_VERSION_PATCH:)(STATIC)(=)([^\s]+)([\s]*)$ ]] ; then
+         PROJECT_VERSION_PATCH="${BASH_REMATCH[4]}"
+      elif [[ "${line}" =~ ^(CMAKE_PROJECT_VERSION_TWEAK:)(STATIC)(=)([^\s]+)([\s]*)$ ]] ; then
+         PROJECT_VERSION_TWEAK="${BASH_REMATCH[4]}"
       fi
    done
-   if [ "${VERSION_MAJOR}" == "" ] ||
-      [ "${VERSION_MINOR}" == "" ] ||
-      [ "${VERSION_PATCH}" == "" ]; then
+   if [ "${PROJECT_NAME}" == "" ] ||
+      [ "${PROJECT_VERSION_MAJOR}" == "" ] ||
+      [ "${PROJECT_VERSION_MINOR}" == "" ] ||
+      [ "${PROJECT_VERSION_PATCH}" == "" ]; then
       echo >&2 "ERROR: Unable to determine project version from CMakeCache.txt!"
       exit 1
    fi
-   if [ "${VERSION_TWEAK}" != "" ] ; then
-      echo "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}.${VERSION_TWEAK}"
+   if [ "${PROJECT_VERSION_TWEAK}" != "" ] ; then
+      echo "${PROJECT_NAME} ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}.${PROJECT_VERSION_TWEAK}"
    else
-      echo "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}"
+      echo "${PROJECT_NAME} ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}"
    fi
 )
