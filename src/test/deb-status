@@ -32,16 +32,58 @@ TarOptions     : Final[dict[str,str]] = {
 }
 
 
+# ###### Get Debian/Ubuntu codenames ########################################
+def getDistributionCodenames(distribution : str = 'debian') -> list[str]:
+
+   if distribution == 'debian':
+      distroInfo : str = 'debian-distro-info'
+   else:
+      distroInfo = 'ubuntu-distro-info'
+   try:
+      process : subprocess.Popen[str] = \
+         subprocess.Popen([ distroInfo, '--all'],
+                          stdout=subprocess.PIPE, universal_newlines=True)
+      assert process is not None
+      assert process.stdout is not None
+      result : Final[list[str]] = process.stdout.readlines()
+   except Exception as e:
+      sys.stderr.write('ERROR: Unable to obtain Debian codenames: ' + str(e) + '\n')
+      sys.exit(1)
+
+   codenames : list[str] = [ codename.strip() for codename in result ]
+   if distribution == 'debian':
+      codenames += [ 'unstable', 'testing', 'stable', 'oldstable' ]
+      codenames += [ codename.strip() + '-backports'        for codename in result]
+      codenames += [ codename.strip() + '-backports-sloppy' for codename in result]
+   codenames = sorted(codenames)
+
+   # pprint.pprint(codenames, indent=1)
+   return codenames
+
+DebianCodenames = getDistributionCodenames()
+
+
 # ###### Fetch Debian changelog file ########################################
-def fetchDebianChangelogAndControl(packageName : str) -> tuple[list[str] | None, list[str] | None]:
+def fetchDebianChangelogAndControl(packageName : str,
+                                   codename    : str = 'unstable') -> tuple[list[str] | None, list[str] | None]:
+
+   # ====== Set download directory URL ======================================
+   assert DebianCodenames is not None
+   downloadDirectoryURL : str
+   if codename in DebianCodenames:
+      # Debian:
+      downloadDirectoryURL = \
+         'https://ftp.debian.org/debian/pool/main/' + \
+            packageName[0:1] + '/' + packageName + '/'
+   else:
+      # Ubuntu:
+      downloadDirectoryURL = \
+         'https://archive.ubuntu.com/ubuntu/pool/universe/' + \
+            packageName[0:1] + '/' + packageName + '/'
 
    # ====== Get package status ==============================================
    maxTrials            : Final[int] = 50
    avgWaitingTime       : Final[int] = 15
-   downloadDirectoryURL : Final[str] = \
-      'https://ftp.debian.org/debian/pool/main/' + \
-         packageName[0:1] + '/' + \
-         packageName + '/'
    re_debian_tarball    : Final[re.Pattern[str]] = \
       re.compile(r'(<tr>.*)(<a href=")(' + packageName + r')(_)([0-9+~\.a-z]+)(-)([0-9+~\.a-z]+)(\.debian\.tar\.[a-zA-Z0-9]+)(")')
    httpHeders : Final[dict[str,str]] = {
@@ -63,12 +105,13 @@ def fetchDebianChangelogAndControl(packageName : str) -> tuple[list[str] | None,
          statusPage        : http.client.HTTPResponse = urllib.request.urlopen(statusPageRequest)
 
          for statusPageLine in statusPage:
-            line  : str           = statusPageLine.decode('utf-8')
-            match : re.Match[str] = re_debian_tarball.match(line)
+            line  : str                  = statusPageLine.decode('utf-8')
+            match : re.Match[str] | None = re_debian_tarball.match(line)
             if match is not None:
+               # Break the version into Python-compatible segments:
                version = ( packaging.version.parse(match.group(5).replace('~', '+')),
-                           packaging.version.parse(match.group(7)),
-                           match.group(3) + match.group(4) + match.group(5) + match.group(6) + match.group(7) + match.group(8) )
+                           packaging.version.parse(re.sub(r'(\d)([a-zA-Z])', r'\1+\2', match.group(7))),
+                           match.group(5) + match.group(6) + match.group(7) + match.group(8) )
                versions.append(version)
 
          statusPage.close()
@@ -83,15 +126,15 @@ def fetchDebianChangelogAndControl(packageName : str) -> tuple[list[str] | None,
             time.sleep(random.uniform(0, 2 * avgWaitingTime))
 
    if len(versions) == 0:
-      sys.stderr.write('Not in Debian!\n')
+      sys.stderr.write('not found!\n')
       return ( None, None )
 
    # ====== Obtain latest version ===========================================
    versions = sorted(versions, reverse = True)
-   debianVersion  : Final[str] = str(versions[0][0]) + '-' + str(versions[0][1])
-   debianArchive  : Final[str] = versions[0][2]
+   debianVersion  : Final[str] = versions[0][2]
+   debianArchive  : Final[str] = packageName + '_' + debianVersion
    archiveFileURL : Final[str] = downloadDirectoryURL + debianArchive
-   sys.stderr.write('Latest version in Debian is ' + debianVersion + '\n')
+   sys.stderr.write('latest version is ' + debianVersion + '\n')
 
    # ====== Determine necessary compression option =============================
    debianArchiveFormat  = debianArchive[len(debianArchive) - 2 : len(debianArchive)]
@@ -157,8 +200,10 @@ packages = [
    'sctplib',
    'socketapi',
    'subnetcalc',
-   'system-tools'
+   'td-system-tools'
 ]
 for package in packages:
-   ( debianChangelog, debianControl ) = fetchDebianChangelogAndControl(package)
+   ( debianChangelog, debianControl ) = fetchDebianChangelogAndControl(package, 'unstable')
+for package in packages:
+   ( debianChangelog, debianControl ) = fetchDebianChangelogAndControl(package, 'resolute')
    # print(debianControl)
