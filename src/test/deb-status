@@ -1,0 +1,164 @@
+#!/usr/bin/env python3
+
+import glob
+import http.client
+import os
+import pprint
+import random
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.error
+import urllib.request
+
+import packaging.version
+
+
+if sys.version_info < (3, 9):
+   sys.stderr.write('ERROR: ' + sys.argv[0] + ' requires Python 3.9 or later!\n')
+   sys.exit(1)
+
+from typing import Any, Final, TextIO, cast
+
+
+TarballFormats : Final[list[str]]     = [ 'xz', 'bz2', 'gz' ]
+TarOptions     : Final[dict[str,str]] = {
+   'xz':  'J',
+   'bz2': 'j',
+   'gz':  'z'
+}
+
+
+# ###### Fetch Debian changelog file ########################################
+def fetchDebianChangelogAndControl(packageName : str) -> tuple[list[str] | None, list[str] | None]:
+
+   # ====== Get package status ==============================================
+   maxTrials            : Final[int] = 50
+   avgWaitingTime       : Final[int] = 15
+   downloadDirectoryURL : Final[str] = \
+      'https://ftp.debian.org/debian/pool/main/' + \
+         packageName[0:1] + '/' + \
+         packageName + '/'
+   re_debian_tarball    : Final[re.Pattern[str]] = \
+      re.compile(r'(<tr>.*)(<a href=")(' + packageName + r')(_)([0-9+~\.a-z]+)(-)([0-9+~\.a-z]+)(\.debian\.tar\.[a-zA-Z0-9]+)(")')
+   httpHeders : Final[dict[str,str]] = {
+      'User-Agent': 'Build-Tool/0.4.0 (AmigaOS; MC680x0)',
+      'Accept':     '*/*'
+   }
+
+   for trial in range(0, maxTrials):
+      if trial > 0:
+         sys.stderr.write('\n')
+      sys.stderr.write('Looking for package status on ' + downloadDirectoryURL +
+                     ' (trial ' + str(trial + 1) + '/' + str(maxTrials) + ') ... ')
+      sys.stderr.flush()
+
+      versions = [ ]
+      try:
+         statusPageRequest : urllib.request.Request   = urllib.request.Request(downloadDirectoryURL,
+                                                                               headers = httpHeders)
+         statusPage        : http.client.HTTPResponse = urllib.request.urlopen(statusPageRequest)
+
+         for statusPageLine in statusPage:
+            line  : str           = statusPageLine.decode('utf-8')
+            match : re.Match[str] = re_debian_tarball.match(line)
+            if match is not None:
+               version = ( packaging.version.parse(match.group(5).replace('~', '+')),
+                           packaging.version.parse(match.group(7)),
+                           match.group(3) + match.group(4) + match.group(5) + match.group(6) + match.group(7) + match.group(8) )
+               versions.append(version)
+
+         statusPage.close()
+         break
+
+      except urllib.error.HTTPError as e:
+         sys.stderr.write('not found (HTTP ' + str(e.code) + ') ... ')
+         if e.code == 404:
+            # Not found -> done!
+            break
+         if trial + 1 < maxTrials:
+            time.sleep(random.uniform(0, 2 * avgWaitingTime))
+
+   if len(versions) == 0:
+      sys.stderr.write('Not in Debian!\n')
+      return ( None, None )
+
+   # ====== Obtain latest version ===========================================
+   versions = sorted(versions, reverse = True)
+   debianVersion  : Final[str] = str(versions[0][0]) + '-' + str(versions[0][1])
+   debianArchive  : Final[str] = versions[0][2]
+   archiveFileURL : Final[str] = downloadDirectoryURL + debianArchive
+   sys.stderr.write('Latest version in Debian is ' + debianVersion + '\n')
+
+   # ====== Determine necessary compression option =============================
+   debianArchiveFormat  = debianArchive[len(debianArchive) - 2 : len(debianArchive)]
+   tarCompressionOption = TarOptions[debianArchiveFormat]
+
+   # ====== Fetch debian archive ===============================================
+   sys.stderr.write('Looking for \"debian\" archive at ' + archiveFileURL + ' ... ')
+   sys.stderr.flush()
+
+   result : tuple[list[str] | None,list[str] | None] = ( None, None )
+   try:
+      archiveFileRequest : urllib.request.Request   = urllib.request.Request(archiveFileURL,
+                                                                             headers = httpHeders)
+      archiveFile        : http.client.HTTPResponse = urllib.request.urlopen(archiveFileRequest)
+      debianArchiveFile  : tempfile._TemporaryFileWrapper[bytes] = \
+         tempfile.NamedTemporaryFile(delete = False)
+
+      shutil.copyfileobj(cast(TextIO, archiveFile), debianArchiveFile)
+      debianArchiveFile.close()
+      archiveFile.close()
+      sys.stderr.write('found!\n')
+
+      # ====== Extract changelog and control ================================
+      debianChangelog : list[str] = [ ]
+      debianControl   : list[str] = [ ]
+      try:
+         # ------ Extract debian/changelog ----------------------------------
+         process : subprocess.Popen[str] = \
+            subprocess.Popen([ 'tar', 'x' + tarCompressionOption + 'fO', debianArchiveFile.name, 'debian/changelog'],
+                             stdout=subprocess.PIPE, universal_newlines=True)
+         if ( (process is not None) and (process.stdout is not None) ):
+            debianChangelog = process.stdout.readlines()
+
+         # ------ Extract debian/control ------------------------------------
+         process = \
+            subprocess.Popen([ 'tar', 'x' + tarCompressionOption + 'fO', debianArchiveFile.name, 'debian/control'],
+                             stdout=subprocess.PIPE, universal_newlines=True)
+         if ( (process is not None) and (process.stdout is not None) ):
+            debianControl = process.stdout.readlines()
+
+         os.unlink(debianArchiveFile.name)
+         result = ( debianChangelog, debianControl )
+
+      except Exception as e:
+         sys.stderr.write('ERROR: Failed to extract debian/changelog from ' + debianArchiveFile.name + ': ' + str(e) + '\n')
+         sys.exit(1)
+
+   except urllib.error.HTTPError as e:
+      sys.stderr.write('not found (HTTP ' + str(e.code) + ')!\n')
+
+   return result
+
+
+
+
+packages = [
+   'bibtexconv',
+   'dynmhs',
+   'fractgen',
+   'hipercontracer',
+   'netperfmeter',
+   'rsplib',
+   'sctplib',
+   'socketapi',
+   'subnetcalc',
+   'system-tools'
+]
+for package in packages:
+   ( debianChangelog, debianControl ) = fetchDebianChangelogAndControl(package)
+   # print(debianControl)
