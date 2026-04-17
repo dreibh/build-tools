@@ -48,6 +48,7 @@ BuildArch: noarch
 Requires: mock
 Requires: python3 >= 3.9
 Requires: python3-distro
+Requires: python3-packaging
 Requires: python3-urllib3
 Requires: rpm
 Requires: rpmlint
