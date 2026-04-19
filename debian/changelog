@@ -1,3 +1,10 @@
+td-build-tools (0.4.0-1ubuntu1) unstable; urgency=medium
+
+  * New upstream release.
+  * debian/control: Updated standards version to 4.7.4.
+
+ -- Thomas Dreibholz <thomas.dreibholz@gmail.com>  Sun, 19 Apr 2026 12:15:51 +0200
+
 td-build-tools (0.3.2-1ubuntu1) unstable; urgency=medium
 
   * New upstream release.

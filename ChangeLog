@@ -1,3 +1,111 @@
+commit 49e990511a6f409798cfbd981042938676556c98
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sun Apr 19 11:01:37 2026 +0200
+
+    Updated standards version.
+
+commit d2974a33084211fd5bbf767044f7cacbd56fe2ff
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Apr 17 17:14:16 2026 +0200
+
+    Yet another dependency fix.
+
+commit 7c69d27dbed4e2799db1d04065a8292521bcc011
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Apr 17 16:58:15 2026 +0200
+
+    FreeBSD dependency fix in ci-setup.
+
+commit 50eb34c2e036ee9fb3fdf803c850a48d219b2dee
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Apr 17 16:56:03 2026 +0200
+
+    Dependency fix in ci-setup.
+
+commit bd99aaddf4f32d38e55d3aeb0042724cea548159
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Apr 17 16:53:33 2026 +0200
+
+    Debian packaging update.
+
+commit b2800862eeb302ef6fa84533214d37a01cbf6776
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Apr 17 16:52:45 2026 +0200
+
+    Fedora dependency update.
+
+commit e5f2c3a35d1628e130e2307be0a23f4b005df01b
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Apr 17 14:08:45 2026 +0200
+
+    Minor clean-up.
+
+commit f126e20f36e849211017fda98de6a78ff627662a
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Apr 17 14:05:37 2026 +0200
+
+    Using new Debian changelog/control download function.
+
+commit f0aefcf3c5d31bc51ff1889115007035a80f50cd
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Apr 17 13:59:08 2026 +0200
+
+    Improved test.
+
+commit 685ac8f240ad6e172375b0c35d2e3c5f76072b48
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Apr 17 13:29:47 2026 +0200
+
+    Added test script.
+
+commit 908f3b75d2e6fde841fdc835c0096188d6d40d37
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Mar 12 13:57:36 2026 +0100
+
+    Added script.
+
+commit 8c61041ec1cfc6a22ea0ca6741664178a3b9a4bf
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Mar 12 13:57:27 2026 +0100
+
+    Improved script.
+
+commit 3dd1c8a9de228fe94d5b7dc8013f745f084de933
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Mar 12 13:27:44 2026 +0100
+
+    Added script.
+
+commit 5d089c232ce46d5c9067fee39a186e523818d126
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Mar 12 13:27:34 2026 +0100
+
+    Some improvements.
+
+commit 9e4cde36388b312be634be7bc51742f6cc09b0b6
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Mar 12 12:57:03 2026 +0100
+
+    Added helper script.
+
+commit 1c0da1a2f9a95bdca513581bfa2b12f7ded95447
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Wed Feb 25 14:30:48 2026 +0100
+
+    Improved script.
+
+commit 33ccb4e82f7b02ac4854cae2a9f49c7c8b54e8cb
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Wed Feb 11 13:21:54 2026 +0100
+
+    Improved script.
+
+commit 64c62acbc24acf71aa4d7a20596c8955ad0d3fda
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Mon Feb 9 15:19:55 2026 +0100
+
+    New release td-build-tools-0.3.2.
+
 commit d676a97f4c9ec7eee5901300525b090c7bc2064e
 Author: Thomas Dreibholz <dreibh@simula.no>
 Date:   Mon Feb 9 15:14:02 2026 +0100

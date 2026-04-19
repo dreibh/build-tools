@@ -132,7 +132,7 @@ ubuntuDistributions="$( (
 ) | sort -u)"
 
 for distribution in ${ubuntuDistributions} ; do
-   for architecture in amd64 arm64 armhf riscv64 s390x ; do
+   for architecture in amd64 ; do   # arm64 armhf riscv64 s390x
       create-pbuilder ubuntu "${distribution}" "${architecture}"
    done
 done
@@ -147,7 +147,7 @@ debianDistributions="$( (
 
 for distribution in ${debianDistributions} ; do
    # for architecture in amd64 arm64 armhf ; do
-   for architecture in amd64 arm64 ; do
+   for architecture in amd64 ; do
       create-pbuilder debian "${distribution}" "${architecture}"
    done
 done
