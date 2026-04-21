@@ -132,6 +132,7 @@ ubuntuDistributions="$( (
 ) | sort -u)"
 
 for distribution in ${ubuntuDistributions} ; do
+   # shellcheck disable=SC2043
    for architecture in amd64 ; do   # arm64 armhf riscv64 s390x
       create-pbuilder ubuntu "${distribution}" "${architecture}"
    done
@@ -146,8 +147,8 @@ debianDistributions="$( (
 ) | sort -u)"
 
 for distribution in ${debianDistributions} ; do
-   # for architecture in amd64 arm64 armhf ; do
-   for architecture in amd64 ; do
+   # shellcheck disable=SC2043
+   for architecture in amd64 ; do   # amd64 arm64 armhf i386 m68k riscv64 ppc64el s390x mipsel
       create-pbuilder debian "${distribution}" "${architecture}"
    done
 done

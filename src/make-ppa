@@ -113,16 +113,17 @@ if [ ${DPUT} -ne 0 ] ; then
    done
 
    echo "Building for distributions: ${buildForDistributions}"
-   echo "=> "${DIRNAME}"/build-tool make-source-deb ${buildForDistributions}"
-   "${DIRNAME}"/build-tool make-source-deb ${buildForDistributions}
+   echo "=> ${DIRNAME}/build-tool make-source-deb ${buildForDistributions}"
+   # shellcheck disable=SC2086
+   "${DIRNAME}/build-tool" make-source-deb ${buildForDistributions}
 fi
 
 
 # ====== Build Fedora source package ========================================
 if [ ${COPR} -ne 0 ] ; then
    if [ -e rpm ] ; then
-      echo "=> "${DIRNAME}"/build-tool make-source-rpm"
-      "${DIRNAME}"/build-tool make-source-rpm
+      echo "=> ${DIRNAME}/build-tool make-source-rpm"
+      "${DIRNAME}/build-tool" make-source-rpm
    else
       echo >&2 "ERROR: RPM files not found!"
       exit 1
