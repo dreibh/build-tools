@@ -42,6 +42,7 @@ done
 # # ====== Base image with Mock and QEMU ====================================
 # FIXME! Not Using "latest" Fedora base image here, due to AppArmor(?) permissions issue
 # => https://github.com/rpm-software-management/mock/issues/1487
+# shellcheck disable=SC2043
 for os in fedora ; do
    docker buildx build --push --builder insecure-builder --progress=plain \
       --file Dockerfile.td-build-tool-mock-base \
@@ -103,6 +104,7 @@ fedoraDistributions="41"
 fedoraArchitectures="x86_64 aarch64"
 # aarch64 i386 ppc64le s390x x86_64
 
+# shellcheck disable=SC2043
 for os in fedora ; do
    distributions="${fedoraDistributions}"
    architectures="${fedoraArchitectures}"
