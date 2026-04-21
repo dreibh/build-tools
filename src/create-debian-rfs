@@ -136,7 +136,7 @@ DESCRIPTION="$(
 ) <"${HOME}/src/lsm-files/${PACKAGE}.lsm"
 )"
 
-MOST_RECENT_CHANGELOG_ENTRY=`
+MOST_RECENT_CHANGELOG_ENTRY="$(
 (
    open_li=0
    IFS=""   # Keep leading spaces!
@@ -153,7 +153,8 @@ MOST_RECENT_CHANGELOG_ENTRY=`
          fi
          open_li=0
          echo "</ul>"
-         echo "<p>\`echo "${line}" | sed -e "s#<\(.*\)>#\&lt;<a href=\"mailto:\1\">\1</a>\&gt;#g"\`</p>"
+         # shellcheck disable=SC2001
+         echo "<p>$(echo "${line}" | sed -e "s#<\(.*\)>#\&lt;<a href=\"mailto:\1\">\1</a>\&gt;#g")</p>"
          break
       elif [[ ! "${line}" =~ ^([[:space:]]*)$ ]] ; then
          echo "<p>${line}</p>"
@@ -161,7 +162,7 @@ MOST_RECENT_CHANGELOG_ENTRY=`
       fi
    done
 ) <debian/changelog
-`
+)"
 
 
 # ====== Create Debian ITP ==================================================
@@ -188,13 +189,14 @@ RFS_CONTENT="<?xml version=\"1.0\" encoding=\"utf-8\" ?>
 <p>
 Package: ${RFS_PACKAGE}<br/>
 Severity: normal<br/>
-</p>"
+</p>
+"
 
 if [ "${TYPE}" == "RFS" ] ; then
    RFS_CONTENT="${RFS_CONTENT}
 <p>
 Dear mentors,<br/><br/>
-I am looking for a sponsor for my package \"<a href="${URL}">${PACKAGE}</a>\":
+I am looking for a sponsor for my package \"<a href=\"${URL}\">${PACKAGE}</a>\":
 </p>"
 fi
 
@@ -204,7 +206,7 @@ RFS_CONTENT="${RFS_CONTENT}
     Version: ${DEBIAN_VERSION}<br/>
     Upstream Author: ${CONTACT}
 </li>
-<li>URL: <a href="${URL}">${URL}</a></li>
+<li>URL: <a href=\"${URL}\">${URL}</a></li>
 <li>License: ${LICENSES}</li>
 <li>Section: ${SECTION}</li>
 </ul>
@@ -213,22 +215,22 @@ ${DESCRIPTION}"
 if [ "${TYPE}" == "RFS" ] ; then
    RFS_CONTENT="${RFS_CONTENT}
 <p>
-\"<a href="${URL}">${PACKAGE}</a>\" builds these binary packages:
+\"<a href=\"${URL}\">${PACKAGE}</a>\" builds these binary packages:
 </p>
 <ul>
 ${BINARY_PACKAGES}
 </ul>
 <p>
 To access further information about this package, please visit the following URL:<br/>
-<a href="https://mentors.debian.net/package/${PACKAGE}">https://mentors.debian.net/package/${PACKAGE}</a>.
+<a href=\"https://mentors.debian.net/package/${PACKAGE}\">https://mentors.debian.net/package/${PACKAGE}</a>.
 </p>
 <p>
 Alternatively, one can download the package with dget using this command:
 </p>
-<pre>dget -x <a href="${DSC_URL}">${DSC_URL}</a></pre>
+<pre>dget -x <a href=\"${DSC_URL}\">${DSC_URL}</a></pre>
 <p>
-More information about \"<a href="${URL}">${PACKAGE}</a>\" can be obtained from
-<a href="${URL}">${URL}</a>.
+More information about \"<a href=\"${URL}\">${PACKAGE}</a>\" can be obtained from
+<a href=\"${URL}\">${URL}</a>.
 </p>
 <p>
 Most recent changelog entry:
@@ -254,5 +256,5 @@ tidy -o /dev/null -q RFS-"${PACKAGE}".html
 echo -en "\x1b[34mRun: Is this correct? [yes/no]?\x1b[0m "
 read -er applyChanges
 if [ "$applyChanges" == "yes" ] || [ "$applyChanges" == "y" ] ; then
-   thunderbird -compose "from=${MAINTAINER},to=submit@bugs.debian.org,subject=${RFS_SUBJECT},format=1,message=$(pwd)/RFS-${PACKAGE}.html" || true &
+   thunderbird -compose "from=${MAINTAINER},to=${RFS_TO},subject=${RFS_SUBJECT},format=1,message=$(pwd)/RFS-${PACKAGE}.html" || true &
 fi
