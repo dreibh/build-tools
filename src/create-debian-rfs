@@ -35,7 +35,7 @@ set -eu
 # ====== Handle arguments ===================================================
 TYPE="RFS"
 while [ $# -gt 0 ] ; do
-   if [ "$1" == "-itp" -o "$1" == "--itp" ] ; then
+   if [ "$1" == "-itp" ] || [ "$1" == "--itp" ] ; then
       TYPE="ITP"
    else
       echo >&2 "ERROR: Bad argument $1!"
@@ -51,22 +51,27 @@ if [ ! -e ./packaging.conf ] ; then
    exit 1
 fi
 . ./packaging.conf
-CHANGELOG_HEADER="`head -n1 debian/changelog`"
+
+CHANGELOG_HEADER="$(head -n1 debian/changelog)"
 
 # The package name, e.g. MyApplication
-PACKAGE=`echo ${CHANGELOG_HEADER} | sed -e "s/(.*//" -e "s/ //g"`
+PACKAGE=$(echo "${CHANGELOG_HEADER}" | sed -e "s/(.*//" -e "s/ //g")
 # The package distribution, e.g. precise, raring, ...
-PACKAGE_DISTRIBUTION=`echo ${CHANGELOG_HEADER} | sed -e "s/[^)]*)//" -e "s/;.*//g" -e "s/ //g"`
+PACKAGE_DISTRIBUTION=$(echo "${CHANGELOG_HEADER}" | sed -e "s/[^)]*)//" -e "s/;.*//g" -e "s/ //g")
 # The package's version, e.g. 1.2.3-1ubuntu1
-PACKAGE_VERSION=`echo ${CHANGELOG_HEADER} | sed -e "s/.*(//" -e "s/).*//" -e "s/ //g" -e "s/ //g" -e "s/^[0-9]://g"`
+PACKAGE_VERSION=$(echo "${CHANGELOG_HEADER}" | sed -e "s/.*(//" -e "s/).*//" -e "s/ //g" -e "s/ //g" -e "s/^[0-9]://g")
 # The package's output version, e.g. 1.2.3-1ubuntu
-OUTPUT_VERSION=`echo ${PACKAGE_VERSION}   | sed -e "s/\(ubuntu\|ppa\)[0-9]*$/\1/"`
+# shellcheck disable=SC2001
+OUTPUT_VERSION=$(echo "${PACKAGE_VERSION}"   | sed -e "s/\(ubuntu\|ppa\)[0-9]*$/\1/")
 # The package's Debian version, e.g. 1.2.3-1
-DEBIAN_VERSION=`echo ${OUTPUT_VERSION}    | sed -e "s/\(ubuntu\|ppa\)$//1"`
+# shellcheck disable=SC2001
+DEBIAN_VERSION=$(echo "${OUTPUT_VERSION}"    | sed -e "s/\(ubuntu\|ppa\)$//1")
 # The package's upstream version, e.g. 1.2.3
-UPSTREAM_VERSION=`echo ${DEBIAN_VERSION}  | sed -e "s/-[0-9]*$//"`
+# shellcheck disable=SC2001
+UPSTREAM_VERSION=$(echo "${DEBIAN_VERSION}"  | sed -e "s/-[0-9]*$//")
 # The package's plain upstream version, e.g. 1.2.3 (without e.g. ~svn<xxxx>)
-PLAIN_VERSION=`echo ${UPSTREAM_VERSION}   | sed -e "s/\([0-9\.]*\)[-+~].*$/\1/"`
+# shellcheck disable=SC2001
+PLAIN_VERSION=$(echo "${UPSTREAM_VERSION}"   | sed -e "s/\([0-9\.]*\)[-+~].*$/\1/")
 
 
 echo -e "\x1b[34m######################################################################\x1b[0m"
@@ -246,6 +251,6 @@ tidy -o /dev/null -q RFS-${PACKAGE}.html
 # ====== Apply changes ======================================================
 echo -en "\x1b[34mRun: Is this correct? [yes/no]?\x1b[0m "
 read -er applyChanges
-if [ "$applyChanges" == "yes" -o "$applyChanges" == "y" ] ; then
+if [ "$applyChanges" == "yes" ] || [ "$applyChanges" == "y" ] ; then
    thunderbird -compose "from=${MAINTAINER},to=submit@bugs.debian.org,subject=${RFS_SUBJECT},format=1,message=`pwd`/RFS-${PACKAGE}.html" || true &
 fi
