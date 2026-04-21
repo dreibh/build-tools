@@ -87,18 +87,21 @@ echo -e "\x1b[34m###############################################################
 
 
 # ====== Prepare additional information =====================================
-PACKAGE_FIRST_LETTER=`echo "${PACKAGE}" | sed -e "s/^\([a-zA-Z0-9]\)\(.*\)$/\1/g"`
+# shellcheck disable=SC2001
+PACKAGE_FIRST_LETTER="$(echo "${PACKAGE}" | sed -e "s/^\([a-zA-Z0-9]\)\(.*\)$/\1/g")"
 DSC_URL="https://mentors.debian.net/debian/pool/main/${PACKAGE_FIRST_LETTER}/${PACKAGE}/${PACKAGE}_${DEBIAN_VERSION}.dsc"
-CONTACT=`cat debian/copyright | grep "Upstream-Contact:" |  sed -e "s/[^:]*:[[:space:]]*//g" -e "s#<\(.*\)>#\&lt;<a href=\"mailto:\1\">\1</a>\&gt;#g" | sort -u | xargs`
-URL=`cat debian/copyright | grep "Source:" | awk '{ print $2 }' | sort -u | xargs`
-LICENSES=`cat debian/copyright | grep "License:" | awk '{ print $2 "," }' | xargs | sort -u | sed -e "s/,$//g"`
-SECTION=`cat debian/control | grep "Section:" | awk '{ print $2 }' | head -n1`
+# shellcheck disable=SC2001
+CONTACT="$(grep "Upstream-Contact:" debian/copyright |  sed -e "s/[^:]*:[[:space:]]*//g" -e "s#<\(.*\)>#\&lt;<a href=\"mailto:\1\">\1</a>\&gt;#g" | sort -u | xargs)"
+URL="$(grep "Source:" debian/copyright | awk '{ print $2 }' | sort -u | xargs)"
+# shellcheck disable=SC2001
+LICENSES="$(grep "License:" debian/copyright | awk '{ print $2 "," }' | xargs | sort -u | sed -e "s/,$//g")"
+SECTION="$(grep "Section:" debian/control | awk '{ print $2 }' | head -n1)"
 
-BINARY_PACKAGES=`
-cat debian/control | (
+BINARY_PACKAGES="$(
+(
    package=""
    description=""
-   while read line ; do
+   while read -r line ; do
       if [[ "${line}" =~ ^(Package:[[:space:]]*)(.*)$ ]] ; then
          package=${BASH_REMATCH[2]}
       elif [[ "${line}" =~ ^(Description:[[:space:]]*)(.*)$ ]] ; then
@@ -106,14 +109,14 @@ cat debian/control | (
          echo "<li>${package} - ${description}</li>"
       fi
    done
-) | sort
-`
+) < debian/control | sort
+)"
 
-DESCRIPTION=`
-cat ${PACKAGE}.lsm | (
+DESCRIPTION="$(
+(
    in_description=0
    IFS=""   # Keep leading spaces!
-   while read line ; do
+   while read -r line ; do
       if [ $in_description -eq 0 ] ; then
          if [[ "${line}" =~ ^(Description:[[:space:]]*)(.*)$ ]] ; then
             in_description=1
@@ -130,15 +133,14 @@ cat ${PACKAGE}.lsm | (
          fi
       fi
    done
-)
-`
+) <"${HOME}/src/lsm-files/${PACKAGE}.lsm"
+)"
 
 MOST_RECENT_CHANGELOG_ENTRY=`
-cat debian/changelog | (
-   open_p=0
+(
    open_li=0
    IFS=""   # Keep leading spaces!
-   while read line ; do
+   while read -r line ; do
       if [[ "${line}" =~ ^(  \*[[:space:]]*)(.*)$ ]] ; then
          if [ $open_li -eq 1 ] ; then
             echo "</li>"
@@ -158,7 +160,7 @@ cat debian/changelog | (
          echo "<ul>"
       fi
    done
-)
+) <debian/changelog
 `
 
 
@@ -244,13 +246,13 @@ Regards,<br/><br/>
 </body>
 </html>"
 
-echo "${RFS_CONTENT}" >RFS-${PACKAGE}.html
-tidy -o /dev/null -q RFS-${PACKAGE}.html
+echo "${RFS_CONTENT}" >RFS-"${PACKAGE}".html
+tidy -o /dev/null -q RFS-"${PACKAGE}".html
 
 
 # ====== Apply changes ======================================================
 echo -en "\x1b[34mRun: Is this correct? [yes/no]?\x1b[0m "
 read -er applyChanges
 if [ "$applyChanges" == "yes" ] || [ "$applyChanges" == "y" ] ; then
-   thunderbird -compose "from=${MAINTAINER},to=submit@bugs.debian.org,subject=${RFS_SUBJECT},format=1,message=`pwd`/RFS-${PACKAGE}.html" || true &
+   thunderbird -compose "from=${MAINTAINER},to=submit@bugs.debian.org,subject=${RFS_SUBJECT},format=1,message=$(pwd)/RFS-${PACKAGE}.html" || true &
 fi
