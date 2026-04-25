@@ -29,7 +29,7 @@
 # Contact: thomas.dreibholz@gmail.com
 
 # Bash options:
-set -eu
+set -euo pipefail
 
 if [ ! -e "CMakeCache.txt" ] ; then
    echo >&2 "ERROR: Failed to open CMakeCache.txt; the project needs to be configured first!"
