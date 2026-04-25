@@ -62,8 +62,7 @@ fetch-debian-control
 make-source-rpm
 build-rpm
 "
-      # shellcheck disable=SC2207
-      COMPREPLY=( $(compgen -W "${tools}" --  "${cur}") )
+      mapfile -t COMPREPLY < <(compgen -W "${tools}" --  "${cur}")
       return
 
    # ====== Options =========================================================
@@ -72,8 +71,7 @@ build-rpm
          # ====== Special case: architecture ================================
          --architecture=*)
             cur="${cur#*=}"
-            # shellcheck disable=SC2207
-            COMPREPLY=( $(compgen -W "amd64 arm64 riscv64 ppc64el s390x mipsel armhf i386 m68k" --  "${cur}") )
+            mapfile -t COMPREPLY < <(compgen -W "amd64 arm64 riscv64 ppc64el s390x mipsel armhf i386 m68k" --  "${cur}")
             return
             ;;
          # ====== Special case: file ========================================
@@ -90,8 +88,7 @@ build-rpm
 --skip-signing
 --summary=
 "
-   # shellcheck disable=SC2207
-   COMPREPLY=( $( compgen -W "${opts}" -- "${cur}" ) )
+   mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}" )
    [[ ${COMPREPLY-} == *= ]] && compopt -o nospace
 
    return 0
