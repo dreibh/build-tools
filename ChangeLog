@@ -1,3 +1,81 @@
+commit df4e68fee3f8c10b2c2871f70687cb25df1008a6
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sat Apr 25 17:55:59 2026 +0200
+
+    Improved shell completions.
+
+commit 3b9d96f75c3229699c1061605581def4dd800a26
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sat Apr 25 13:30:43 2026 +0200
+
+    Set pipefail option in scripts.
+
+commit 05f934abad80d1b2c37ba3eaf7a15c1aee90035f
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Apr 21 17:16:48 2026 +0200
+
+    The last set of ShellCheck clean-ups.
+
+commit 28fd15dcb09e17dafe7cee47941c735c60005620
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Apr 21 17:10:23 2026 +0200
+
+    Yet another set of ShellCheck clean-ups, to finally have create-debian-rfs without ShellCheck errors.
+
+commit 78128de88efb24a7a2ffec0e1adb4addd2804ee8
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Apr 21 16:56:51 2026 +0200
+
+    Further ShellCheck clean-ups.
+
+commit fab50f24a27089f0f5d83861cf6d6712483e2f91
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Apr 21 16:42:55 2026 +0200
+
+    A set of ShellCheck clean-ups.
+
+commit 7bfb6c92823ed66df98f201350d3b172fc6a5ddf
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Apr 21 16:32:35 2026 +0200
+
+    ShellCheck clean-ups.
+
+commit f4bf1fe159410c053a7931ead79feb634e2034fd
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Apr 21 16:03:51 2026 +0200
+
+    Bugfix: Removed invalid cast.
+
+commit af1db1a39883eb0cce581398c2958e86af2fcdba
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Apr 21 16:03:44 2026 +0200
+
+    ShellCheck clean-up.
+
+commit 2f306b47d9ee65ce2bcdacc1d85759b22404be86
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Apr 21 15:53:45 2026 +0200
+
+    Added scripts.
+
+commit 25f27a1130533c953c662d127b5278bc799af914
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Apr 21 15:53:38 2026 +0200
+
+    Updated header.
+
+commit 86556c95d9e362fbeb3fa8f18fa481ae1552105e
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Apr 21 15:53:26 2026 +0200
+
+    Removed obsolete files.
+
+commit 379690b5f5907cfa50475323889c5020a2359f52
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sun Apr 19 12:15:55 2026 +0200
+
+    New release td-build-tools-0.4.0.
+
 commit 49e990511a6f409798cfbd981042938676556c98
 Author: Thomas Dreibholz <dreibh@simula.no>
 Date:   Sun Apr 19 11:01:37 2026 +0200
