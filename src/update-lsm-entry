@@ -81,6 +81,12 @@ if [ ! -e "${LSM_ENTRY}" ] ; then
    echo 2>&1 "ERROR: LSM entry ${LSM_ENTRY} does not exist!"
    exit 1
 fi
+TITLE="$(grep "Title:" "${LSM_ENTRY}" | sed -e "s/^Title:[ \t]*//")"
+if [ "${TITLE}" == "" ] ; then
+   echo "ERROR: Unable to parse title from LSM entry!"
+   exit 1
+fi
+
 for UPSTREAM_PACKAGE_TYPE in xz bz2 gz ; do
    UPSTREAM_PACKAGE="$(find . -maxdepth 1 -name "${PACKAGE}-${UPSTREAM_VERSION}.tar.${UPSTREAM_PACKAGE_TYPE}" -printf '%f')"
    if [ -e "${UPSTREAM_PACKAGE}" ] ; then
@@ -98,7 +104,7 @@ size=$((size / 1024))
 
 sed -e "s/^\(Entered-date:[ \t]*\)\(.*\)$/\1$today/g" \
     -e "s/^\(Version:[ \t]*\)\(.*\)$/\1${UPSTREAM_VERSION}/g" \
-    -e "s/\([0-9]*\)\([ ]*kB[ ]*\)\(.*\)\(${PACKAGE}-\)\([0-9a-zA-Z\.~+-]*\)\(\.tar\.*\).*$/${size}\2\3${UPSTREAM_PACKAGE}/g" \
+    -e "s/\([0-9]*\)\([ ]*kB[ ]*\)\(.*\)\(${TITLE}-\)\([0-9a-zA-Z\.~+-]*\)\(\.tar\.*\).*$/${size}\2\3${UPSTREAM_PACKAGE}/g" \
    <"${LSM_ENTRY}" >"${LSM_ENTRY}.new"
 
 echo "Update:"
