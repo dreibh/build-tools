@@ -29,20 +29,26 @@
 .\"
 .\" ###### Setup ############################################################
 .Dd November 27, 2025
-.Dt version-bump 1
-.Os version-bump
+.Dt version\-bump 1
+.Os version\-bump
 .\" ###### Name #############################################################
 .Sh NAME
-.Nm version-bump
+.Nm version\-bump
 .Nd Version Bump
 .\" ###### Synopsis #########################################################
 .Sh SYNOPSIS
+.Nm version\-bump
 .Op Fl M | Fl Fl major
+.br
 .Op Fl m | Fl Fl minor
+.br
 .Op Fl p | Fl Fl patch
+.br
 .Op Fl p | Fl Fl extra | Fl Fl extra=label
+.br
 .Op Fl r | Fl Fl release
-.Op Fl distribution codename
+.br
+.Op Fl Fl distribution Ar codename
 .\" ###### Description ######################################################
 .Sh DESCRIPTION
 Version Bump is a tool to help creating versioned packages
@@ -53,17 +59,30 @@ with Git and Build Tool.
 The following options are available:
 .Bl -tag -width indent
 .It Fl h | Fl Fl help
-Prints command-line parameters.
+Prints command\-line parameters.
 .It ...
 FIXME! TBD
 .El
+.\" ###### Exit status ######################################################
+.Sh EXIT STATUS
+The
+.Nm
+tool exits with 0 on success, and >0 in case of an error.
 .\" ###### Examples #########################################################
 .Sh EXAMPLES
 .Bl -tag -width indent
-.It version-bump
-.It version-bump -M
-.It version-bump -m
-.It version-bump -p
-.It version-bump -e
-.It version-bump -M --extra=rc1
+.It version\-bump
+.It version\-bump \-M
+.It version\-bump \-m
+.It version\-bump \-p
+.It version\-bump \-e
+.It version\-bump \-M \--extra=rc1
 .El
+.\" ###### Notes ############################################################
+.Sh NOTES
+This program is part of Build\-Tools. The latest version of Build\-Tools can be found on the Build\-Tools Homepage at
+.Lk https://www.nntb.no/\(tidreibh/build\-tools/ "Build\-Tools Homepage" .
+.\" ###### Authors ##########################################################
+.Sh AUTHORS
+Thomas Dreibholz,
+.Lk https://www.nntb.no/\(tidreibh "Homepage"
