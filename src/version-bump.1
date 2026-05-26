@@ -28,7 +28,7 @@
 .\" Contact: thomas.dreibholz@gmail.com
 .\"
 .\" ###### Setup ############################################################
-.Dd November 27, 2025
+.Dd May 26, 2026
 .Dt version\-bump 1
 .Os version\-bump
 .\" ###### Name #############################################################
@@ -38,17 +38,17 @@
 .\" ###### Synopsis #########################################################
 .Sh SYNOPSIS
 .Nm version\-bump
-.Op Fl M | Fl Fl major
+.Op Fl M | Fl \-major
 .br
-.Op Fl m | Fl Fl minor
+.Op Fl m | Fl \-minor
 .br
-.Op Fl p | Fl Fl patch
+.Op Fl p | Fl \-patch
 .br
-.Op Fl p | Fl Fl extra | Fl Fl extra=label
+.Op Fl p | Fl \-extra | Fl \-extra=label
 .br
-.Op Fl r | Fl Fl release
+.Op Fl r | Fl \-release
 .br
-.Op Fl Fl distribution Ar codename
+.Op Fl \-distribution Ar codename
 .\" ###### Description ######################################################
 .Sh DESCRIPTION
 Version Bump is a tool to help creating versioned packages
@@ -58,7 +58,7 @@ with Git and Build Tool.
 .Sh ARGUMENTS
 The following options are available:
 .Bl -tag -width indent
-.It Fl h | Fl Fl help
+.It Fl h | Fl \-help
 Prints command\-line parameters.
 .It ...
 FIXME! TBD
@@ -76,7 +76,7 @@ tool exits with 0 on success, and >0 in case of an error.
 .It version\-bump \-m
 .It version\-bump \-p
 .It version\-bump \-e
-.It version\-bump \-M \--extra=rc1
+.It version\-bump \-M \-\-extra=rc1
 .El
 .\" ###### Notes ############################################################
 .Sh NOTES

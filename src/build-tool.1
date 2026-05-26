@@ -28,7 +28,7 @@
 .\" Contact: thomas.dreibholz@gmail.com
 .\"
 .\" ###### Setup ############################################################
-.Dd December 9, 2025
+.Dd May 26, 2026
 .Dt build\-tool 1
 .Os build\-tool
 .\" ###### Name #############################################################
@@ -41,13 +41,13 @@
 .Nm build\-tool info
 .\" -------------------------------------------------------
 .Nm build\-tool make\-source\-tarball
-.Op Fl Fl skip\-signing
+.Op Fl \-skip\-signing
 .\" -------------------------------------------------------
 .Nm build\-tool build\-deb
-.Op Fl Fl summary=file
+.Op Fl \-summary=file
 .Ar codename Op Ar ...
-.Op Fl Fl skip\-signing
-.Op Fl Fl architecture=arch[,...]
+.Op Fl \-skip\-signing
+.Op Fl \-architecture=arch[,...]
 .\" -------------------------------------------------------
 .Nm build\-tool fetch\-debian\-changelog
 .Ar codename
@@ -55,16 +55,16 @@
 .Ar codename
 .\" -------------------------------------------------------
 .Nm build\-tool make\-source\-rpm
-.Op Fl Fl summary=file
-.Op Fl Fl summary=file
+.Op Fl \-summary=file
+.Op Fl \-summary=file
 .Ar release Op Ar ...
-.Op Fl Fl skip\-signing
+.Op Fl \-skip\-signing
 .\" -------------------------------------------------------
 .Nm build\-tool build\-rpm
-.Op Fl Fl summary=file
+.Op Fl \-summary=file
 .Ar release Op Ar ...
-.Op Fl Fl skip\-signing
-.Op Fl Fl architecture=arch[,...]
+.Op Fl \-skip\-signing
+.Op Fl \-architecture=arch[,...]
 .\" ###### Description ######################################################
 .Sh DESCRIPTION
 Build Tool is a tool to help creating and maintaining package
@@ -81,7 +81,7 @@ cross\-architecture builds).
 .Sh ARGUMENTS
 The following options are available:
 .Bl -tag -width indent
-.It Fl h | Fl Fl help
+.It Fl h | Fl \-help
 Prints command\-line parameters.
 .It ...
 FIXME! TBD
