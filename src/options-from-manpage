@@ -34,11 +34,12 @@ set -euxo pipefail
 
 while [ $# -gt 0 ] ; do
    echo >&2 "====== $1 ======"
-   grep "^\.Op Fl" "$1" |      \
-      sed -e "s/Fl /-/g"       \
-          -e "s/^\.Op //"      \
-          -e 's/ [\|] /\n/g' | \
-         sed -e 's/ .*$//'     \
+   grep "^\.Op Fl" "$1" |       \
+      sed -e "s/Fl \\\\-/--/g"  \
+          -e "s/Fl /-/g"        \
+          -e "s/^\.Op //"       \
+          -e 's/ [\|] /\n/g' |  \
+         sed -e 's/ .*$//' \
              -e '/^[ ]*$/d'
    shift
 done
