@@ -39,7 +39,8 @@ while [ $# -gt 0 ] ; do
           -e "s/Fl /-/g"        \
           -e "s/^\.Op //"       \
           -e 's/ [\|] /\n/g' |  \
-         sed -e 's/ .*$//' \
-             -e '/^[ ]*$/d'
+         sed -e 's/ .*$//'  \
+             -e '/^[ ]*$/d' \
+             -e 's/\\-/-/g'
    shift
 done
