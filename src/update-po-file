@@ -10,8 +10,8 @@
 #                https://www.nntb.no/~dreibh/system-tools/
 # ==========================================================================
 #
-# Packaging Scripts
-# Copyright (C) 2021-2026 by Thomas Dreibholz
+# Update PO File
+# Copyright (C) 2026 by Thomas Dreibholz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,18 +29,15 @@
 # Contact: thomas.dreibholz@gmail.com
 
 # Bash options:
-set -euxo pipefail
+set -euo pipefail
 
+
+today="$(date +"%Y-%d-%m %H:%M%z")"
+# echo "${today}"
 
 while [ $# -gt 0 ] ; do
-   echo >&2 "====== $1 ======"
-   grep "^\.Op Fl" "$1" |       \
-      sed -e "s/Fl \\\\-/--/g"  \
-          -e "s/Fl /-/g"        \
-          -e "s/^\.Op //"       \
-          -e 's/ [\|] /\n/g' |  \
-         sed -e 's/ .*$//'  \
-             -e '/^[ ]*$/d' \
-             -e 's/\\-/-/g'
+   echo >&2 "Updating $1 ..."
+   sed -e "s/^\"PO-Revision-Date:.*$/\"PO-Revision-Date: ${today}\\\n\"/" -i "$1"
+   msgattrib --clear-fuzzy "$1" -o "$1"
    shift
 done

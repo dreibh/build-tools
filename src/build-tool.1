@@ -28,43 +28,43 @@
 .\" Contact: thomas.dreibholz@gmail.com
 .\"
 .\" ###### Setup ############################################################
-.Dd December 9, 2025
-.Dt build-tool 1
-.Os build-tool
+.Dd May 26, 2026
+.Dt build\-tool 1
+.Os build\-tool
 .\" ###### Name #############################################################
 .Sh NAME
-.Nm build-tool
+.Nm build\-tool
 .Nd Build Tool
 .\" ###### Synopsis #########################################################
 .Sh SYNOPSIS
 .\" -------------------------------------------------------
-.Nm build-tool info
+.Nm build\-tool info
 .\" -------------------------------------------------------
-.Nm build-tool make-source-tarball
-.Op Fl Fl skip-signing
+.Nm build\-tool make\-source\-tarball
+.Op Fl \-skip\-signing
 .\" -------------------------------------------------------
-.Nm build-tool build-deb
-.Op Fl Fl summary=file
-codename ...
-.Op Fl Fl skip-signing
-.Op Fl Fl architecture=arch[,...]
+.Nm build\-tool build\-deb
+.Op Fl \-summary=file
+.Ar codename Op Ar ...
+.Op Fl \-skip\-signing
+.Op Fl \-architecture=arch[,...]
 .\" -------------------------------------------------------
-.Nm build-tool fetch-debian-changelog
-codename
-.Nm build-tool fetch-debian-control
-codename
+.Nm build\-tool fetch\-debian\-changelog
+.Ar codename
+.Nm build\-tool fetch\-debian\-control
+.Ar codename
 .\" -------------------------------------------------------
-.Nm build-tool make-source-rpm
-.Op Fl Fl summary=file
-.Op Fl Fl summary=file
-release ...
-.Op Fl Fl skip-signing
+.Nm build\-tool make\-source\-rpm
+.Op Fl \-summary=file
+.Op Fl \-summary=file
+.Ar release Op Ar ...
+.Op Fl \-skip\-signing
 .\" -------------------------------------------------------
-.Nm build-tool build-rpm
-.Op Fl Fl summary=file
-release ...
-.Op Fl Fl skip-signing
-.Op Fl Fl architecture=arch[,...]
+.Nm build\-tool build\-rpm
+.Op Fl \-summary=file
+.Ar release Op Ar ...
+.Op Fl \-skip\-signing
+.Op Fl \-architecture=arch[,...]
 .\" ###### Description ######################################################
 .Sh DESCRIPTION
 Build Tool is a tool to help creating and maintaining package
@@ -74,20 +74,33 @@ It performs the following tasks:
 .It creating a source tarball,
 .It creating a source package (Debian/Ubuntu, Fedora, etc.),
 .It building binary packages from the source package (including
-cross-architecture builds).
+cross\-architecture builds).
 .El
 .Pp
 .\" ###### Arguments ########################################################
 .Sh ARGUMENTS
 The following options are available:
 .Bl -tag -width indent
-.It Fl h | Fl Fl help
-Prints command-line parameters.
+.It Fl h | Fl \-help
+Prints command\-line parameters.
 .It ...
 FIXME! TBD
 .El
+.\" ###### Exit status ######################################################
+.Sh EXIT STATUS
+The
+.Nm
+tool exits with 0 on success, and >0 in case of an error.
 .\" ###### Examples #########################################################
 .Sh EXAMPLES
 .Bl -tag -width indent
-.It build-tool
+.It build\-tool
 .El
+.\" ###### Notes ############################################################
+.Sh NOTES
+This program is part of Build\-Tools. The latest version of Build\-Tools can be found on the Build\-Tools Homepage at
+.Lk https://www.nntb.no/\(tidreibh/build\-tools/ "Build\-Tools Homepage" .
+.\" ###### Authors ##########################################################
+.Sh AUTHORS
+Thomas Dreibholz,
+.Lk https://www.nntb.no/\(tidreibh "Homepage"
