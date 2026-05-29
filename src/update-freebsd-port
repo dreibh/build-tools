@@ -55,7 +55,10 @@ sudo rsync -a --info=progress2 --delete ./ "/usr/local/poudriere/ports/default/$
 cd "${POUDRIERE_PORTS}/${CATEGORY}/${PORTNAME}/"
 
 DIFF_FILE="${PORTNAME}-${DISTVERSION}${PORTREVISION}.diff"
-git diff . | tee ~/diff/"${DIFF_FILE}"
+(
+   # Using "git diff HEAD" also includes newly added files:
+   git diff HEAD .
+) | tee ~/diff/"${DIFF_FILE}"
 
 # ====== Test the port by using Poudriere ===================================
 sudo poudriere testport -j "${POUDRIERE_JAIL}" -p default -b latest "${CATEGORY}/${PORTNAME}"
