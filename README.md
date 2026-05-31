@@ -179,7 +179,7 @@ See [https://www.nntb.no/~dreibh/build-tools/#current-stable-release](https://ww
 * [NorNet – A Real-World, Large-Scale Multi-Homing Testbed](https://www.nntb.no/)
 * [GAIA – Cyber Sovereignty](https://gaia.nntb.no/)
 * [RAKSHA – 5G Security for Critical Communications](https://www.simulamet.no/research/projects/raksha-5g-security-critical-communications)
-* [5G-VINNI – 5G Verticals Innovation Infrastructure](https://www.5g-vinni.eu/)
+* [5G-VINNI – 5G Verticals Innovation Infrastructure](https://www.eurescom.eu/archive/5G-VINNI/)
 * [HENCSAT – Highly Efficient Network Coding for Satellite Applications Test-bed](https://connectivity.esa.int/projects/hencsat)
 * [SEARCH – Synthetic Healthcare Data Governance Hub](https://ihi-search.eu/)
 * [MELODIC – Multi-Cloud Execution-Ware for Large-scale Optimised Data-Intensive Computing](https://melodic.cloud/)
