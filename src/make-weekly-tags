@@ -60,7 +60,7 @@ make-tag ()
 # ###### Usage ##############################################################
 usage () {
    local exitCode="$1"
-   echo >&2 "$(gettext "Usage:") $0 [--create-tags] [-h|--help] [-v|--version]"
+   echo >&2 "Usage: $0 [--create-tags] [-h|--help] [-v|--version]"
    exit "${exitCode}"
 }
 
@@ -84,7 +84,7 @@ if "${GETOPT}" -T >/dev/null 2>&1 || [[ $? -ne 4 ]]; then
    echo >&2 "ERROR: Enhanced/GNU getopt is required!"
    exit 1
 fi
-options="$(${GETOPT} -o i:hv --long inactivity-days,create-tags,help,version -a -- "$@")"
+options="$(${GETOPT} -o i:hv --long inactivity-days:,create-tags,help,version -a -- "$@")"
 # shellcheck disable=SC2181
 if [[ $? -ne 0 ]]; then
    usage 1
@@ -99,7 +99,7 @@ while [ $# -gt 0 ] ; do
       -i | --inactivity-days)
          INACTIVITY_DAYS="$2"
          shift
-         if [[ ! "$INACTIVITY_DAYS}" =~ ^[0-9]+$ ]] || [ "${INACTIVITY_DAYS}" -lt 1 ] ; then
+         if [[ ! "${INACTIVITY_DAYS}" =~ ^([0-9]+)$ ]] || [ "${INACTIVITY_DAYS}" -lt 1 ] ; then
             echo >&2 "ERROR: Invalid inactivity days value ${INACTIVITY_DAYS}!"
             exit 1
          fi
