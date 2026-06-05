@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+if [ $# -ne 1 ] ; then
+   echo >&2 "Usage: $0 pkg-plist"
+   exit 1
+fi
+PKG_PLIST="$1"
+if [ ! -f "${PKG_PLIST}" ]; then
+   echo >&2 "ERROR: ${PKG_PLIST} does not exist!"
+   exit 1
+fi
+
+while read -r line ; do
+   if [[ "${line}" =~ ^(%%.+%%)([^%]+)$ ]] ; then
+      echo -e "1\t${BASH_REMATCH[1]}\t${BASH_REMATCH[2]}\t${line}"
+   elif [[ "${line}" =~ ^([^%]+)$ ]] ; then
+      echo -e "0\t\t${BASH_REMATCH[1]}\t${line}"
+   else
+      echo >&2 "ERROR: Unexpected input!"
+      exit 1
+   fi
+done <"${PKG_PLIST}" | \
+   sort -t$'\t' -k1n -k3 | \
+   IFS=$'\t' awk '{ print $4 }' | \
+   tee "${PKG_PLIST}.sorted"
