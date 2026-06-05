@@ -20,6 +20,6 @@ while read -r line ; do
       exit 1
    fi
 done <"${PKG_PLIST}" | \
-   sort -t$'\t' -k1n -k3 | \
+   LC_ALL=C.UTF-8 sort -t$'\t' -k1n -k3 | \
    IFS=$'\t' awk '{ print $4 }' | \
    tee "${PKG_PLIST}.sorted"
