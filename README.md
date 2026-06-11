@@ -14,7 +14,7 @@ The Build-Tools are a collection of scripts to help packaging open source softwa
 - Ubuntu Linux packages
 - Fedora Linux packages
 - FreeBSD Ports packages
-- Maintaining [Continuous Integration&nbsp;(CI)](https://en.wikipedia.org/wiki/Continuous_integration) workflows
+- Maintaining [Continuous Integration&nbsp;(CI)](https://www.martinfowler.com/articles/continuousIntegration.html) workflows
 
 Furthermore, the Build-Tools provide helpful tools for:
 
