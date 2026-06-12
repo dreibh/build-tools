@@ -1,3 +1,88 @@
+commit cbd1a841ec969e02238a22730c622072e82ab5d4
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Jun 11 13:19:16 2026 +0200
+
+    Improved documentation.
+
+commit 0d503e724773253e4aa7d7d83b74842db62a75ce
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Jun 11 11:32:12 2026 +0200
+
+    Improved CMakeLists.txt.
+
+commit 64e940bfb3dcdd94716a04be60869675668f3470
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Wed Jun 10 14:16:45 2026 +0200
+
+    Improved build script.
+
+commit 1f56f08cd9a2c5b731435ad7304bc4c8f72986a7
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Jun 9 08:36:10 2026 +0200
+
+    CMakeLists.txt clean-ups.
+
+commit f43258dba0319e3de3edf804247703099d5f39e8
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Mon Jun 8 15:15:38 2026 +0200
+
+    Minor CMakeLists.txt clean-ups.
+
+commit 52a87cd984d6bc345ddc3e37ad3333daa5cafc99
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Mon Jun 8 15:13:47 2026 +0200
+
+    Improved build script with NetBSD, OpenBSD, and Darwin support.
+
+commit f2c823ea7b07b3e599a1ff6c1a2e1c04a0aa735d
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Jun 5 18:39:54 2026 +0200
+
+    Improved script.
+
+commit 808d476ae051cdfd3ea0fb246e058b0c10285600
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Jun 5 18:33:38 2026 +0200
+
+    Added helper script.
+
+commit 6933d35eeacd5ddff4fbdabe9970f542efc978d0
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Jun 2 11:22:54 2026 +0200
+
+    Improved script.
+
+commit 8fe000bb649d6658da16d74936d2af8208de2407
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Jun 2 11:14:17 2026 +0200
+
+    Added script for creating weekly Git tags.
+
+commit 8c111446394c09e1e3ba79256b03ea040d68aad7
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sun May 31 18:25:04 2026 +0200
+
+    Fixed URL.
+
+commit 85e37456dc88f3943abe1bb2c4312df8a471f1c8
+Merge: 2d75889 caa8167
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri May 29 18:49:50 2026 +0200
+
+    Merge branch 'master' of https://github.com/dreibh/build-tools
+
+commit 2d758892da622b19144110bee86b2df8a617f26a
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri May 29 18:49:38 2026 +0200
+
+    Minor update.
+
+commit caa81673dd7d326826b149b63a7b2dbe06cb7e9d
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu May 28 16:15:27 2026 +0200
+
+    New release td-build-tools-0.4.2.
+
 commit 66fcfe25e2198f0ba02bc78fcaaeb88449dc384d
 Merge: 92244cc cf6ae6b
 Author: Thomas Dreibholz <dreibh@simula.no>
