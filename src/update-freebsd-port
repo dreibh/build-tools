@@ -93,3 +93,9 @@ echo ""
 # shellcheck disable=SC2001
 echo -e "\e[33mhttps://bugs.freebsd.org/bugzilla/enter_bug.cgi?product=Ports%20%26%20Packages&component=Individual%20Port%28s%29&short_desc=$(echo "${SUMMARY}" | sed -e 's/ /%20/g')&comment=$(echo "${COMMENT}" | sed -e 's/\\n/%0A/g' -e 's/ /%20/g')&bug_severity=Affects%20Some%20People&bug_file_loc=${URL}\e[0m"
 echo ""
+
+print-utf8 -s "\e[34m====== portclippy " "=" "=\e[0m"
+portclippy --strict Makefile
+
+print-utf8 -s "\e[34m====== portlint " "=" "=\e[0m"
+portlint
