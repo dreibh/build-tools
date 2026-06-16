@@ -1,25 +1,52 @@
 #!/usr/bin/env bash
 
-if [ $# -ne 1 ] ; then
-   echo >&2 "Usage: $0 pkg-plist"
+DEBUG=0
+while [ $# -gt 0 ] ; do
+   if [ "$1" == "--debug" ] || [ "$1" == "-debug" ] ; then
+      DEBUG=1
+   else
+      echo >&2 "ERROR: Invalid argument $1!"
+      exit 1
+   fi
+   shift
+done
+
+if [ ! -f Makefile ]; then
+   echo >&2 "ERROR: Makefile does not exist!"
    exit 1
 fi
-PKG_PLIST="$1"
-if [ ! -f "${PKG_PLIST}" ]; then
-   echo >&2 "ERROR: ${PKG_PLIST} does not exist!"
+PORTNAME="$(grep "^PORTNAME=" Makefile | awk '{ print $2 }')"
+if [ ! -f pkg-plist ]; then
+   echo >&2 "ERROR: pkg-plist does not exist!"
    exit 1
 fi
 
-while read -r line ; do
-   if [[ "${line}" =~ ^(%%[^/]+%%)(.+)$ ]] ; then
-      echo -e "1\t${BASH_REMATCH[1]}\t${BASH_REMATCH[2]}\t${line}"
-   elif [[ "${line}" =~ ^([^%]+)$ ]] ; then
-      echo -e "0\t\t${BASH_REMATCH[1]}\t${line}"
+# ====== Prepare TAB-separated table for sorting ============================
+# Table:
+# 1. Priority
+# 2. Options
+# 3. Path
+# 4. Original line
+# Sort by: column 1, numeric, ascending
+#          column 3, string, ascending
+while read -r originalLine ; do
+   # echo >&2 "L=$originalLine"
+   filterLine="${originalLine//%%DATADIR%%/share/${PORTNAME}}"
+   if [[ "${filterLine}" =~ ^(@.*)$ ]] ; then
+      echo -e "0\t\t${filterLine}\t${originalLine}"
+   elif [[ "${filterLine}" =~ ^(%%[^/]+%%)(.+)$ ]] ; then
+      echo -e "2\t${BASH_REMATCH[1]}\t${BASH_REMATCH[2]}\t${originalLine}"
+   elif [[ "${filterLine}" =~ ^([^%]+)$ ]] ; then
+      echo -e "1\t\t${BASH_REMATCH[1]}\t${originalLine}"
    else
-      echo >&2 "ERROR: Unexpected input ${line}!"
+      echo >&2 "ERROR: Unexpected input ${originalLine}!"
       exit 1
    fi
-done <"${PKG_PLIST}" | \
+done <pkg-plist | \
    LC_ALL=C.UTF-8 sort -t$'\t' -k1n -k3 | \
-   IFS=$'\t' awk '{ print $4 }' | \
-   tee "${PKG_PLIST}.sorted"
+   if [ ${DEBUG} -eq 0 ] ; then 
+      cut -d$'\t' -f4
+   else
+      cut -d$'\t' -f3
+   fi | \
+   tee "pkg-plist.sorted"
