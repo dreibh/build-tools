@@ -11,7 +11,6 @@ AutoReqProv: on
 BuildRequires: cmake
 BuildRequires: gcc
 BuildRequires: gcc-c++
-BuildRoot: %{_tmppath}/%{name}-%{version}-build
 
 BuildArch: noarch
 Requires: %{name}-build-tool = %{version}-%{release}
@@ -39,6 +38,15 @@ This package is a metapackage for the build tools.
 %install
 %cmake_install
 
+# Apply shebang fix for Bash and Rscript:
+for directory in %{_bindir} ; do
+   find "%{buildroot}/$directory" -type f -exec sed -i \
+      -e 's|^#!/usr/bin/env bash|#!/usr/bin/bash|' \
+      -e 's|^#!/usr/bin/env python3|#!/usr/bin/python3|' \
+      -e 's|^#!/usr/bin/env Rscript|#!/usr/bin/Rscript|' \
+      {} +
+done
+
 %files
 
 
@@ -49,7 +57,6 @@ Requires: mock
 Requires: python3 >= 3.9
 Requires: python3-distro
 Requires: python3-packaging
-Requires: python3-urllib3
 Requires: rpm
 Requires: rpmlint
 Recommends: td-system-info
@@ -67,6 +74,7 @@ cross-architecture builds).
 %files build-tool
 %{_bindir}/build-tool
 %{_datadir}/bash-completion/completions/build-tool
+%dir %attr(0755, root, root) %{_datadir}/build-tools/
 %{_datadir}/build-tools/pbuilderrc
 %{_mandir}/man1/build-tool.1.gz
 
@@ -76,7 +84,6 @@ Summary: Version Bump
 BuildArch: noarch
 Requires: python3 >= 3.9
 Requires: python3-distro
-Requires: python3-urllib3
 Recommends: %{name}-build-tool = %{version}-%{release}
 
 %description version-bump
