@@ -53,12 +53,24 @@ if [ ! -d "${OSC_HOME}/${PACKAGE}" ] ; then
    echo 2>&1 "ERROR: OSC package directory ${OSC_HOME}/${PACKAGE} does not exist!"
    exit 1
 fi
+TARBALL1_EXT="$(find . -maxdepth 1 -name "${PACKAGE}-${UPSTREAM_VERSION}.tar.*" -printf "%P\n" | \
+   head -n1 | awk '/\.gz|\.bz2|\.xz|\.zst$/ { print $1 }' | sed -e 's/^.*\.//g')"
+if [ -z "${TARBALL1_EXT}" ] ; then
+   echo "ERROR: Unable to find original tarball (${PACKAGE}-${UPSTREAM_VERSION}.tar.*)!"
+   exit 1
+fi
+TARBALL2_EXT="$(find . -maxdepth 1 -name "${PACKAGE}_${UPSTREAM_VERSION}.orig.tar.*" -printf "%P\n" | \
+   head -n1 | awk '/\.gz|\.bz2|\.xz|\.zst$/ { print $1 }' | sed -e 's/^.*\.//g')"
+if [ -z "${TARBALL2_EXT}" ] ; then
+   echo "ERROR: Unable to find original tarball (${PACKAGE}_${UPSTREAM_VERSION}.orig.tar.*)!"
+   exit 1
+fi
 
 declare -A filesToProcess=(
-   ["${PACKAGE}-${UPSTREAM_VERSION}.tar.xz"]=1
-   ["${PACKAGE}-${UPSTREAM_VERSION}.tar.xz.asc"]=1
-   ["${PACKAGE}_${UPSTREAM_VERSION}.orig.tar.xz"]=1
-   ["${PACKAGE}_${UPSTREAM_VERSION}.orig.tar.xz.asc"]=1
+   ["${PACKAGE}-${UPSTREAM_VERSION}.tar.${TARBALL1_EXT}"]=1
+   ["${PACKAGE}-${UPSTREAM_VERSION}.tar.${TARBALL1_EXT}.asc"]=1
+   ["${PACKAGE}_${UPSTREAM_VERSION}.orig.tar.${TARBALL2_EXT}"]=1
+   ["${PACKAGE}_${UPSTREAM_VERSION}.orig.tar.${TARBALL2_EXT}.asc"]=1
    ["${PACKAGE}_${DEBIAN_VERSION}.dsc"]=1
    ["${PACKAGE}_${DEBIAN_VERSION}.debian.tar.xz"]=1
    ["${PACKAGE}.spec"]=1
