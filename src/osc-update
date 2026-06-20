@@ -75,6 +75,11 @@ declare -A filesToProcess=(
    ["${PACKAGE}_${DEBIAN_VERSION}.debian.tar.xz"]=1
    ["${PACKAGE}.spec"]=1
 )
+if [ -e packaging/APKBUILD ] ; then
+   filesToProcess+=(
+      ["APKBUILD"]=1
+   )
+fi
 
 # ------ Obtain all current files -------------------------------------------
 mapfile -t filesToRemove < <(find "${OSC_HOME}/${PACKAGE}" -maxdepth 1 -name "[^\.]*" -type f -printf "%P\n")
@@ -92,6 +97,8 @@ for file in "${!filesToProcess[@]}" ; do
          cp "${file}" "${OSC_HOME}/${PACKAGE}/"
       elif [ -e "rpm/${file}" ] ; then
          cp "rpm/${file}" "${OSC_HOME}/${PACKAGE}/"
+      elif [ -e "packaging/${file}" ] ; then
+         cp "packaging/${file}" "${OSC_HOME}/${PACKAGE}/"
       else
          echo >&2 "ERROR: File ${file} does not exist!"
          exit 1
