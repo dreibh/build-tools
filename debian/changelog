@@ -1,3 +1,9 @@
+td-build-tools (0.4.4-1ubuntu1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Thomas Dreibholz <thomas.dreibholz@gmail.com>  Fri, 31 Jul 2026 12:49:47 +0200
+
 td-build-tools (0.4.3-1ubuntu1) unstable; urgency=medium
 
   * New upstream release.

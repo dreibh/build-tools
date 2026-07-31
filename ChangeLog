@@ -1,3 +1,112 @@
+commit 454f489a21ccbcab348030d65971357175a0cb23
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Jul 31 12:36:14 2026 +0200
+
+    Added APKBUILD helper script.
+
+commit 3cdcff50c3ee595460820b8708c77f2dd631dafb
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Jul 31 11:33:31 2026 +0200
+
+    Also improved compatibility of ShellCheck script.
+
+commit 67479dfb8e12ff43f4e479e2dc8f0693da4e0965
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Jul 31 11:30:47 2026 +0200
+
+    Improved compatibility of ShellCheck script.
+
+commit 47c3ae6a0601f412817e5c38d839032ee587974a
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sat Jul 18 16:43:03 2026 +0200
+
+    Improved build helper script.
+
+commit b22824b3139a27e89f0b03fbe837943923314ea7
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sat Jul 18 15:26:54 2026 +0200
+
+    Further NetBSD improvements in CMakeLists.txt.
+
+commit da85a00d24e0082687f16485ccb9a2c38f54c4d5
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sat Jul 18 15:13:13 2026 +0200
+
+    Updated build helper script.
+
+commit d35c1706097eb7dd2e271b3575dae0cb52514d3e
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Mon Jun 29 15:31:04 2026 +0200
+
+    FreeBSD update: Python 3.11 -> Python 3.12.
+
+commit 2ead716e555a52673a3a8702b31092ad63d0998c
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Sat Jun 20 17:42:46 2026 +0200
+
+    Improved OSC script.
+
+commit 97ab0eb08fb824ad13730822ba8586f4d291c776
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Jun 19 14:33:48 2026 +0200
+
+    Minor RPM spec clean-up.
+
+commit 94745a4af1e1fdd94dfb521a5f1f7e8bfcdd4b08
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Jun 18 16:07:21 2026 +0200
+
+    Improved script.
+
+commit a029522eb6659283fd2393c2694038d105a95239
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Jun 18 11:44:56 2026 +0200
+
+    Improved RPM spec.
+
+commit a752ac347ad23729d391b04e681642e525130c00
+Merge: 3e56fcb e3458dd
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Wed Jun 17 12:58:54 2026 +0200
+
+    Merge branch 'master' of github.com:dreibh/build-tools
+
+commit 3e56fcbd9b9ed4adce44e11a8043db87aaa89be3
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Wed Jun 17 12:58:27 2026 +0200
+
+    Added Open Build Service helper script.
+
+commit e3458ddb2d55d4643f8e60d37a393cda5e584193
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Jun 16 11:39:46 2026 +0200
+
+    Improved script.
+
+commit d3237f90d9e9b51f96c3b3b95d9a82d5938f5a15
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Jun 16 10:58:20 2026 +0200
+
+    Improved script.
+
+commit fb430e2d76e98ca7e8f87e8f3ae05000b8f8c266
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Mon Jun 15 11:50:35 2026 +0200
+
+    Improved script.
+
+commit 7118bec2c41919ecb8ef0ab02c3c588719f56d8c
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Jun 12 19:17:26 2026 +0200
+
+    Fixed package title handling.
+
+commit b1f4f89f98927a040576a706d3a2ffef3fe622dc
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Jun 12 18:13:56 2026 +0200
+
+    New release td-build-tools-0.4.3.
+
 commit cbd1a841ec969e02238a22730c622072e82ab5d4
 Author: Thomas Dreibholz <dreibh@simula.no>
 Date:   Thu Jun 11 13:19:16 2026 +0200
