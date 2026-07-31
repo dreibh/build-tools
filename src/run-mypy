@@ -35,7 +35,11 @@ set -euo pipefail
 # Automatically find all Python scripts in subdirectories:
 SCRIPTS="$(
 (
-   find . -type f -executable -and -not -name "*~"
+   find . -path '*/.*' -type d -prune \
+      -o \( \
+            \( -type f -perm -100 ! -name "*~" \) \
+            -o -name "*.py" \
+         \) -print
 ) | while read -r name ; do
    if [[ "$(head -n1 "${name}" | strings)" =~ (python) ]] ; then
       echo "${name}"
