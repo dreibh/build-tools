@@ -54,7 +54,7 @@ ${SHA512SUM}
 "
 EOF
 ) | text-block \
-   --input "${APKBUILD}" \
+   --input "${APKBUILD}" --in-place \
    --begin-tag 'sha512sums="' --end-tag '"' --full-tag-lines --include-tags \
    --replace - \
    --min-actions 1 --max-actions 1
