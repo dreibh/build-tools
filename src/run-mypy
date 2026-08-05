@@ -114,7 +114,7 @@ if [ ! -x "${MYPY}" ] ; then
    exit 1
 fi
 echo "MyPy: ${MYPY}"
-if ! command -v print-utf8 2>/dev/null ; then
+if ! command -v print-utf8 >/dev/null ; then
    echo >&2 "ERROR: Print-UTF8 (from System-Tools) is not installed!"
    echo >&2 "Try this:"
    echo >&2 "* Ubuntu:  sudo apt-add-repository -sy ppa:dreibh/ppa"
@@ -124,7 +124,7 @@ if ! command -v print-utf8 2>/dev/null ; then
    echo >&2 "* FreeBSD: sudo pkg install -y td-system-tools"
    exit 1
 fi
-if ! command -v figlet 2>/dev/null ; then
+if ! command -v figlet >/dev/null ; then
    echo >&2 "ERROR: Figlet is not installed!"
    echo >&2 "* Ubuntu:  sudo apt install -y figlet"
    echo >&2 "* Fedora:  sudo dnf install -y figlet"
