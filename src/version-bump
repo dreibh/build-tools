@@ -28,6 +28,7 @@
 #
 # Contact: thomas.dreibholz@gmail.com
 
+import locale
 import glob
 import os
 import re
@@ -66,6 +67,9 @@ def applyUpdate(new : str, old : str) -> None:
 
 
 # ###### Main program #######################################################
+
+# ====== Enforce standard (English) locale ==================================
+locale.setlocale(locale.LC_TIME, "C")
 
 # ====== Read packaging configuration =======================================
 packageMaintainer     : str | None           = None
