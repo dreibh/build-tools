@@ -1,3 +1,52 @@
+commit d684ca857fdadfc61cc7b79a67d8bc10c290d80c
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Mon Aug 31 16:33:13 2026 +0200
+
+    Locale handling fix.
+
+commit 2e4834f324c2da756477eb791f84c81dc6f73b25
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Tue Aug 11 10:29:02 2026 +0200
+
+    Improved build helper script.
+
+commit 2d29b751fb7853e748912fd492739917e6bd4b19
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Thu Aug 6 16:30:11 2026 +0200
+
+    Improved CI script.
+
+commit ce494a3049fb799c908e88cbffd6216c8cf787fa
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Wed Aug 5 12:02:31 2026 +0200
+
+    Minor clean-up.
+
+commit 893a871bd07304e5e3f82073c70be39400784dad
+Merge: 0562ad5 6ef9b8b
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Wed Aug 5 11:59:49 2026 +0200
+
+    Merge branch 'master' of github.com:dreibh/build-tools
+
+commit 6ef9b8bd530089e9d6612a678624ad667e824a31
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Wed Aug 5 11:59:10 2026 +0200
+
+    Improved script.
+
+commit 0562ad54268346712b94c6766c1d701463bc042a
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Jul 31 13:11:50 2026 +0200
+
+    Updated script.
+
+commit d54c2ec59864eedf88cba06a07ba069ace101fda
+Author: Thomas Dreibholz <dreibh@simula.no>
+Date:   Fri Jul 31 12:49:49 2026 +0200
+
+    New release td-build-tools-0.4.4.
+
 commit 454f489a21ccbcab348030d65971357175a0cb23
 Author: Thomas Dreibholz <dreibh@simula.no>
 Date:   Fri Jul 31 12:36:14 2026 +0200
