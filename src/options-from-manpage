@@ -28,7 +28,6 @@
 #
 # Contact: thomas.dreibholz@gmail.com
 
-#!/usr/bin/env python3
 """Extract and format options and program names from an mdoc manpage file."""
 
 from __future__ import annotations
@@ -358,30 +357,34 @@ def renderUsageC(entries: Sequence[Entry], withGettext: bool = False) -> str:
 
 
 def renderUsageCpp(entries: Sequence[Entry], withGettext: bool = False) -> str:
-   """Generate a complete C++ usage() function with std::cerr."""
+   """Generate a complete C++ usage() function with std::cerr using string concatenation."""
    lines: Final[list[str]] = list(cppUsageHead)
 
    if withGettext:
       lines.extend(cppTranslatorsComment)
 
-   usageHeader: Final[str] = 'gettext("Usage:")' if withGettext else '"Usage:"'
-
    if not entries:
-      lines.append(f"   std::cerr << {usageHeader} << '\\n';")
+      if withGettext:
+         lines.append('   std::cerr << gettext("Usage:") << "\\n";')
+      else:
+         lines.append('   std::cerr << "Usage:\\n";')
       lines.extend(cppUsageTail)
       return "\n".join(lines)
 
-   lines.append(f"   std::cerr << {usageHeader} << '\\n'")
+   if withGettext:
+      lines.append('   std::cerr << gettext("Usage:") << "\\n"')
+   else:
+      lines.append('   std::cerr << "Usage:\\n"')
 
    for entry in entries:
       if isinstance(entry, CommandEntry):
-         lines.append("             << program << '\\n'")
+         lines.append('             << program << "\\n"')
       elif isinstance(entry, OptionEntry):
          escapedOpt: Final[str] = (
             entry.text.replace("\\", "\\\\")
             .replace('"', '\\"')
          )
-         lines.append(f'             << "\\t{escapedOpt}\\n"')
+         lines.append(f'                "\\t{escapedOpt}\\n"')
 
    lines[-1] = lines[-1] + ";"
    lines.extend(cppUsageTail)
