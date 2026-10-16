@@ -49,6 +49,7 @@ supportedFormats: Final[tuple[str, ...]] = (
    "options-only",
    "usage-c",
    "usage-c++",
+   "usage-shell",
 )
 
 
@@ -352,6 +353,59 @@ def renderUsageCpp(entries: Sequence[Entry], withGettext: bool = False) -> str:
    return "\n".join(lines)
 
 
+def renderUsageShell(entries: Sequence[Entry], withGettext: bool = False) -> str:
+   """Generate a complete Shell/Bash usage() function using a here-document."""
+   lines: Final[list[str]] = [
+      "# ###### Usage ##############################################################",
+      "usage () {",
+      '   local exitCode="$1"',
+   ]
+
+   if withGettext:
+      lines.extend([
+         "   # TRANSLATORS: Command-line syntax message prefix:",
+         '   # "Usage: <program> [options]".',
+      ])
+
+   usageHeader: Final[str] = (
+      '$(gettext "Usage:")' if withGettext else "Usage:"
+   )
+
+   if not entries:
+      lines.extend([
+         "   cat >&2 <<EOF",
+         f"{usageHeader}",
+         "EOF",
+         '   exit "${exitCode}"',
+         "}",
+      ])
+      return "\n".join(lines)
+
+   lines.extend([
+      "   cat >&2 <<EOF",
+      f"{usageHeader}",
+   ])
+
+   for entry in entries:
+      if isinstance(entry, CommandEntry):
+         lines.append("$0")
+      elif isinstance(entry, OptionEntry):
+         escapedOpt: Final[str] = (
+            entry.text.replace("\\", "\\\\")
+            .replace('"', '\\"')
+            .replace("$", "\\$")
+            .replace("`", "\\`")
+         )
+         lines.append(f"\t{escapedOpt}")
+
+   lines.extend([
+      "EOF",
+      '   exit "${exitCode}"',
+      "}",
+   ])
+   return "\n".join(lines)
+
+
 def renderOutput(
    entries: Sequence[Entry],
    outputFormat: str,
@@ -367,10 +421,12 @@ def renderOutput(
       return renderUsageC(entries, withGettext=withGettext)
    if fmt in ("usage-c++", "usage-cpp"):
       return renderUsageCpp(entries, withGettext=withGettext)
+   if fmt in ("usage-shell", "usage-bash"):
+      return renderUsageShell(entries, withGettext=withGettext)
 
    raise ValueError(
       f"Unsupported format '{outputFormat}'. "
-      f"Supported: 'syntax', 'options-only', 'usage-c', 'usage-c++'."
+      f"Supported: 'syntax', 'options-only', 'usage-c', 'usage-c++', 'usage-shell'."
    )
 
 
@@ -390,7 +446,7 @@ def buildParser() -> argparse.ArgumentParser:
       dest="format",
       default=defaultFormat,
       choices=list(supportedFormats),
-      help="Output format: 'syntax' (default), 'options-only', 'usage-c', or 'usage-c++'.",
+      help="Output format: 'syntax' (default), 'options-only', 'usage-c', 'usage-c++', or 'usage-shell'.",
    )
    parser.add_argument(
       "-g",
@@ -398,7 +454,7 @@ def buildParser() -> argparse.ArgumentParser:
       dest="withGettext",
       action="store_true",
       default=False,
-      help='Use gettext("Usage:") for internationalization in "usage-c" and "usage-c++" output.',
+      help='Use gettext("Usage:") for internationalization in "usage-c", "usage-c++", and "usage-shell" output.',
    )
    parser.add_argument(
       "-s",
