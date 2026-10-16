@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env python3
 # ==========================================================================
 #              ____        _ _     _     _____           _
 #             | __ ) _   _(_) | __| |   |_   _|__   ___ | |___
@@ -28,19 +28,416 @@
 #
 # Contact: thomas.dreibholz@gmail.com
 
-# Bash options:
-set -euxo pipefail
+"""Extract and format options and program names from an mdoc manpage file."""
+
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Final, Sequence
+
+opPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Op(?:\s+(.*))?$")
+nmPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Nm(?:\s+(.*))?$")
+shPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Sh(?:\s+(.*))?$")
+
+defaultFormat: Final[str]                = "syntax"
+supportedFormats: Final[tuple[str, ...]] = (
+   "syntax",
+   "options-only",
+   "usage-c",
+   "usage-c++",
+)
 
 
-while [ $# -gt 0 ] ; do
-   echo >&2 "====== $1 ======"
-   grep "^\.Op Fl" "$1" |       \
-      sed -e "s/Fl \\\\-/--/g"  \
-          -e "s/Fl /-/g"        \
-          -e "s/^\.Op //"       \
-          -e 's/ [\|] /\n/g' |  \
-         sed -e 's/ .*$//'  \
-             -e '/^[ ]*$/d' \
-             -e 's/\\-/-/g'
-   shift
-done
+@dataclass(frozen=True)
+class CommandEntry:
+   """Represents a .Nm macro occurrence with the program name."""
+
+   name: str
+
+
+@dataclass(frozen=True)
+class OptionEntry:
+   """Represents a .Op macro occurrence with formatted option text."""
+
+   text: str
+   optionsOnly: str
+
+
+Entry = CommandEntry | OptionEntry
+
+
+def parseTokens(
+   tokens: Sequence[str],
+   capitalizeArgs: bool = True,
+   includeArgs: bool = True,
+) -> str:
+   r"""Parse tokens from an option line.
+
+   Handles:
+   - 'Fl' represents '-'
+   - 'Fl Fl <opt>' or 'Fl \-<opt>' produces '--<opt>'
+   - 'Ar' designates the next token as an argument value
+   """
+   words: Final[list[str]] = []
+   i: int                  = 0
+   total: Final[int]       = len(tokens)
+
+   while i < total:
+      token: Final[str] = tokens[i]
+
+      if token == "Fl":
+         dashCount: int = 0
+         while i < total and tokens[i] == "Fl":
+            dashCount += 1
+            i += 1
+
+         # Handle standalone '-' tokens (e.g. from unescaped '\-')
+         while i < total and tokens[i] == "-":
+            dashCount += 1
+            i += 1
+
+         if i < total and tokens[i] not in ("Fl", "Ar", "|"):
+            word: Final[str]        = tokens[i]
+            stripped: Final[str]    = word.lstrip("-")
+            extraDashes: Final[int] = len(word) - len(stripped)
+
+            if extraDashes > 0 and stripped:
+               dashCount += extraDashes
+               words.append(f"{'-' * dashCount}{stripped}")
+               i += 1
+            else:
+               words.append(f"{'-' * dashCount}{word}")
+               i += 1
+         else:
+            words.append("-" * dashCount)
+
+      elif token == "Ar":
+         i += 1
+         if i < total:
+            argVal: Final[str] = tokens[i]
+            if includeArgs:
+               words.append(argVal.upper() if capitalizeArgs else argVal)
+            i += 1
+
+      else:
+         words.append(token)
+         i += 1
+
+   return " ".join(words)
+
+
+def parseManpage(filePath: Path) -> list[Entry]:
+   """Parse a manpage line-by-line, capturing .Nm and .Op directives."""
+   entries: Final[list[Entry]] = []
+   firstProgramName: str       = ""
+
+   with filePath.open("r", encoding="utf-8", errors="replace") as stream:
+      lines: Final[list[str]] = stream.readlines()
+
+   # If .Sh SYNOPSIS exists, scope option extraction to that section.
+   # If no .Sh sections exist (e.g. raw test snippets), parse the entire file.
+   hasSynopsisSection: Final[bool] = any(
+      bool(m and m.group(1) and m.group(1).strip() == "SYNOPSIS")
+      for line in lines
+      for m in [shPattern.match(line.rstrip("\r\n"))]
+   )
+   inSynopsis: bool                = not hasSynopsisSection
+
+   for line in lines:
+      stripped: Final[str] = line.rstrip("\r\n")
+
+      # Track section headers (.Sh)
+      shMatch: Final[re.Match[str] | None] = shPattern.match(stripped)
+      if shMatch:
+         sectionName: Final[str] = (shMatch.group(1) or "").strip()
+         inSynopsis              = sectionName == "SYNOPSIS"
+         continue
+
+      # Track program names (.Nm)
+      nmMatch: Final[re.Match[str] | None] = nmPattern.match(stripped)
+      if nmMatch:
+         rawArg: Final[str | None] = nmMatch.group(1)
+         cleanedName: str          = ""
+         if rawArg:
+            cleanedName = (
+               rawArg.replace(r"\_", "_").replace(r"\-", "-").strip()
+            )
+            if not firstProgramName:
+               firstProgramName = cleanedName
+         elif firstProgramName:
+            cleanedName = firstProgramName
+
+         if inSynopsis:
+            entries.append(CommandEntry(name=cleanedName or firstProgramName))
+         continue
+
+      # Track option definitions (.Op)
+      opMatch: Final[re.Match[str] | None] = opPattern.match(stripped)
+      if opMatch:
+         if not inSynopsis:
+            continue
+         content: str             = opMatch.group(1) or ""
+         content                  = content.replace(r"\_", "_").replace(r"\-", "-")
+         tokens: Final[list[str]] = content.split()
+         if tokens:
+            textVal: Final[str]    = parseTokens(
+               tokens, capitalizeArgs=True, includeArgs=True
+            )
+            optOnlyVal: Final[str] = parseTokens(
+               tokens, capitalizeArgs=False, includeArgs=False
+            )
+            entries.append(OptionEntry(text=textVal, optionsOnly=optOnlyVal))
+
+   return entries
+
+
+def sortEntries(entries: Sequence[Entry]) -> list[Entry]:
+   """Sort option entries alphabetically per program name (.Nm)."""
+   sortedEntries: Final[list[Entry]]        = []
+   currentOptions: Final[list[OptionEntry]] = []
+
+   def flushOptions() -> None:
+      if currentOptions:
+         currentOptions.sort(key=lambda opt: (opt.text.casefold(), opt.text))
+         sortedEntries.extend(currentOptions)
+         currentOptions.clear()
+
+   for entry in entries:
+      if isinstance(entry, CommandEntry):
+         flushOptions()
+         sortedEntries.append(entry)
+      elif isinstance(entry, OptionEntry):
+         currentOptions.append(entry)
+
+   flushOptions()
+   return sortedEntries
+
+
+def renderSyntax(entries: Sequence[Entry]) -> str:
+   """Render entries with program names and tab-indented option syntax."""
+   lines: Final[list[str]] = []
+   for entry in entries:
+      if isinstance(entry, CommandEntry):
+         lines.append(entry.name)
+      elif isinstance(entry, OptionEntry):
+         lines.append(f"\t{entry.text}")
+   return "\n".join(lines)
+
+
+def renderOptionsOnly(entries: Sequence[Entry]) -> str:
+   """Render only option definitions without program names or arguments."""
+   lines: Final[list[str]] = [
+      entry.optionsOnly
+      for entry in entries
+      if isinstance(entry, OptionEntry)
+   ]
+   return "\n".join(lines)
+
+
+def renderUsageC(entries: Sequence[Entry], withGettext: bool = False) -> str:
+   """Generate a complete C usage() function with fprintf(stderr, ...)."""
+   lines: Final[list[str]] = [
+      "// ###### Usage #############################################################",
+      "#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 202000L)",
+      "[[ noreturn ]]",
+      "#endif",
+      "static void usage(const char* program, const int exitCode)",
+      "{",
+   ]
+
+   if withGettext:
+      lines.extend([
+         "   // TRANSLATORS: Command-line syntax message prefix:",
+         '   // "Usage: <program> [options]".',
+      ])
+
+   indent: Final[str]      = " " * 11
+   usageHeader: Final[str] = "%s" if withGettext else "Usage:"
+
+   if not entries:
+      if withGettext:
+         lines.extend([
+            f'   fprintf(stderr, "%s\\n",\n{indent}gettext("Usage:"));',
+            "   exit(exitCode);",
+            "}",
+         ])
+      else:
+         lines.extend([
+            '   fprintf(stderr, "Usage:\\n");',
+            "   exit(exitCode);",
+            "}",
+         ])
+      return "\n".join(lines)
+
+   nmCount: Final[int] = sum(1 for e in entries if isinstance(e, CommandEntry))
+   lines.append(f'   fprintf(stderr, "{usageHeader}\\n"')
+
+   for entry in entries:
+      if isinstance(entry, CommandEntry):
+         lines.append(f'{indent}"%s\\n"')
+      elif isinstance(entry, OptionEntry):
+         escapedOpt: Final[str] = (
+            entry.text.replace("\\", "\\\\")
+            .replace('"', '\\"')
+            .replace("%", "%%")
+         )
+         lines.append(f'{indent}"\\t{escapedOpt}\\n"')
+
+   arguments: Final[list[str]] = []
+   if withGettext:
+      arguments.append('gettext("Usage:")')
+   if nmCount > 0:
+      arguments.extend(["program"] * nmCount)
+
+   if arguments:
+      lines[-1] = lines[-1] + ","
+      argsList: Final[str] = ", ".join(arguments)
+      lines.append(f"{indent}{argsList});")
+   else:
+      lines[-1] = lines[-1] + ");"
+
+   lines.extend([
+      "   exit(exitCode);",
+      "}",
+   ])
+   return "\n".join(lines)
+
+
+def renderUsageCpp(entries: Sequence[Entry], withGettext: bool = False) -> str:
+   """Generate a complete C++ usage() function with std::cerr."""
+   lines: Final[list[str]] = [
+      "// ###### Usage #############################################################",
+      "[[ noreturn ]]",
+      "static void usage(const char* program, const int exitCode)",
+      "{",
+   ]
+
+   if withGettext:
+      lines.extend([
+         "   // TRANSLATORS: Command-line syntax message prefix:",
+         '   // "Usage: <program> [options]".',
+      ])
+
+   usageHeader: Final[str] = 'gettext("Usage:")' if withGettext else '"Usage:"'
+
+   if not entries:
+      lines.extend([
+         f"   std::cerr << {usageHeader} << '\\n';",
+         "   exit(exitCode);",
+         "}",
+      ])
+      return "\n".join(lines)
+
+   lines.append(f"   std::cerr << {usageHeader} << '\\n'")
+
+   for entry in entries:
+      if isinstance(entry, CommandEntry):
+         lines.append("             << program << '\\n'")
+      elif isinstance(entry, OptionEntry):
+         escapedOpt: Final[str] = (
+            entry.text.replace("\\", "\\\\")
+            .replace('"', '\\"')
+         )
+         lines.append(f'             << "\\t{escapedOpt}\\n"')
+
+   lines[-1] = lines[-1] + ";"
+   lines.extend([
+      "   exit(exitCode);",
+      "}",
+   ])
+   return "\n".join(lines)
+
+
+def renderOutput(
+   entries: Sequence[Entry],
+   outputFormat: str,
+   withGettext: bool = False,
+) -> str:
+   """Route entries to the requested output formatter."""
+   fmt: Final[str] = outputFormat.strip().lower()
+   if fmt == "syntax":
+      return renderSyntax(entries)
+   if fmt == "options-only":
+      return renderOptionsOnly(entries)
+   if fmt == "usage-c":
+      return renderUsageC(entries, withGettext=withGettext)
+   if fmt in ("usage-c++", "usage-cpp"):
+      return renderUsageCpp(entries, withGettext=withGettext)
+
+   raise ValueError(
+      f"Unsupported format '{outputFormat}'. "
+      f"Supported: 'syntax', 'options-only', 'usage-c', 'usage-c++'."
+   )
+
+
+def buildParser() -> argparse.ArgumentParser:
+   """Build command-line arguments."""
+   parser: Final[argparse.ArgumentParser] = argparse.ArgumentParser(
+      description="Extract and format options from an mdoc manpage file."
+   )
+   parser.add_argument(
+      "manpage",
+      type=Path,
+      help="Path to the manpage file.",
+   )
+   parser.add_argument(
+      "-F",
+      "--format",
+      dest="format",
+      default=defaultFormat,
+      choices=list(supportedFormats),
+      help="Output format: 'syntax' (default), 'options-only', 'usage-c', or 'usage-c++'.",
+   )
+   parser.add_argument(
+      "-g",
+      "--with-gettext",
+      dest="withGettext",
+      action="store_true",
+      default=False,
+      help='Use gettext("Usage:") for internationalization in "usage-c" and "usage-c++" output.',
+   )
+   parser.add_argument(
+      "-s",
+      "--sorted",
+      dest="isSorted",
+      action="store_true",
+      default=False,
+      help="Sort option lines per program name alphabetically.",
+   )
+   return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+   parser: Final[argparse.ArgumentParser] = buildParser()
+   args: Final[argparse.Namespace]        = parser.parse_args(argv)
+
+   if not args.manpage.is_file():
+      sys.stderr.write(f"Error: File not found: '{args.manpage}'\n")
+      return 1
+
+   try:
+      rawEntries: Final[list[Entry]] = parseManpage(args.manpage)
+      entries: Final[Sequence[Entry]] = (
+         sortEntries(rawEntries) if args.isSorted else rawEntries
+      )
+
+      output: Final[str] = renderOutput(
+         entries,
+         outputFormat=args.format,
+         withGettext=args.withGettext,
+      )
+      if output:
+         print(output)
+   except Exception as err:
+      sys.stderr.write(f"Error: {err}\n")
+      return 1
+
+   return 0
+
+
+if __name__ == "__main__":
+   sys.exit(main())
