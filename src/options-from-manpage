@@ -28,6 +28,7 @@
 #
 # Contact: thomas.dreibholz@gmail.com
 
+#!/usr/bin/env python3
 """Extract and format options and program names from an mdoc manpage file."""
 
 from __future__ import annotations
@@ -50,6 +51,55 @@ supportedFormats: Final[tuple[str, ...]] = (
    "usage-c",
    "usage-c++",
    "usage-shell",
+)
+
+# C usage function definitions
+cUsageHead: Final[tuple[str, ...]]              = (
+   "// ###### Usage #############################################################",
+   "#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 202000L)",
+   "[[ noreturn ]]",
+   "#endif",
+   "static void usage(const char* program, const int exitCode)",
+   "{",
+)
+cUsageTail: Final[tuple[str, ...]]              = (
+   "   exit(exitCode);",
+   "}",
+)
+cTranslatorsComment: Final[tuple[str, ...]]     = (
+   "   // TRANSLATORS: Command-line syntax message prefix:",
+   '   // "Usage: <program> [options]".',
+)
+
+# C++ usage function definitions
+cppUsageHead: Final[tuple[str, ...]]            = (
+   "// ###### Usage #############################################################",
+   "[[ noreturn ]]",
+   "static void usage(const char* program, const int exitCode)",
+   "{",
+)
+cppUsageTail: Final[tuple[str, ...]]            = (
+   "   exit(exitCode);",
+   "}",
+)
+cppTranslatorsComment: Final[tuple[str, ...]]   = (
+   "   // TRANSLATORS: Command-line syntax message prefix:",
+   '   // "Usage: <program> [options]".',
+)
+
+# Shell / Bash usage function definitions
+shellUsageHead: Final[tuple[str, ...]]          = (
+   "# ###### Usage ##############################################################",
+   "usage () {",
+   '   local exitCode="$1"',
+)
+shellUsageTail: Final[tuple[str, ...]]          = (
+   '   exit "${exitCode}"',
+   "}",
+)
+shellTranslatorsComment: Final[tuple[str, ...]] = (
+   "   # TRANSLATORS: Command-line syntax message prefix:",
+   '   # "Usage: <program> [options]".',
 )
 
 
@@ -165,7 +215,10 @@ def parseManpage(filePath: Path) -> list[Entry]:
          cleanedName: str          = ""
          if rawArg:
             cleanedName = (
-               rawArg.replace(r"\_", "_").replace(r"\-", "-").strip()
+               rawArg.replace(r"\_", "_")
+               .replace(r"\-", "-")
+               .replace(r"\%", "")
+               .strip()
             )
             if not firstProgramName:
                firstProgramName = cleanedName
@@ -182,7 +235,11 @@ def parseManpage(filePath: Path) -> list[Entry]:
          if not inSynopsis:
             continue
          content: str             = opMatch.group(1) or ""
-         content                  = content.replace(r"\_", "_").replace(r"\-", "-")
+         content                  = (
+            content.replace(r"\_", "_")
+            .replace(r"\-", "-")
+            .replace(r"\%", "")
+         )
          tokens: Final[list[str]] = content.split()
          if tokens:
             textVal: Final[str]    = parseTokens(
@@ -196,14 +253,26 @@ def parseManpage(filePath: Path) -> list[Entry]:
    return entries
 
 
+def sortOptionKey(opt: OptionEntry) -> tuple[int, str, str]:
+   """Key for sorting options: short options first (0), long options second (1), other third (2)."""
+   text: Final[str] = opt.text.strip()
+   if text.startswith("-") and not text.startswith("--"):
+      priority: Final[int] = 0
+   elif text.startswith("--"):
+      priority: Final[int] = 1
+   else:
+      priority: Final[int] = 2
+   return (priority, text.casefold(), text)
+
+
 def sortEntries(entries: Sequence[Entry]) -> list[Entry]:
-   """Sort option entries alphabetically per program name (.Nm)."""
+   """Sort option entries per program name (.Nm): short options first, then long options."""
    sortedEntries: Final[list[Entry]]        = []
    currentOptions: Final[list[OptionEntry]] = []
 
    def flushOptions() -> None:
       if currentOptions:
-         currentOptions.sort(key=lambda opt: (opt.text.casefold(), opt.text))
+         currentOptions.sort(key=sortOptionKey)
          sortedEntries.extend(currentOptions)
          currentOptions.clear()
 
@@ -241,37 +310,20 @@ def renderOptionsOnly(entries: Sequence[Entry]) -> str:
 
 def renderUsageC(entries: Sequence[Entry], withGettext: bool = False) -> str:
    """Generate a complete C usage() function with fprintf(stderr, ...)."""
-   lines: Final[list[str]] = [
-      "// ###### Usage #############################################################",
-      "#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 202000L)",
-      "[[ noreturn ]]",
-      "#endif",
-      "static void usage(const char* program, const int exitCode)",
-      "{",
-   ]
+   lines: Final[list[str]] = list(cUsageHead)
 
    if withGettext:
-      lines.extend([
-         "   // TRANSLATORS: Command-line syntax message prefix:",
-         '   // "Usage: <program> [options]".',
-      ])
+      lines.extend(cTranslatorsComment)
 
    indent: Final[str]      = " " * 11
    usageHeader: Final[str] = "%s" if withGettext else "Usage:"
 
    if not entries:
       if withGettext:
-         lines.extend([
-            f'   fprintf(stderr, "%s\\n",\n{indent}gettext("Usage:"));',
-            "   exit(exitCode);",
-            "}",
-         ])
+         lines.append(f'   fprintf(stderr, "%s\\n",\n{indent}gettext("Usage:"));')
       else:
-         lines.extend([
-            '   fprintf(stderr, "Usage:\\n");',
-            "   exit(exitCode);",
-            "}",
-         ])
+         lines.append('   fprintf(stderr, "Usage:\\n");')
+      lines.extend(cUsageTail)
       return "\n".join(lines)
 
    nmCount: Final[int] = sum(1 for e in entries if isinstance(e, CommandEntry))
@@ -301,36 +353,22 @@ def renderUsageC(entries: Sequence[Entry], withGettext: bool = False) -> str:
    else:
       lines[-1] = lines[-1] + ");"
 
-   lines.extend([
-      "   exit(exitCode);",
-      "}",
-   ])
+   lines.extend(cUsageTail)
    return "\n".join(lines)
 
 
 def renderUsageCpp(entries: Sequence[Entry], withGettext: bool = False) -> str:
    """Generate a complete C++ usage() function with std::cerr."""
-   lines: Final[list[str]] = [
-      "// ###### Usage #############################################################",
-      "[[ noreturn ]]",
-      "static void usage(const char* program, const int exitCode)",
-      "{",
-   ]
+   lines: Final[list[str]] = list(cppUsageHead)
 
    if withGettext:
-      lines.extend([
-         "   // TRANSLATORS: Command-line syntax message prefix:",
-         '   // "Usage: <program> [options]".',
-      ])
+      lines.extend(cppTranslatorsComment)
 
    usageHeader: Final[str] = 'gettext("Usage:")' if withGettext else '"Usage:"'
 
    if not entries:
-      lines.extend([
-         f"   std::cerr << {usageHeader} << '\\n';",
-         "   exit(exitCode);",
-         "}",
-      ])
+      lines.append(f"   std::cerr << {usageHeader} << '\\n';")
+      lines.extend(cppUsageTail)
       return "\n".join(lines)
 
    lines.append(f"   std::cerr << {usageHeader} << '\\n'")
@@ -346,26 +384,16 @@ def renderUsageCpp(entries: Sequence[Entry], withGettext: bool = False) -> str:
          lines.append(f'             << "\\t{escapedOpt}\\n"')
 
    lines[-1] = lines[-1] + ";"
-   lines.extend([
-      "   exit(exitCode);",
-      "}",
-   ])
+   lines.extend(cppUsageTail)
    return "\n".join(lines)
 
 
 def renderUsageShell(entries: Sequence[Entry], withGettext: bool = False) -> str:
    """Generate a complete Shell/Bash usage() function using a here-document."""
-   lines: Final[list[str]] = [
-      "# ###### Usage ##############################################################",
-      "usage () {",
-      '   local exitCode="$1"',
-   ]
+   lines: Final[list[str]] = list(shellUsageHead)
 
    if withGettext:
-      lines.extend([
-         "   # TRANSLATORS: Command-line syntax message prefix:",
-         '   # "Usage: <program> [options]".',
-      ])
+      lines.extend(shellTranslatorsComment)
 
    usageHeader: Final[str] = (
       '$(gettext "Usage:")' if withGettext else "Usage:"
@@ -376,9 +404,8 @@ def renderUsageShell(entries: Sequence[Entry], withGettext: bool = False) -> str
          "   cat >&2 <<EOF",
          f"{usageHeader}",
          "EOF",
-         '   exit "${exitCode}"',
-         "}",
       ])
+      lines.extend(shellUsageTail)
       return "\n".join(lines)
 
    lines.extend([
@@ -398,11 +425,8 @@ def renderUsageShell(entries: Sequence[Entry], withGettext: bool = False) -> str
          )
          lines.append(f"\t{escapedOpt}")
 
-   lines.extend([
-      "EOF",
-      '   exit "${exitCode}"',
-      "}",
-   ])
+   lines.append("EOF")
+   lines.extend(shellUsageTail)
    return "\n".join(lines)
 
 
@@ -462,7 +486,7 @@ def buildParser() -> argparse.ArgumentParser:
       dest="isSorted",
       action="store_true",
       default=False,
-      help="Sort option lines per program name alphabetically.",
+      help="Sort option lines per program name alphabetically (short options first, then long options).",
    )
    return parser
 
