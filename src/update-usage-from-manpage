@@ -46,19 +46,20 @@ for manpage in "${manpages[@]}" ; do
    options=( )
    type="source"
    if [ -e "${directory}/${program}.cc" ] ; then
-      program="${program}.cc"
+      source="${program}.cc"
       options+=( "-F" "usage-c++" )
    elif [ -e "${directory}/${program}.c" ] ; then
-      program="${program}.c"
+      source="${program}.c"
       options+=( "-F" "usage-c" )
    elif [ -e "${directory}/${program}" ] ; then
+      source="${program}"
       options+=( "-F" "usage-shell" )
       type="shell"
    else
-      echo >&2 "ERROR: Cannot find program for manpage ${manpage}!"
+      echo >&2 "ERROR: Cannot find source for manpage ${manpage}!"
       exit 1
    fi
-   if grep -qE "TEXTDOMAIN|bindtextdomain" "${directory}/${program}" ; then
+   if grep -qE "TEXTDOMAIN|bindtextdomain" "${directory}/${source}" ; then
       options+=( "--with-gettext" )
    fi
 
@@ -68,25 +69,28 @@ for manpage in "${manpages[@]}" ; do
       "${manpage}" "${options[@]}" -F syntax
    "${DIRNAME}/options-from-manpage" \
       "${manpage}" "${options[@]}" --with-block \
-      >"${directory}/${program}.usage"
+      >"${directory}/${source}.usage"
 
    # ====== Apply update ====================================================
    text-block \
-      -i "${directory}/${program}" \
-      -o "${directory}/${program}.updated" \
-      --replace "${directory}/${program}.usage" \
+      -i "${directory}/${source}" \
+      -o "${directory}/${source}.updated" \
+      --replace "${directory}/${source}.usage" \
       -b 'BEGIN-OF-USAGE-BLOCK' -e 'END-OF-USAGE-BLOCK' \
       --full-tag-lines --include-tags \
       --min-actions 1 --max-actions 1
 
-   if ! diff --color "${directory}/${program}" "${directory}/${program}.updated" ; then
+   if ! diff --color "${directory}/${source}" "${directory}/${source}.updated" ; then
       echo -en "\x1b[34m$(date +%FT%H:%M:%S): Apply changes? [yes/no]\x1b[0m "
       read -er applyChanges
       if [ "${applyChanges}" == "yes" ] || [ "${applyChanges}" == "y" ] ; then
-         mv "${directory}/${program}.updated" "${directory}/${program}"
+         mv "${directory}/${source}.updated" "${directory}/${source}"
          if [ "${type}" == "shell" ] ; then
-            chmod +x "${directory}/${program}"
+            chmod +x "${directory}/${source}"
+         else
+            make
          fi
+         "${directory}/${program}" -h
       fi
   fi
 

@@ -42,7 +42,7 @@ from typing import Final, Sequence
 
 opPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Op(?:\s+(.*))?$")
 nmPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Nm(?:\s+(.*))?$")
-noPattern: Final[re.Pattern[str]]        = re.compile(r"^\.(?:No|Ar)(?:\s+(.*))?$")
+noPattern: Final[re.Pattern[str]]        = re.compile(r"^\.(No|Ar)(?:\s+(.*))?$")
 shPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Sh(?:\s+(.*))?$")
 syPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Sy(?:\s+(.*))?$")
 
@@ -59,6 +59,8 @@ supportedFormats: Final[tuple[str, ...]] = (
 styleBold: Final[str]      = "\x1b[1m"
 styleUnderline: Final[str] = "\x1b[4m"
 styleReset: Final[str]     = "\x1b[0m"
+
+macroTokens: Final[set[str]] = {"Fl", "Ar", "No", "Op", "|", "{", "}", "--"}
 
 
 # ###### C usage function definitions #######################################
@@ -211,17 +213,23 @@ def parseTokens(
 
       elif token == "Ar":
          i += 1
-         if i < total:
+         while i < total and tokens[i] not in macroTokens:
             argVal: str = tokens[i]
-            if includeArgs:
-               if useStyles:
-                  words.append(f"{styleUnderline}{argVal}{styleReset}")
-               else:
-                  words.append(argVal)
+            if argVal == "...":
+               words.append("...")
+            else:
+               if includeArgs:
+                  if useStyles:
+                     words.append(f"{styleUnderline}{argVal}{styleReset}")
+                  else:
+                     words.append(argVal)
             i += 1
 
       elif token == "No":
          i += 1
+         while i < total and tokens[i] not in macroTokens:
+            words.append(tokens[i])
+            i += 1
 
       elif token == "Op":
          i += 1
@@ -285,13 +293,19 @@ def parseTokensMacro(tokens: Sequence[str]) -> str:
 
       elif token == "Ar":
          i += 1
-         if i < total:
+         while i < total and tokens[i] not in macroTokens:
             argVal: str = tokens[i]
-            parts.append(f'ARG("{argVal}")')
+            if argVal == "...":
+               parts.append('"..."')
+            else:
+               parts.append(f'ARG("{argVal}")')
             i += 1
 
       elif token == "No":
          i += 1
+         while i < total and tokens[i] not in macroTokens:
+            parts.append(f'"{tokens[i]}"')
+            i += 1
 
       elif token == "Op":
          i += 1
@@ -421,18 +435,20 @@ def parseManpage(filePath: Path) -> tuple[list[Entry], str]:
       # Track command arguments (.No / .Ar):
       noMatch: re.Match[str] | None = noPattern.match(stripped)
       if noMatch:
+         macroType: str = noMatch.group(1)
          noContent: str = (
-            (noMatch.group(1) or "")
+            (noMatch.group(2) or "")
             .replace(r"\_", "_")
             .replace(r"\-", "-")
             .replace(r"\%", "")
          )
          noTokens: list[str] = noContent.split()
          if noTokens:
+            tokensToParse: list[str] = [macroType] + noTokens
             extraArgs: str  = parseTokens(
-               noTokens, includeArgs = True, useStyles = True
+               tokensToParse, includeArgs = True, useStyles = True
             )
-            extraMacro: str = parseTokensMacro(noTokens)
+            extraMacro: str = parseTokensMacro(tokensToParse)
 
             # If options have already been encountered, this line belongs after options
             if hasSeenOptionsForCmd:
