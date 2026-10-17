@@ -116,18 +116,6 @@ cppTranslatorsComment: Final[tuple[str, ...]]   = (
 
 
 # ###### Shell usage function definitions ###################################
-shellUsageHead: Final[tuple[str, ...]]          = (
-   "# ###### Usage ##############################################################",
-   "usage () {",
-   '   local program="$1"',
-   '   local exitCode="$2"',
-   "   local header=$'\\x1b[4m'",
-   "   local cmd=$'\\x1b[1m'",
-   "   local opt=$'\\x1b[1m'",
-   "   local arg=$'\\x1b[4m'",
-   "   local syn=$'\\x1b[1m'",
-   "   local reset=$'\\x1b[0m'",
-)
 shellUsageTail: Final[tuple[str, ...]]          = (
    '   exit "${exitCode}"',
    "}",
@@ -450,7 +438,6 @@ def parseManpage(filePath: Path) -> tuple[list[Entry], str]:
             )
             extraMacro: str = parseTokensMacro(tokensToParse)
 
-            # If options have already been encountered, this line belongs after options
             if hasSeenOptionsForCmd:
                entries.append(
                   ArgumentEntry(
@@ -685,28 +672,22 @@ def renderUsageShell(
    withGettext: bool = False,
 ) -> str:
    """Generate a complete Shell/Bash usage() function using a here-document."""
-   lines: Final[list[str]] = list(shellUsageHead)
-
-   if withGettext:
-      lines.extend(shellTranslatorsComment)
+   lines: Final[list[str]] = [
+      "# ###### Usage ##############################################################",
+      "usage () {",
+      '   local program="$1"',
+      '   local exitCode="$2"',
+      "   local header=$'\\x1b[4m'",
+      "   local cmd=$'\\x1b[1m'",
+   ]
 
    usageHeader: Final[str] = (
       '$(gettext "Usage:")' if withGettext else "Usage:"
    )
 
-   if not entries:
-      lines.extend([
-         "   cat >&2 <<EOF",
-         f"${{header}}{usageHeader}${{reset}}",
-         "EOF",
-      ])
-      lines.extend(shellUsageTail)
-      return "\n".join(lines)
-
-   lines.extend([
-      "   cat >&2 <<EOF",
+   bodyLines: Final[list[str]] = [
       f"${{header}}{usageHeader}${{reset}}",
-   ])
+   ]
 
    for entry in entries:
       if isinstance(entry, CommandEntry):
@@ -721,9 +702,9 @@ def renderUsageShell(
                .replace(styleUnderline, "${arg}")
                .replace(styleReset, "${reset}")
             )
-            lines.append(f"${{cmd}}{progToken}${{reset}} {escapedArgs}")
+            bodyLines.append(f"${{cmd}}{progToken}${{reset}} {escapedArgs}")
          else:
-            lines.append(f"${{cmd}}{progToken}${{reset}}")
+            bodyLines.append(f"${{cmd}}{progToken}${{reset}}")
       elif isinstance(entry, OptionEntry):
          escapedOpt: str = (
             entry.text.replace("\\", "\\\\")
@@ -739,7 +720,7 @@ def renderUsageShell(
             .replace("${opt}]${reset}", "${syn}]${reset}")
             .replace("${opt}\vert{}${reset}", "${syn}\vert{}${reset}")
          )
-         lines.append(f"\t{escapedOpt}")
+         bodyLines.append(f"\t{escapedOpt}")
       elif isinstance(entry, ArgumentEntry):
          escapedArg: str = (
             entry.text.replace("\\", "\\\\")
@@ -750,10 +731,26 @@ def renderUsageShell(
             .replace(styleUnderline, "${arg}")
             .replace(styleReset, "${reset}")
          )
-         lines.append(f"\t{escapedArg}")
+         bodyLines.append(f"\t{escapedArg}")
 
+   bodyText: Final[str] = "\n".join(bodyLines)
+   hasOpt: Final[bool]  = "${opt}" in bodyText
+   hasArg: Final[bool]  = "${arg}" in bodyText
+   hasSyn: Final[bool]  = "${syn}" in bodyText
+
+   lines.append(f"{'   ' if hasOpt else '   # '}local opt=$'\\x1b[1m'")
+   lines.append(f"{'   ' if hasArg else '   # '}local arg=$'\\x1b[4m'")
+   lines.append(f"{'   ' if hasSyn else '   # '}local syn=$'\\x1b[1m'")
+   lines.append("   local reset=$'\\x1b[0m'")
+
+   if withGettext:
+      lines.extend(shellTranslatorsComment)
+
+   lines.append("   cat >&2 <<EOF")
+   lines.extend(bodyLines)
    lines.append("EOF")
    lines.extend(shellUsageTail)
+
    return "\n".join(lines)
 
 
