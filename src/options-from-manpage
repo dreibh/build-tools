@@ -116,9 +116,13 @@ cppTranslatorsComment: Final[tuple[str, ...]]   = (
 shellUsageHead: Final[tuple[str, ...]]          = (
    "# ###### Usage ##############################################################",
    "usage () {",
-   '   local exitCode="$1"',
-   "   local bold=$'\\x1b[1m'",
-   "   local underline=$'\\x1b[4m'",
+   '   local program="$1"',
+   '   local exitCode="$2"',
+   "   local header=$'\\x1b[4m'",
+   "   local cmd=$'\\x1b[1m'",
+   "   local opt=$'\\x1b[1m'",
+   "   local arg=$'\\x1b[4m'",
+   "   local syn=$'\\x1b[1m'",
    "   local reset=$'\\x1b[0m'",
 )
 shellUsageTail: Final[tuple[str, ...]]          = (
@@ -133,7 +137,7 @@ shellTranslatorsComment: Final[tuple[str, ...]] = (
 
 @dataclass(frozen = True)
 class CommandEntry:
-   """Represents a .Nm macro occurrence with program name and optional arguments."""
+   """Represents a .Nm macro occurrence with program name and optional leading arguments."""
 
    name:      str
    args:      str = ""
@@ -149,7 +153,15 @@ class OptionEntry:
    macroText:   str
 
 
-Entry = CommandEntry | OptionEntry
+@dataclass(frozen = True)
+class ArgumentEntry:
+   """Represents trailing operands following options (e.g. -- command [argument ...])."""
+
+   text:      str
+   macroText: str
+
+
+Entry = CommandEntry | OptionEntry | ArgumentEntry
 
 
 # ###### Parse tokens from manpage ##########################################
@@ -158,14 +170,7 @@ def parseTokens(
    includeArgs: bool = True,
    useStyles: bool   = False,
 ) -> str:
-   r"""Parse tokens from an option or argument line into ANSI or plain text.
-
-   Handles:
-   - 'Fl' represents '-'
-   - 'Fl Fl <opt>' or 'Fl \-<opt>' produces '--<opt>'
-   - 'Ar' designates the next token as an argument value
-   - 'No' switches back to normal font
-   """
+   r"""Parse tokens from an option or argument line into ANSI or plain text."""
    words: Final[list[str]] = []
    i: int                  = 0
    total: Final[int]       = len(tokens)
@@ -179,12 +184,11 @@ def parseTokens(
             dashCount += 1
             i += 1
 
-         # Handle standalone '-' tokens (e.g. from unescaped '\-'):
          while i < total and tokens[i] == "-":
             dashCount += 1
             i += 1
 
-         if i < total and tokens[i] not in ("Fl", "Ar", "No", "|"):
+         if i < total and tokens[i] not in ("Fl", "Ar", "No", "Op", "|"):
             word: str        = tokens[i]
             stripped: str    = word.lstrip("-")
             extraDashes: int = len(word) - len(stripped)
@@ -218,7 +222,16 @@ def parseTokens(
       elif token == "No":
          i += 1
 
-      elif token in ("|", "{", "}"):
+      elif token == "Op":
+         i += 1
+         inner: str = parseTokens(tokens[i:], includeArgs = includeArgs, useStyles = useStyles)
+         if useStyles:
+            words.append(f"{styleBold}[{styleReset}{inner}{styleBold}]{styleReset}")
+         else:
+            words.append(f"[{inner}]")
+         break
+
+      elif token in ("|", "{", "}", "--"):
          if useStyles:
             words.append(f"{styleBold}{token}{styleReset}")
          else:
@@ -252,7 +265,7 @@ def parseTokensMacro(tokens: Sequence[str]) -> str:
             dashCount += 1
             i += 1
 
-         if i < total and tokens[i] not in ("Fl", "Ar", "No", "|"):
+         if i < total and tokens[i] not in ("Fl", "Ar", "No", "Op", "|"):
             word: str        = tokens[i]
             stripped: str    = word.lstrip("-")
             extraDashes: int = len(word) - len(stripped)
@@ -279,11 +292,17 @@ def parseTokensMacro(tokens: Sequence[str]) -> str:
       elif token == "No":
          i += 1
 
+      elif token == "Op":
+         i += 1
+         innerMacro: str = parseTokensMacro(tokens[i:])
+         parts.append(f'SYN("[") {innerMacro} SYN("]")')
+         break
+
       elif token == "|":
          parts.append("PIPE")
          i += 1
 
-      elif token in ("{", "}", "[", "]"):
+      elif token in ("{", "}", "[", "]", "--"):
          parts.append(f'SYN("{token}")')
          i += 1
 
@@ -302,6 +321,8 @@ def parseTokensMacro(tokens: Sequence[str]) -> str:
       prev: str = parts[idx - 1]
       if prev == "PIPE" or p == "PIPE":
          res.append(f" {p}")
+      elif prev.endswith('SYN("[")') or p.startswith('SYN("]")'):
+         res.append(f" {p}")
       else:
          res.append(f' " " {p}')
    return "".join(res)
@@ -309,15 +330,14 @@ def parseTokensMacro(tokens: Sequence[str]) -> str:
 
 # ###### Parse manpage ######################################################
 def parseManpage(filePath: Path) -> tuple[list[Entry], str]:
-   """Parse a manpage line-by-line, capturing .Nm, required arguments, and .Op directives."""
+   """Parse a manpage line-by-line, capturing .Nm, options, and arguments."""
    entries: Final[list[Entry]] = []
    firstProgramName: str       = ""
+   hasSeenOptionsForCmd: bool  = False
 
    with filePath.open("r", encoding="utf-8", errors="replace") as stream:
       lines: Final[list[str]] = stream.readlines()
 
-   # If .Sh SYNOPSIS exists, scope option extraction to that section.
-   # If no .Sh sections exist (e.g. raw test snippets), parse the entire file.
    hasSynopsisSection: Final[bool] = any(
       bool(m and m.group(1) and m.group(1).strip() == "SYNOPSIS")
       for line in lines
@@ -328,7 +348,6 @@ def parseManpage(filePath: Path) -> tuple[list[Entry], str]:
    for line in lines:
       stripped: str = line.rstrip("\r\n")
 
-      # Track section headers (.Sh):
       shMatch: re.Match[str] | None = shPattern.match(stripped)
       if shMatch:
          sectionName: str = (shMatch.group(1) or "").strip()
@@ -374,9 +393,10 @@ def parseManpage(filePath: Path) -> tuple[list[Entry], str]:
                macroArgs = trailingMacro,
             )
          )
+         hasSeenOptionsForCmd = False
          continue
 
-      # Track required command arguments following .Nm (.No / .Ar):
+      # Track command arguments (.No / .Ar):
       noMatch: re.Match[str] | None = noPattern.match(stripped)
       if noMatch:
          noContent: str = (
@@ -386,25 +406,34 @@ def parseManpage(filePath: Path) -> tuple[list[Entry], str]:
             .replace(r"\%", "")
          )
          noTokens: list[str] = noContent.split()
-         if noTokens and entries:
-            lastEntry: Entry = entries[-1]
-            if isinstance(lastEntry, CommandEntry):
-               extraArgs: str     = parseTokens(
-                  noTokens, includeArgs = True, useStyles = True
+         if noTokens:
+            extraArgs: str  = parseTokens(
+               noTokens, includeArgs = True, useStyles = True
+            )
+            extraMacro: str = parseTokensMacro(noTokens)
+
+            # If options have already been encountered, this line belongs after options
+            if hasSeenOptionsForCmd:
+               entries.append(
+                  ArgumentEntry(
+                     text      = extraArgs,
+                     macroText = extraMacro,
+                  )
                )
-               extraMacro: str    = parseTokensMacro(noTokens)
+            elif entries and isinstance(entries[-1], CommandEntry):
+               lastCmd: CommandEntry = entries[-1]
                combinedArgs: str  = (
-                  f"{lastEntry.args} {extraArgs}".strip()
-                  if lastEntry.args
+                  f"{lastCmd.args} {extraArgs}".strip()
+                  if lastCmd.args
                   else extraArgs
                )
                combinedMacro: str = (
-                  f'{lastEntry.macroArgs} " " {extraMacro}'.strip()
-                  if lastEntry.macroArgs
+                  f'{lastCmd.macroArgs} " " {extraMacro}'.strip()
+                  if lastCmd.macroArgs
                   else extraMacro
                )
                entries[-1] = CommandEntry(
-                  name      = lastEntry.name,
+                  name      = lastCmd.name,
                   args      = combinedArgs,
                   macroArgs = combinedMacro,
                )
@@ -421,21 +450,59 @@ def parseManpage(filePath: Path) -> tuple[list[Entry], str]:
          )
          opTokens: list[str] = opContent.split()
          if opTokens:
-            styledInner: str = parseTokens(
-               opTokens, includeArgs = True, useStyles = True
+            isOptionFlag: bool = any(
+               t == "Fl" or t.startswith("-") or t == "OPTIONS" for t in opTokens
             )
-            textVal: str     = f"{styleBold}[{styleReset}{styledInner}{styleBold}]{styleReset}"
-            optOnlyVal: str  = parseTokens(
-               opTokens, includeArgs = False, useStyles = False
-            )
-            macroVal: str    = parseTokensMacro(opTokens)
-            entries.append(
-               OptionEntry(
-                  text        = textVal,
-                  optionsOnly = optOnlyVal,
-                  macroText   = macroVal,
+            if isOptionFlag:
+               styledInner: str = parseTokens(
+                  opTokens, includeArgs = True, useStyles = True
                )
-            )
+               textVal: str     = f"{styleBold}[{styleReset}{styledInner}{styleBold}]{styleReset}"
+               optOnlyVal: str  = parseTokens(
+                  opTokens, includeArgs = False, useStyles = False
+               )
+               macroVal: str    = parseTokensMacro(opTokens)
+               entries.append(
+                  OptionEntry(
+                     text        = textVal,
+                     optionsOnly = optOnlyVal,
+                     macroText   = macroVal,
+                  )
+               )
+               hasSeenOptionsForCmd = True
+            else:
+               # Standalone optional operand line:
+               styledInner = parseTokens(
+                  opTokens, includeArgs = True, useStyles = True
+               )
+               bracketedArg: str   = f"{styleBold}[{styleReset}{styledInner}{styleBold}]{styleReset}"
+               innerMacro: str     = parseTokensMacro(opTokens)
+               bracketedMacro: str = f'SYN("[") {innerMacro} SYN("]")'
+
+               if hasSeenOptionsForCmd:
+                  entries.append(
+                     ArgumentEntry(
+                        text      = bracketedArg,
+                        macroText = bracketedMacro,
+                     )
+                  )
+               elif entries and isinstance(entries[-1], CommandEntry):
+                  lastCmd = entries[-1]
+                  combinedArgs = (
+                     f"{lastCmd.args} {bracketedArg}".strip()
+                     if lastCmd.args
+                     else bracketedArg
+                  )
+                  combinedMacro = (
+                     f'{lastCmd.macroArgs} " " {bracketedMacro}'.strip()
+                     if lastCmd.macroArgs
+                     else bracketedMacro
+                  )
+                  entries[-1] = CommandEntry(
+                     name      = lastCmd.name,
+                     args      = combinedArgs,
+                     macroArgs = combinedMacro,
+                  )
 
    return entries, firstProgramName
 
@@ -478,6 +545,9 @@ def sortEntries(entries: Sequence[Entry]) -> list[Entry]:
          sortedEntries.append(entry)
       elif isinstance(entry, OptionEntry):
          currentOptions.append(entry)
+      elif isinstance(entry, ArgumentEntry):
+         flushOptions()
+         sortedEntries.append(entry)
 
    flushOptions()
    return sortedEntries
@@ -494,7 +564,7 @@ def renderSyntax(entries: Sequence[Entry]) -> str:
             lines.append(f"{styledName} {entry.args}")
          else:
             lines.append(styledName)
-      elif isinstance(entry, OptionEntry):
+      elif isinstance(entry, (OptionEntry, ArgumentEntry)):
          lines.append(f"\t{entry.text}")
    return "\n".join(lines)
 
@@ -555,6 +625,8 @@ def renderUsageC(
                lines.append(f'{indent}CMD("{entry.name}\\n")')
       elif isinstance(entry, OptionEntry):
          lines.append(f"{entryIndent}ENTRY({entry.macroText})")
+      elif isinstance(entry, ArgumentEntry):
+         lines.append(f'{entryIndent}"\\t" {entry.macroText} "\\n"')
 
    if arguments:
       lines[-1] = lines[-1] + ","
@@ -597,6 +669,8 @@ def renderUsageCpp(
             lines.append(f'             << CMD({progVar}) << "\\n"')
       elif isinstance(entry, OptionEntry):
          lines.append(f"                   ENTRY({entry.macroText})")
+      elif isinstance(entry, ArgumentEntry):
+         lines.append(f'                   "\\t" {entry.macroText} "\\n"')
 
    lines[-1] = lines[-1] + ";"
    lines.extend(cppUsageTail)
@@ -604,7 +678,11 @@ def renderUsageCpp(
 
 
 # ###### Write "usage-shell" output #########################################
-def renderUsageShell(entries: Sequence[Entry], withGettext: bool = False) -> str:
+def renderUsageShell(
+   entries: Sequence[Entry],
+   firstProgramName: str,
+   withGettext: bool = False,
+) -> str:
    """Generate a complete Shell/Bash usage() function using a here-document."""
    lines: Final[list[str]] = list(shellUsageHead)
 
@@ -618,7 +696,7 @@ def renderUsageShell(entries: Sequence[Entry], withGettext: bool = False) -> str
    if not entries:
       lines.extend([
          "   cat >&2 <<EOF",
-         f"${{underline}}{usageHeader}${{reset}}",
+         f"${{header}}{usageHeader}${{reset}}",
          "EOF",
       ])
       lines.extend(shellUsageTail)
@@ -626,35 +704,52 @@ def renderUsageShell(entries: Sequence[Entry], withGettext: bool = False) -> str
 
    lines.extend([
       "   cat >&2 <<EOF",
-      f"${{underline}}{usageHeader}${{reset}}",
+      f"${{header}}{usageHeader}${{reset}}",
    ])
 
    for entry in entries:
       if isinstance(entry, CommandEntry):
+         progToken: str = "${program}" if entry.name == firstProgramName else entry.name
          if entry.args:
             escapedArgs: str = (
                entry.args.replace("\\", "\\\\")
                .replace('"', '\\"')
                .replace("$", "\\$")
                .replace("`", "\\`")
-               .replace(styleBold, "${bold}")
-               .replace(styleUnderline, "${underline}")
+               .replace(styleBold, "${syn}")
+               .replace(styleUnderline, "${arg}")
                .replace(styleReset, "${reset}")
             )
-            lines.append(f"${{bold}}$0${{reset}} {escapedArgs}")
+            lines.append(f"${{cmd}}{progToken}${{reset}} {escapedArgs}")
          else:
-            lines.append("${bold}$0${reset}")
+            lines.append(f"${{cmd}}{progToken}${{reset}}")
       elif isinstance(entry, OptionEntry):
          escapedOpt: str = (
             entry.text.replace("\\", "\\\\")
             .replace('"', '\\"')
             .replace("$", "\\$")
             .replace("`", "\\`")
-            .replace(styleBold, "${bold}")
-            .replace(styleUnderline, "${underline}")
+            .replace(styleBold, "${opt}")
+            .replace(styleUnderline, "${arg}")
             .replace(styleReset, "${reset}")
          )
+         escapedOpt = (
+            escapedOpt.replace("${opt}[${reset}", "${syn}[${reset}")
+            .replace("${opt}]${reset}", "${syn}]${reset}")
+            .replace("${opt}\vert{}${reset}", "${syn}\vert{}${reset}")
+         )
          lines.append(f"\t{escapedOpt}")
+      elif isinstance(entry, ArgumentEntry):
+         escapedArg: str = (
+            entry.text.replace("\\", "\\\\")
+            .replace('"', '\\"')
+            .replace("$", "\\$")
+            .replace("`", "\\`")
+            .replace(styleBold, "${syn}")
+            .replace(styleUnderline, "${arg}")
+            .replace(styleReset, "${reset}")
+         )
+         lines.append(f"\t{escapedArg}")
 
    lines.append("EOF")
    lines.extend(shellUsageTail)
@@ -682,7 +777,7 @@ def renderOutput(
    elif fmt in ("usage-c++", "usage-cpp"):
       result = renderUsageCpp(entries, firstProgramName, withGettext = withGettext)
    elif fmt in ("usage-shell", "usage-bash"):
-      result = renderUsageShell(entries, withGettext = withGettext)
+      result = renderUsageShell(entries, firstProgramName, withGettext = withGettext)
    else:
       raise ValueError(
          f"Unsupported format '{outputFormat}'. "
