@@ -40,9 +40,10 @@ from pathlib import Path
 from typing import Final, Sequence
 
 
-opPattern: Final[re.Pattern[str]] = re.compile(r"^\.Op(?:\s+(.*))?$")
-nmPattern: Final[re.Pattern[str]] = re.compile(r"^\.Nm(?:\s+(.*))?$")
-shPattern: Final[re.Pattern[str]] = re.compile(r"^\.Sh(?:\s+(.*))?$")
+opPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Op(?:\s+(.*))?$")
+nmPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Nm(?:\s+(.*))?$")
+noPattern: Final[re.Pattern[str]]        = re.compile(r"^\.(?:No|Ar)(?:\s+(.*))?$")
+shPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Sh(?:\s+(.*))?$")
 
 defaultFormat: Final[str]                = "syntax"
 supportedFormats: Final[tuple[str, ...]] = (
@@ -108,9 +109,10 @@ shellTranslatorsComment: Final[tuple[str, ...]] = (
 
 @dataclass(frozen = True)
 class CommandEntry:
-   """Represents a .Nm macro occurrence with the program name."""
+   """Represents a .Nm macro occurrence with program name and optional arguments."""
 
    name: str
+   args: str = ""
 
 
 @dataclass(frozen = True)
@@ -136,6 +138,7 @@ def parseTokens(
    - 'Fl' represents '-'
    - 'Fl Fl <opt>' or 'Fl \-<opt>' produces '--<opt>'
    - 'Ar' designates the next token as an argument value
+   - 'No' switches back to normal font
    """
    words: Final[list[str]] = []
    i: int                  = 0
@@ -155,7 +158,7 @@ def parseTokens(
             dashCount += 1
             i += 1
 
-         if i < total and tokens[i] not in ("Fl", "Ar", "|"):
+         if i < total and tokens[i] not in ("Fl", "Ar", "No", "|"):
             word: str        = tokens[i]
             stripped: str    = word.lstrip("-")
             extraDashes: int = len(word) - len(stripped)
@@ -178,6 +181,9 @@ def parseTokens(
                words.append(argVal.upper() if capitalizeArgs else argVal)
             i += 1
 
+      elif token == "No":
+         i += 1
+
       else:
          words.append(token)
          i += 1
@@ -187,7 +193,7 @@ def parseTokens(
 
 # ###### Parse manpage ######################################################
 def parseManpage(filePath: Path) -> list[Entry]:
-   """Parse a manpage line-by-line, capturing .Nm and .Op directives."""
+   """Parse a manpage line-by-line, capturing .Nm, required arguments, and .Op directives."""
    entries: Final[list[Entry]] = []
    firstProgramName: str       = ""
 
@@ -213,47 +219,85 @@ def parseManpage(filePath: Path) -> list[Entry]:
          inSynopsis       = sectionName == "SYNOPSIS"
          continue
 
+      if not inSynopsis:
+         continue
+
       # Track program names (.Nm):
       nmMatch: re.Match[str] | None = nmPattern.match(stripped)
       if nmMatch:
          rawArg: str | None = nmMatch.group(1)
-         cleanedName: str          = ""
+         cleanedName: str   = ""
+         trailingArgs: str  = ""
+
          if rawArg:
-            cleanedName = (
+            cleanedNm: str = (
                rawArg.replace(r"\_", "_")
                .replace(r"\-", "-")
                .replace(r"\%", "")
                .strip()
             )
+            nmTokens: list[str] = cleanedNm.split()
+            if nmTokens:
+               cleanedName = nmTokens[0]
+               if len(nmTokens) > 1:
+                  trailingArgs = parseTokens(
+                     nmTokens[1:], capitalizeArgs = False, includeArgs = True
+                  )
+
             if not firstProgramName:
                firstProgramName = cleanedName
          elif firstProgramName:
             cleanedName = firstProgramName
 
-         if inSynopsis:
-            entries.append(CommandEntry(name=cleanedName or firstProgramName))
+         entries.append(
+            CommandEntry(
+               name = cleanedName or firstProgramName,
+               args = trailingArgs,
+            )
+         )
          continue
 
-      # Track option definitions (.Op)
-      opMatch: re.Match[str] | None = opPattern.match(stripped)
-      if opMatch:
-         if not inSynopsis:
-            continue
-         content: str             = opMatch.group(1) or ""
-         content                  = (
-            content.replace(r"\_", "_")
+      # Track required command arguments following .Nm (.No / .Ar):
+      noMatch: re.Match[str] | None = noPattern.match(stripped)
+      if noMatch:
+         noContent: str = (
+            (noMatch.group(1) or "")
+            .replace(r"\_", "_")
             .replace(r"\-", "-")
             .replace(r"\%", "")
          )
-         tokens: list[str] = content.split()
-         if tokens:
+         noTokens: list[str] = noContent.split()
+         if noTokens and entries and isinstance(entries[-1], CommandEntry):
+            extraArgs: str          = parseTokens(
+               noTokens, capitalizeArgs = False, includeArgs = True
+            )
+            lastEntry: CommandEntry = entries[-1]
+            combinedArgs: str       = (
+               f"{lastEntry.args} {extraArgs}".strip()
+               if lastEntry.args
+               else extraArgs
+            )
+            entries[-1] = CommandEntry(name = lastEntry.name, args = combinedArgs)
+         continue
+
+      # Track option definitions (.Op):
+      opMatch: re.Match[str] | None = opPattern.match(stripped)
+      if opMatch:
+         opContent: str = (
+            (opMatch.group(1) or "")
+            .replace(r"\_", "_")
+            .replace(r"\-", "-")
+            .replace(r"\%", "")
+         )
+         opTokens: list[str] = opContent.split()
+         if opTokens:
             textVal: str    = parseTokens(
-               tokens, capitalizeArgs=True, includeArgs=True
+               opTokens, capitalizeArgs = True, includeArgs = True
             )
             optOnlyVal: str = parseTokens(
-               tokens, capitalizeArgs=False, includeArgs=False
+               opTokens, capitalizeArgs = False, includeArgs = False
             )
-            entries.append(OptionEntry(text=textVal, optionsOnly=optOnlyVal))
+            entries.append(OptionEntry(text = textVal, optionsOnly = optOnlyVal))
 
    return entries
 
@@ -297,11 +341,14 @@ def sortEntries(entries: Sequence[Entry]) -> list[Entry]:
 
 # ###### Write "syntax" output ##############################################
 def renderSyntax(entries: Sequence[Entry]) -> str:
-   """Render entries with program names and tab-indented option syntax."""
+   """Render entries with program names, required arguments, and tab-indented option syntax."""
    lines: Final[list[str]] = []
    for entry in entries:
       if isinstance(entry, CommandEntry):
-         lines.append(entry.name)
+         if entry.args:
+            lines.append(f"{entry.name} {entry.args}")
+         else:
+            lines.append(entry.name)
       elif isinstance(entry, OptionEntry):
          lines.append(f"\t{entry.text}")
    return "\n".join(lines)
@@ -342,7 +389,15 @@ def renderUsageC(entries: Sequence[Entry], withGettext: bool = False) -> str:
 
    for entry in entries:
       if isinstance(entry, CommandEntry):
-         lines.append(f'{indent}"%s\\n"')
+         if entry.args:
+            escapedArgs: str = (
+               entry.args.replace("\\", "\\\\")
+               .replace('"', '\\"')
+               .replace("%", "%%")
+            )
+            lines.append(f'{indent}"%s {escapedArgs}\\n"')
+         else:
+            lines.append(f'{indent}"%s\\n"')
       elif isinstance(entry, OptionEntry):
          escapedOpt: str = (
             entry.text.replace("\\", "\\\\")
@@ -391,7 +446,14 @@ def renderUsageCpp(entries: Sequence[Entry], withGettext: bool = False) -> str:
 
    for entry in entries:
       if isinstance(entry, CommandEntry):
-         lines.append('             << program << "\\n"')
+         if entry.args:
+            escapedArgs: str = (
+               entry.args.replace("\\", "\\\\")
+               .replace('"', '\\"')
+            )
+            lines.append(f'             << program << " {escapedArgs}\\n"')
+         else:
+            lines.append('             << program << "\\n"')
       elif isinstance(entry, OptionEntry):
          escapedOpt: str = (
             entry.text.replace("\\", "\\\\")
@@ -432,7 +494,16 @@ def renderUsageShell(entries: Sequence[Entry], withGettext: bool = False) -> str
 
    for entry in entries:
       if isinstance(entry, CommandEntry):
-         lines.append("$0")
+         if entry.args:
+            escapedArgs: str = (
+               entry.args.replace("\\", "\\\\")
+               .replace('"', '\\"')
+               .replace("$", "\\$")
+               .replace("`", "\\`")
+            )
+            lines.append(f"$0 {escapedArgs}")
+         else:
+            lines.append("$0")
       elif isinstance(entry, OptionEntry):
          escapedOpt: str = (
             entry.text.replace("\\", "\\\\")
@@ -445,7 +516,6 @@ def renderUsageShell(entries: Sequence[Entry], withGettext: bool = False) -> str
    lines.append("EOF")
    lines.extend(shellUsageTail)
    return "\n".join(lines)
-
 
 
 # ###### Write output #######################################################
@@ -481,35 +551,31 @@ def buildParser() -> argparse.ArgumentParser:
    )
    parser.add_argument(
       "manpage",
-      type=Path,
-      help="Path to the manpage file.",
+      type = Path,
+      help = "Path to the manpage file."
    )
    parser.add_argument(
-      "-F",
-      "--format",
-      dest="format",
-      default=defaultFormat,
-      choices=list(supportedFormats),
-      help="Output format: 'syntax' (default), 'options-only', 'usage-c', 'usage-c++', or 'usage-shell'.",
+      "-F", "--format",
+      dest    = "format",
+      default = defaultFormat,
+      choices = list(supportedFormats),
+      help = "Output format: 'syntax' (default), 'options-only', 'usage-c', 'usage-c++', or 'usage-shell'."
    )
    parser.add_argument(
-      "-g",
-      "--with-gettext",
-      dest="withGettext",
-      action="store_true",
-      default=False,
-      help='Use gettext("Usage:") for internationalization in "usage-c", "usage-c++", and "usage-shell" output.',
+      "-g", "--with-gettext",
+      dest    = "withGettext",
+      action  = "store_true",
+      default = False,
+      help = 'Use gettext("Usage:") for internationalization in "usage-c", "usage-c++", and "usage-shell" output.'
    )
    parser.add_argument(
-      "-s",
-      "--sorted",
-      dest="isSorted",
-      action="store_true",
-      default=False,
-      help="Sort option lines per program name alphabetically (short options first, then long options).",
+      "-s", "--sorted",
+      dest    = "isSorted",
+      action  = "store_true",
+      default = False,
+      help    = "Sort option lines per program name alphabetically (short options first, then long options)."
    )
    return parser
-
 
 
 # ###### Parse manpage and write output #####################################
@@ -518,7 +584,7 @@ def main(argv: Sequence[str] | None = None) -> int:
    args: Final[argparse.Namespace]        = parser.parse_args(argv)
 
    if not args.manpage.is_file():
-      sys.stderr.write(f"Error: File not found: '{args.manpage}'\n")
+      sys.stderr.write(f"ERROR: File not found: '{args.manpage}'\n")
       return 1
 
    try:
@@ -535,7 +601,7 @@ def main(argv: Sequence[str] | None = None) -> int:
       if output:
          print(output)
    except Exception as err:
-      sys.stderr.write(f"Error: {err}\n")
+      sys.stderr.write(f"ERROR: {err}\n")
       return 1
 
    return 0
