@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+mapfile -t manpages < <(find . -name "*.[0-9]")
+
+for manpage in "${manpages[@]}" ; do
+   print-utf8 -n -s "\e[34m======  ${manpage} " "=" "=\e[0m"
+
+   # ====== Find the program ================================================
+   directory="$(dirname "${manpage}")"
+   program="$(basename --suffix="" "${manpage}")"
+   program="${program%.*}"
+
+   # ====== Set the options =================================================
+   options=( )
+   if [ -e "${directory}/${program}.cc" ] ; then
+      program="${program}.cc"
+      options+=( "-F" "usage-c++" )
+   elif [ -e "${directory}/${program}.c" ] ; then
+      program="${program}.c"
+      options+=( "-F" "usage-c" )
+   elif [ -e "${directory}/${program}" ] ; then
+      options+=( "-F" "usage-shell" )
+   else
+      echo >&2 "ERROR: Cannot find program for manpage ${manpage}!"
+      exit 1
+   fi
+   if grep -q "TEXTDOMAINDIR" "${directory}/${program}" ; then
+      options+=( "--with-gettext" )
+   fi
+
+   # ====== Run the options extraction script ===============================
+   # => The script source is in the build-tools repository!
+   ~/src/build-tools/src/options-from-manpage \
+      "${manpage}" "${options[@]}" -F syntax
+   ~/src/build-tools/src/options-from-manpage \
+      "${manpage}" "${options[@]}" --with-block \
+      >"${directory}/${program}.usage"
+
+   # ====== Apply update ====================================================
+   text-block \
+      -i "${directory}/${program}" \
+      -o "${directory}/${program}.updated" \
+      --replace "${directory}/${program}.usage" \
+      -b 'BEGIN-OF-USAGE-BLOCK' -e 'END-OF-USAGE-BLOCK' \
+      --full-tag-lines --include-tags
+   diff --color "${directory}/${program}" "${directory}/${program}.updated" || true
+
+done
