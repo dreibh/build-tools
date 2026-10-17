@@ -1,9 +1,39 @@
 #!/usr/bin/env bash
+# ==========================================================================
+#              ____        _ _     _     _____           _
+#             | __ ) _   _(_) | __| |   |_   _|__   ___ | |___
+#             |  _ \| | | | | |/ _` |_____| |/ _ \ / _ \| / __|
+#             | |_) | |_| | | | (_| |_____| | (_) | (_) | \__ \
+#             |____/ \__,_|_|_|\__,_|     |_|\___/ \___/|_|___/
+#
+#                           --- Build-Tools ---
+#                https://www.nntb.no/~dreibh/system-tools/
+# ==========================================================================
+#
+# Packaging Scripts
+# Copyright (C) 2021-2026 by Thomas Dreibholz
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Contact: thomas.dreibholz@gmail.com
 
 set -euo pipefail
 
-mapfile -t manpages < <(find . -name "*.[0-9]")
 
+DIRNAME="$(dirname "$0")"
+
+mapfile -t manpages < <(find . -name "*.[0-9]" -and ! -name "*.so.*")
 for manpage in "${manpages[@]}" ; do
    print-utf8 -n -s "\e[34m======  ${manpage} " "=" "=\e[0m"
 
@@ -31,10 +61,9 @@ for manpage in "${manpages[@]}" ; do
    fi
 
    # ====== Run the options extraction script ===============================
-   # => The script source is in the build-tools repository!
-   ~/src/build-tools/src/options-from-manpage \
+   "${DIRNAME}/options-from-manpage" \
       "${manpage}" "${options[@]}" -F syntax
-   ~/src/build-tools/src/options-from-manpage \
+   "${DIRNAME}/options-from-manpage" \
       "${manpage}" "${options[@]}" --with-block \
       >"${directory}/${program}.usage"
 
@@ -44,7 +73,8 @@ for manpage in "${manpages[@]}" ; do
       -o "${directory}/${program}.updated" \
       --replace "${directory}/${program}.usage" \
       -b 'BEGIN-OF-USAGE-BLOCK' -e 'END-OF-USAGE-BLOCK' \
-      --full-tag-lines --include-tags
+      --full-tag-lines --include-tags \
+      --min-actions 1 --max-actions 1
    diff --color "${directory}/${program}" "${directory}/${program}.updated" || true
 
 done
