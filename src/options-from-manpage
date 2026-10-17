@@ -267,17 +267,18 @@ def parseManpage(filePath: Path) -> list[Entry]:
             .replace(r"\%", "")
          )
          noTokens: list[str] = noContent.split()
-         if noTokens and entries and isinstance(entries[-1], CommandEntry):
-            extraArgs: str          = parseTokens(
-               noTokens, capitalizeArgs = False, includeArgs = True
-            )
-            lastEntry: CommandEntry = entries[-1]
-            combinedArgs: str       = (
-               f"{lastEntry.args} {extraArgs}".strip()
-               if lastEntry.args
-               else extraArgs
-            )
-            entries[-1] = CommandEntry(name = lastEntry.name, args = combinedArgs)
+         if noTokens and entries:
+            lastEntry: Entry = entries[-1]
+            if isinstance(lastEntry, CommandEntry):
+               extraArgs: str    = parseTokens(
+                  noTokens, capitalizeArgs = False, includeArgs = True
+               )
+               combinedArgs: str = (
+                  f"{lastEntry.args} {extraArgs}".strip()
+                  if lastEntry.args
+                  else extraArgs
+               )
+               entries[-1] = CommandEntry(name = lastEntry.name, args = combinedArgs)
          continue
 
       # Track option definitions (.Op):
@@ -547,7 +548,7 @@ def renderOutput(
 def buildParser() -> argparse.ArgumentParser:
    """Build command-line arguments."""
    parser: Final[argparse.ArgumentParser] = argparse.ArgumentParser(
-      description="Extract and format options from an mdoc manpage file."
+      description = "Extract and format options from an mdoc manpage file."
    )
    parser.add_argument(
       "manpage",
@@ -559,14 +560,14 @@ def buildParser() -> argparse.ArgumentParser:
       dest    = "format",
       default = defaultFormat,
       choices = list(supportedFormats),
-      help = "Output format: 'syntax' (default), 'options-only', 'usage-c', 'usage-c++', or 'usage-shell'."
+      help    = "Output format: 'syntax' (default), 'options-only', 'usage-c', 'usage-c++', or 'usage-shell'."
    )
    parser.add_argument(
       "-g", "--with-gettext",
       dest    = "withGettext",
       action  = "store_true",
       default = False,
-      help = 'Use gettext("Usage:") for internationalization in "usage-c", "usage-c++", and "usage-shell" output.'
+      help    = 'Use gettext("Usage:") for internationalization in "usage-c", "usage-c++", and "usage-shell" output.'
    )
    parser.add_argument(
       "-s", "--sorted",
@@ -595,8 +596,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
       output: Final[str] = renderOutput(
          entries,
-         outputFormat=args.format,
-         withGettext=args.withGettext,
+         outputFormat = args.format,
+         withGettext  = args.withGettext,
       )
       if output:
          print(output)
