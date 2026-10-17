@@ -54,6 +54,11 @@ supportedFormats: Final[tuple[str, ...]] = (
    "usage-shell",
 )
 
+# ANSI style escape codes
+styleBold: Final[str]      = "\033[1m"
+styleUnderline: Final[str] = "\033[4m"
+styleReset: Final[str]     = "\033[0m"
+
 
 # ###### C usage function definitions #######################################
 cUsageHead: Final[tuple[str, ...]]              = (
@@ -96,6 +101,9 @@ shellUsageHead: Final[tuple[str, ...]]          = (
    "# ###### Usage ##############################################################",
    "usage () {",
    '   local exitCode="$1"',
+   "   local bold=$'\\033[1m'",
+   "   local underline=$'\\033[4m'",
+   "   local reset=$'\\033[0m'",
 )
 shellUsageTail: Final[tuple[str, ...]]          = (
    '   exit "${exitCode}"',
@@ -129,10 +137,10 @@ Entry = CommandEntry | OptionEntry
 # ###### Parse tokens from manpage ##########################################
 def parseTokens(
    tokens: Sequence[str],
-   capitalizeArgs: bool = True,
-   includeArgs: bool    = True,
+   includeArgs: bool = True,
+   useStyles: bool   = False,
 ) -> str:
-   r"""Parse tokens from an option line.
+   r"""Parse tokens from an option or argument line.
 
    Handles:
    - 'Fl' represents '-'
@@ -165,23 +173,38 @@ def parseTokens(
 
             if extraDashes > 0 and stripped:
                dashCount += extraDashes
-               words.append(f"{'-' * dashCount}{stripped}")
+               optStr: str = f"{'-' * dashCount}{stripped}"
                i += 1
             else:
-               words.append(f"{'-' * dashCount}{word}")
+               optStr = f"{'-' * dashCount}{word}"
                i += 1
          else:
-            words.append("-" * dashCount)
+            optStr = "-" * dashCount
+
+         if useStyles:
+            words.append(f"{styleBold}{optStr}{styleReset}")
+         else:
+            words.append(optStr)
 
       elif token == "Ar":
          i += 1
          if i < total:
             argVal: str = tokens[i]
             if includeArgs:
-               words.append(argVal.upper() if capitalizeArgs else argVal)
+               if useStyles:
+                  words.append(f"{styleUnderline}{argVal}{styleReset}")
+               else:
+                  words.append(argVal)
             i += 1
 
       elif token == "No":
+         i += 1
+
+      elif token in ("|", "{", "}"):
+         if useStyles:
+            words.append(f"{styleBold}{token}{styleReset}")
+         else:
+            words.append(token)
          i += 1
 
       else:
@@ -241,7 +264,7 @@ def parseManpage(filePath: Path) -> list[Entry]:
                cleanedName = nmTokens[0]
                if len(nmTokens) > 1:
                   trailingArgs = parseTokens(
-                     nmTokens[1:], capitalizeArgs = False, includeArgs = True
+                     nmTokens[1:], includeArgs = True, useStyles = True
                   )
 
             if not firstProgramName:
@@ -271,7 +294,7 @@ def parseManpage(filePath: Path) -> list[Entry]:
             lastEntry: Entry = entries[-1]
             if isinstance(lastEntry, CommandEntry):
                extraArgs: str    = parseTokens(
-                  noTokens, capitalizeArgs = False, includeArgs = True
+                  noTokens, includeArgs = True, useStyles = True
                )
                combinedArgs: str = (
                   f"{lastEntry.args} {extraArgs}".strip()
@@ -292,11 +315,12 @@ def parseManpage(filePath: Path) -> list[Entry]:
          )
          opTokens: list[str] = opContent.split()
          if opTokens:
-            textVal: str    = parseTokens(
-               opTokens, capitalizeArgs = True, includeArgs = True
+            styledInner: str = parseTokens(
+               opTokens, includeArgs = True, useStyles = True
             )
+            textVal: str    = f"{styleBold}[{styleReset}{styledInner}{styleBold}]{styleReset}"
             optOnlyVal: str = parseTokens(
-               opTokens, capitalizeArgs = False, includeArgs = False
+               opTokens, includeArgs = False, useStyles = False
             )
             entries.append(OptionEntry(text = textVal, optionsOnly = optOnlyVal))
 
@@ -306,15 +330,21 @@ def parseManpage(filePath: Path) -> list[Entry]:
 # ###### Sorting order for options ##########################################
 def sortOptionKey(opt: OptionEntry) -> tuple[int, str, str]:
    """Key for sorting options: short options first (0), long options second (1), other third (2)."""
-   text: Final[str] = opt.text.strip()
+   plain: str = (
+      opt.text.replace(styleBold, "")
+      .replace(styleUnderline, "")
+      .replace(styleReset, "")
+      .lstrip("[")
+      .strip()
+   )
    priority: int
-   if text.startswith("-") and not text.startswith("--"):
+   if plain.startswith("-") and not plain.startswith("--"):
       priority = 0
-   elif text.startswith("--"):
+   elif plain.startswith("--"):
       priority = 1
    else:
       priority = 2
-   return (priority, text.casefold(), text)
+   return (priority, plain.casefold(), plain)
 
 
 # ###### Sort option entries ################################################
@@ -346,10 +376,11 @@ def renderSyntax(entries: Sequence[Entry]) -> str:
    lines: Final[list[str]] = []
    for entry in entries:
       if isinstance(entry, CommandEntry):
+         styledName: str = f"{styleBold}{entry.name}{styleReset}"
          if entry.args:
-            lines.append(f"{entry.name} {entry.args}")
+            lines.append(f"{styledName} {entry.args}")
          else:
-            lines.append(entry.name)
+            lines.append(styledName)
       elif isinstance(entry, OptionEntry):
          lines.append(f"\t{entry.text}")
    return "\n".join(lines)
@@ -393,15 +424,17 @@ def renderUsageC(entries: Sequence[Entry], withGettext: bool = False) -> str:
          if entry.args:
             escapedArgs: str = (
                entry.args.replace("\\", "\\\\")
+               .replace("\033", "\\033")
                .replace('"', '\\"')
                .replace("%", "%%")
             )
-            lines.append(f'{indent}"%s {escapedArgs}\\n"')
+            lines.append(f'{indent}"\\033[1m%s\\033[0m {escapedArgs}\\n"')
          else:
-            lines.append(f'{indent}"%s\\n"')
+            lines.append(f'{indent}"\\033[1m%s\\033[0m\\n"')
       elif isinstance(entry, OptionEntry):
          escapedOpt: str = (
             entry.text.replace("\\", "\\\\")
+            .replace("\033", "\\033")
             .replace('"', '\\"')
             .replace("%", "%%")
          )
@@ -450,14 +483,16 @@ def renderUsageCpp(entries: Sequence[Entry], withGettext: bool = False) -> str:
          if entry.args:
             escapedArgs: str = (
                entry.args.replace("\\", "\\\\")
+               .replace("\033", "\\033")
                .replace('"', '\\"')
             )
-            lines.append(f'             << program << " {escapedArgs}\\n"')
+            lines.append(f'             << "\\033[1m" << program << "\\033[0m {escapedArgs}\\n"')
          else:
-            lines.append('             << program << "\\n"')
+            lines.append('             << "\\033[1m" << program << "\\033[0m\\n"')
       elif isinstance(entry, OptionEntry):
          escapedOpt: str = (
             entry.text.replace("\\", "\\\\")
+            .replace("\033", "\\033")
             .replace('"', '\\"')
          )
          lines.append(f'                "\\t{escapedOpt}\\n"')
@@ -501,16 +536,22 @@ def renderUsageShell(entries: Sequence[Entry], withGettext: bool = False) -> str
                .replace('"', '\\"')
                .replace("$", "\\$")
                .replace("`", "\\`")
+               .replace(styleBold, "${bold}")
+               .replace(styleUnderline, "${underline}")
+               .replace(styleReset, "${reset}")
             )
-            lines.append(f"$0 {escapedArgs}")
+            lines.append(f"${{bold}}$0${{reset}} {escapedArgs}")
          else:
-            lines.append("$0")
+            lines.append("${bold}$0${reset}")
       elif isinstance(entry, OptionEntry):
          escapedOpt: str = (
             entry.text.replace("\\", "\\\\")
             .replace('"', '\\"')
             .replace("$", "\\$")
             .replace("`", "\\`")
+            .replace(styleBold, "${bold}")
+            .replace(styleUnderline, "${underline}")
+            .replace(styleReset, "${reset}")
          )
          lines.append(f"\t{escapedOpt}")
 
@@ -532,11 +573,11 @@ def renderOutput(
    if fmt == "options-only":
       return renderOptionsOnly(entries)
    if fmt == "usage-c":
-      return renderUsageC(entries, withGettext=withGettext)
+      return renderUsageC(entries, withGettext = withGettext)
    if fmt in ("usage-c++", "usage-cpp"):
-      return renderUsageCpp(entries, withGettext=withGettext)
+      return renderUsageCpp(entries, withGettext = withGettext)
    if fmt in ("usage-shell", "usage-bash"):
-      return renderUsageShell(entries, withGettext=withGettext)
+      return renderUsageShell(entries, withGettext = withGettext)
 
    raise ValueError(
       f"Unsupported format '{outputFormat}'. "
