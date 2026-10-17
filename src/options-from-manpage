@@ -39,9 +39,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, Sequence
 
-opPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Op(?:\s+(.*))?$")
-nmPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Nm(?:\s+(.*))?$")
-shPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Sh(?:\s+(.*))?$")
+
+opPattern: Final[re.Pattern[str]] = re.compile(r"^\.Op(?:\s+(.*))?$")
+nmPattern: Final[re.Pattern[str]] = re.compile(r"^\.Nm(?:\s+(.*))?$")
+shPattern: Final[re.Pattern[str]] = re.compile(r"^\.Sh(?:\s+(.*))?$")
 
 defaultFormat: Final[str]                = "syntax"
 supportedFormats: Final[tuple[str, ...]] = (
@@ -52,7 +53,8 @@ supportedFormats: Final[tuple[str, ...]] = (
    "usage-shell",
 )
 
-# C usage function definitions
+
+# ###### C usage function definitions #######################################
 cUsageHead: Final[tuple[str, ...]]              = (
    "// ###### Usage #############################################################",
    "#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 202000L)",
@@ -70,7 +72,8 @@ cTranslatorsComment: Final[tuple[str, ...]]     = (
    '   // "Usage: <program> [options]".',
 )
 
-# C++ usage function definitions
+
+# ###### C++ usage function definitions #####################################
 cppUsageHead: Final[tuple[str, ...]]            = (
    "// ###### Usage #############################################################",
    "[[ noreturn ]]",
@@ -86,7 +89,8 @@ cppTranslatorsComment: Final[tuple[str, ...]]   = (
    '   // "Usage: <program> [options]".',
 )
 
-# Shell / Bash usage function definitions
+
+# ###### Shell usage function definitions ###################################
 shellUsageHead: Final[tuple[str, ...]]          = (
    "# ###### Usage ##############################################################",
    "usage () {",
@@ -102,28 +106,29 @@ shellTranslatorsComment: Final[tuple[str, ...]] = (
 )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen = True)
 class CommandEntry:
    """Represents a .Nm macro occurrence with the program name."""
 
    name: str
 
 
-@dataclass(frozen=True)
+@dataclass(frozen = True)
 class OptionEntry:
    """Represents a .Op macro occurrence with formatted option text."""
 
-   text: str
+   text:        str
    optionsOnly: str
 
 
 Entry = CommandEntry | OptionEntry
 
 
+# ###### Parse tokens from manpage ##########################################
 def parseTokens(
    tokens: Sequence[str],
    capitalizeArgs: bool = True,
-   includeArgs: bool = True,
+   includeArgs: bool    = True,
 ) -> str:
    r"""Parse tokens from an option line.
 
@@ -145,7 +150,7 @@ def parseTokens(
             dashCount += 1
             i += 1
 
-         # Handle standalone '-' tokens (e.g. from unescaped '\-')
+         # Handle standalone '-' tokens (e.g. from unescaped '\-'):
          while i < total and tokens[i] == "-":
             dashCount += 1
             i += 1
@@ -180,6 +185,7 @@ def parseTokens(
    return " ".join(words)
 
 
+# ###### Parse manpage ######################################################
 def parseManpage(filePath: Path) -> list[Entry]:
    """Parse a manpage line-by-line, capturing .Nm and .Op directives."""
    entries: Final[list[Entry]] = []
@@ -200,14 +206,14 @@ def parseManpage(filePath: Path) -> list[Entry]:
    for line in lines:
       stripped: Final[str] = line.rstrip("\r\n")
 
-      # Track section headers (.Sh)
+      # Track section headers (.Sh):
       shMatch: Final[re.Match[str] | None] = shPattern.match(stripped)
       if shMatch:
          sectionName: Final[str] = (shMatch.group(1) or "").strip()
          inSynopsis              = sectionName == "SYNOPSIS"
          continue
 
-      # Track program names (.Nm)
+      # Track program names (.Nm):
       nmMatch: Final[re.Match[str] | None] = nmPattern.match(stripped)
       if nmMatch:
          rawArg: Final[str | None] = nmMatch.group(1)
@@ -252,6 +258,7 @@ def parseManpage(filePath: Path) -> list[Entry]:
    return entries
 
 
+# ###### Sorting order for options ##########################################
 def sortOptionKey(opt: OptionEntry) -> tuple[int, str, str]:
    """Key for sorting options: short options first (0), long options second (1), other third (2)."""
    text: Final[str] = opt.text.strip()
@@ -264,6 +271,7 @@ def sortOptionKey(opt: OptionEntry) -> tuple[int, str, str]:
    return (priority, text.casefold(), text)
 
 
+# ###### Sort option entries ################################################
 def sortEntries(entries: Sequence[Entry]) -> list[Entry]:
    """Sort option entries per program name (.Nm): short options first, then long options."""
    sortedEntries: Final[list[Entry]]        = []
@@ -271,7 +279,7 @@ def sortEntries(entries: Sequence[Entry]) -> list[Entry]:
 
    def flushOptions() -> None:
       if currentOptions:
-         currentOptions.sort(key=sortOptionKey)
+         currentOptions.sort(key = sortOptionKey)
          sortedEntries.extend(currentOptions)
          currentOptions.clear()
 
@@ -286,6 +294,7 @@ def sortEntries(entries: Sequence[Entry]) -> list[Entry]:
    return sortedEntries
 
 
+# ###### Write "syntax" output ##############################################
 def renderSyntax(entries: Sequence[Entry]) -> str:
    """Render entries with program names and tab-indented option syntax."""
    lines: Final[list[str]] = []
@@ -297,6 +306,7 @@ def renderSyntax(entries: Sequence[Entry]) -> str:
    return "\n".join(lines)
 
 
+# ###### Write "options-only" output ########################################
 def renderOptionsOnly(entries: Sequence[Entry]) -> str:
    """Render only option definitions without program names or arguments."""
    lines: Final[list[str]] = [
@@ -307,6 +317,7 @@ def renderOptionsOnly(entries: Sequence[Entry]) -> str:
    return "\n".join(lines)
 
 
+# ###### Write "usage-c" output #############################################
 def renderUsageC(entries: Sequence[Entry], withGettext: bool = False) -> str:
    """Generate a complete C usage() function with fprintf(stderr, ...)."""
    lines: Final[list[str]] = list(cUsageHead)
@@ -356,6 +367,7 @@ def renderUsageC(entries: Sequence[Entry], withGettext: bool = False) -> str:
    return "\n".join(lines)
 
 
+# ###### Write "usage-c++" output ###########################################
 def renderUsageCpp(entries: Sequence[Entry], withGettext: bool = False) -> str:
    """Generate a complete C++ usage() function with std::cerr using string concatenation."""
    lines: Final[list[str]] = list(cppUsageHead)
@@ -391,6 +403,7 @@ def renderUsageCpp(entries: Sequence[Entry], withGettext: bool = False) -> str:
    return "\n".join(lines)
 
 
+# ###### Write "usage-shell" output #########################################
 def renderUsageShell(entries: Sequence[Entry], withGettext: bool = False) -> str:
    """Generate a complete Shell/Bash usage() function using a here-document."""
    lines: Final[list[str]] = list(shellUsageHead)
@@ -433,6 +446,8 @@ def renderUsageShell(entries: Sequence[Entry], withGettext: bool = False) -> str
    return "\n".join(lines)
 
 
+
+# ###### Write output #######################################################
 def renderOutput(
    entries: Sequence[Entry],
    outputFormat: str,
@@ -457,6 +472,7 @@ def renderOutput(
    )
 
 
+# ###### Arguments parser ###################################################
 def buildParser() -> argparse.ArgumentParser:
    """Build command-line arguments."""
    parser: Final[argparse.ArgumentParser] = argparse.ArgumentParser(
@@ -494,6 +510,8 @@ def buildParser() -> argparse.ArgumentParser:
    return parser
 
 
+
+# ###### Parse manpage and write output #####################################
 def main(argv: Sequence[str] | None = None) -> int:
    parser: Final[argparse.ArgumentParser] = buildParser()
    args: Final[argparse.Namespace]        = parser.parse_args(argv)
@@ -522,5 +540,6 @@ def main(argv: Sequence[str] | None = None) -> int:
    return 0
 
 
+# ###### Main program #######################################################
 if __name__ == "__main__":
    sys.exit(main())
