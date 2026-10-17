@@ -44,6 +44,7 @@ for manpage in "${manpages[@]}" ; do
 
    # ====== Set the options =================================================
    options=( )
+   type="source"
    if [ -e "${directory}/${program}.cc" ] ; then
       program="${program}.cc"
       options+=( "-F" "usage-c++" )
@@ -52,15 +53,17 @@ for manpage in "${manpages[@]}" ; do
       options+=( "-F" "usage-c" )
    elif [ -e "${directory}/${program}" ] ; then
       options+=( "-F" "usage-shell" )
+      type="shell"
    else
       echo >&2 "ERROR: Cannot find program for manpage ${manpage}!"
       exit 1
    fi
-   if grep -q "TEXTDOMAINDIR" "${directory}/${program}" ; then
+   if grep -qE "TEXTDOMAIN|bindtextdomain" "${directory}/${program}" ; then
       options+=( "--with-gettext" )
    fi
 
    # ====== Run the options extraction script ===============================
+   echo "${options[@]}"
    "${DIRNAME}/options-from-manpage" \
       "${manpage}" "${options[@]}" -F syntax
    "${DIRNAME}/options-from-manpage" \
@@ -81,6 +84,9 @@ for manpage in "${manpages[@]}" ; do
       read -er applyChanges
       if [ "${applyChanges}" == "yes" ] || [ "${applyChanges}" == "y" ] ; then
          mv "${directory}/${program}.updated" "${directory}/${program}"
+         if [ "${type}" == "shell" ] ; then
+            chmod +x "${directory}/${program}"
+         fi
       fi
   fi
 
