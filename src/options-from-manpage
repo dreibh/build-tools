@@ -55,14 +55,22 @@ supportedFormats: Final[tuple[str, ...]] = (
 )
 
 # ANSI style escape codes
-styleBold: Final[str]      = "\033[1m"
-styleUnderline: Final[str] = "\033[4m"
-styleReset: Final[str]     = "\033[0m"
+styleBold: Final[str]      = "\x1b[1m"
+styleUnderline: Final[str] = "\x1b[4m"
+styleReset: Final[str]     = "\x1b[0m"
 
 
 # ###### C usage function definitions #######################################
 cUsageHead: Final[tuple[str, ...]]              = (
    "// ###### Usage #############################################################",
+   '#define HEADER(s)    "\\x1b[4m" s "\\x1b[0m"',
+   '#define CMD(s)       "\\x1b[1m" s "\\x1b[0m"',
+   '#define OPT(s)       "\\x1b[1m" s "\\x1b[0m"',
+   '#define ARG(s)       "\\x1b[4m" s "\\x1b[0m"',
+   '#define SYN(s)       "\\x1b[1m" s "\\x1b[0m"',
+   '#define PIPE         SYN(" | ")',
+   '#define ENTRY(s)     "\\t" SYN("[") s SYN("]\\n")',
+   "",
    "#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 202000L)",
    "[[ noreturn ]]",
    "#endif",
@@ -82,6 +90,14 @@ cTranslatorsComment: Final[tuple[str, ...]]     = (
 # ###### C++ usage function definitions #####################################
 cppUsageHead: Final[tuple[str, ...]]            = (
    "// ###### Usage #############################################################",
+   '#define HEADER(s)    "\\x1b[4m" << (s) << "\\x1b[0m"',
+   '#define CMD(s)       "\\x1b[1m" << (s) << "\\x1b[0m"',
+   '#define OPT(s)       "\\x1b[1m" s "\\x1b[0m"',
+   '#define ARG(s)       "\\x1b[4m" s "\\x1b[0m"',
+   '#define SYN(s)       "\\x1b[1m" s "\\x1b[0m"',
+   '#define PIPE         SYN(" | ")',
+   '#define ENTRY(s)     "\\t" SYN("[") s SYN("]\\n")',
+   "",
    "[[ noreturn ]]",
    "static void usage(const char* program, const int exitCode)",
    "{",
@@ -101,9 +117,9 @@ shellUsageHead: Final[tuple[str, ...]]          = (
    "# ###### Usage ##############################################################",
    "usage () {",
    '   local exitCode="$1"',
-   "   local bold=$'\\033[1m'",
-   "   local underline=$'\\033[4m'",
-   "   local reset=$'\\033[0m'",
+   "   local bold=$'\\x1b[1m'",
+   "   local underline=$'\\x1b[4m'",
+   "   local reset=$'\\x1b[0m'",
 )
 shellUsageTail: Final[tuple[str, ...]]          = (
    '   exit "${exitCode}"',
@@ -119,8 +135,9 @@ shellTranslatorsComment: Final[tuple[str, ...]] = (
 class CommandEntry:
    """Represents a .Nm macro occurrence with program name and optional arguments."""
 
-   name: str
-   args: str = ""
+   name:      str
+   args:      str = ""
+   macroArgs: str = ""
 
 
 @dataclass(frozen = True)
@@ -129,6 +146,7 @@ class OptionEntry:
 
    text:        str
    optionsOnly: str
+   macroText:   str
 
 
 Entry = CommandEntry | OptionEntry
@@ -140,7 +158,7 @@ def parseTokens(
    includeArgs: bool = True,
    useStyles: bool   = False,
 ) -> str:
-   r"""Parse tokens from an option or argument line.
+   r"""Parse tokens from an option or argument line into ANSI or plain text.
 
    Handles:
    - 'Fl' represents '-'
@@ -214,8 +232,83 @@ def parseTokens(
    return " ".join(words)
 
 
+# ###### Parse tokens into C/C++ macros #####################################
+def parseTokensMacro(tokens: Sequence[str]) -> str:
+   r"""Parse tokens into C/C++ preprocessor macro invocations (OPT, ARG, SYN, PIPE)."""
+   parts: Final[list[str]] = []
+   i: int                  = 0
+   total: Final[int]       = len(tokens)
+
+   while i < total:
+      token: str = tokens[i]
+
+      if token == "Fl":
+         dashCount: int = 0
+         while i < total and tokens[i] == "Fl":
+            dashCount += 1
+            i += 1
+
+         while i < total and tokens[i] == "-":
+            dashCount += 1
+            i += 1
+
+         if i < total and tokens[i] not in ("Fl", "Ar", "No", "|"):
+            word: str        = tokens[i]
+            stripped: str    = word.lstrip("-")
+            extraDashes: int = len(word) - len(stripped)
+
+            if extraDashes > 0 and stripped:
+               dashCount += extraDashes
+               optStr: str = f"{'-' * dashCount}{stripped}"
+               i += 1
+            else:
+               optStr = f"{'-' * dashCount}{word}"
+               i += 1
+         else:
+            optStr = "-" * dashCount
+
+         parts.append(f'OPT("{optStr}")')
+
+      elif token == "Ar":
+         i += 1
+         if i < total:
+            argVal: str = tokens[i]
+            parts.append(f'ARG("{argVal}")')
+            i += 1
+
+      elif token == "No":
+         i += 1
+
+      elif token == "|":
+         parts.append("PIPE")
+         i += 1
+
+      elif token in ("{", "}", "[", "]"):
+         parts.append(f'SYN("{token}")')
+         i += 1
+
+      else:
+         parts.append(f'"{token}"')
+         i += 1
+
+   if not parts:
+      return ""
+
+   res: Final[list[str]] = []
+   for idx, p in enumerate(parts):
+      if idx == 0:
+         res.append(p)
+         continue
+      prev: str = parts[idx - 1]
+      if prev == "PIPE" or p == "PIPE":
+         res.append(f" {p}")
+      else:
+         res.append(f' " " {p}')
+   return "".join(res)
+
+
 # ###### Parse manpage ######################################################
-def parseManpage(filePath: Path) -> list[Entry]:
+def parseManpage(filePath: Path) -> tuple[list[Entry], str]:
    """Parse a manpage line-by-line, capturing .Nm, required arguments, and .Op directives."""
    entries: Final[list[Entry]] = []
    firstProgramName: str       = ""
@@ -251,6 +344,7 @@ def parseManpage(filePath: Path) -> list[Entry]:
          rawArg: str | None = nmMatch.group(1)
          cleanedName: str   = ""
          trailingArgs: str  = ""
+         trailingMacro: str = ""
 
          if rawArg:
             cleanedNm: str = (
@@ -263,9 +357,10 @@ def parseManpage(filePath: Path) -> list[Entry]:
             if nmTokens:
                cleanedName = nmTokens[0]
                if len(nmTokens) > 1:
-                  trailingArgs = parseTokens(
+                  trailingArgs  = parseTokens(
                      nmTokens[1:], includeArgs = True, useStyles = True
                   )
+                  trailingMacro = parseTokensMacro(nmTokens[1:])
 
             if not firstProgramName:
                firstProgramName = cleanedName
@@ -274,8 +369,9 @@ def parseManpage(filePath: Path) -> list[Entry]:
 
          entries.append(
             CommandEntry(
-               name = cleanedName or firstProgramName,
-               args = trailingArgs,
+               name      = cleanedName or firstProgramName,
+               args      = trailingArgs,
+               macroArgs = trailingMacro,
             )
          )
          continue
@@ -293,15 +389,25 @@ def parseManpage(filePath: Path) -> list[Entry]:
          if noTokens and entries:
             lastEntry: Entry = entries[-1]
             if isinstance(lastEntry, CommandEntry):
-               extraArgs: str    = parseTokens(
+               extraArgs: str     = parseTokens(
                   noTokens, includeArgs = True, useStyles = True
                )
-               combinedArgs: str = (
+               extraMacro: str    = parseTokensMacro(noTokens)
+               combinedArgs: str  = (
                   f"{lastEntry.args} {extraArgs}".strip()
                   if lastEntry.args
                   else extraArgs
                )
-               entries[-1] = CommandEntry(name = lastEntry.name, args = combinedArgs)
+               combinedMacro: str = (
+                  f'{lastEntry.macroArgs} " " {extraMacro}'.strip()
+                  if lastEntry.macroArgs
+                  else extraMacro
+               )
+               entries[-1] = CommandEntry(
+                  name      = lastEntry.name,
+                  args      = combinedArgs,
+                  macroArgs = combinedMacro,
+               )
          continue
 
       # Track option definitions (.Op):
@@ -318,13 +424,20 @@ def parseManpage(filePath: Path) -> list[Entry]:
             styledInner: str = parseTokens(
                opTokens, includeArgs = True, useStyles = True
             )
-            textVal: str    = f"{styleBold}[{styleReset}{styledInner}{styleBold}]{styleReset}"
-            optOnlyVal: str = parseTokens(
+            textVal: str     = f"{styleBold}[{styleReset}{styledInner}{styleBold}]{styleReset}"
+            optOnlyVal: str  = parseTokens(
                opTokens, includeArgs = False, useStyles = False
             )
-            entries.append(OptionEntry(text = textVal, optionsOnly = optOnlyVal))
+            macroVal: str    = parseTokensMacro(opTokens)
+            entries.append(
+               OptionEntry(
+                  text        = textVal,
+                  optionsOnly = optOnlyVal,
+                  macroText   = macroVal,
+               )
+            )
 
-   return entries
+   return entries, firstProgramName
 
 
 # ###### Sorting order for options ##########################################
@@ -398,53 +511,50 @@ def renderOptionsOnly(entries: Sequence[Entry]) -> str:
 
 
 # ###### Write "usage-c" output #############################################
-def renderUsageC(entries: Sequence[Entry], withGettext: bool = False) -> str:
-   """Generate a complete C usage() function with fprintf(stderr, ...)."""
+def renderUsageC(
+   entries: Sequence[Entry],
+   firstProgramName: str,
+   withGettext: bool = False,
+) -> str:
+   """Generate a complete C usage() function with fprintf(stderr, ...) and C macros."""
    lines: Final[list[str]] = list(cUsageHead)
 
    if withGettext:
       lines.extend(cTranslatorsComment)
 
    indent: Final[str]      = " " * 11
+   entryIndent: Final[str] = " " * 14
    usageHeader: Final[str] = "%s" if withGettext else "Usage:"
 
    if not entries:
       if withGettext:
-         lines.append(f'   fprintf(stderr, "%s\\n",\n{indent}gettext("Usage:"));')
+         lines.append(f'   fprintf(stderr, HEADER("%s") "\\n",\n{indent}gettext("Usage:"));')
       else:
-         lines.append('   fprintf(stderr, "Usage:\\n");')
+         lines.append('   fprintf(stderr, HEADER("Usage:") "\\n");')
       lines.extend(cUsageTail)
       return "\n".join(lines)
 
-   nmCount: Final[int] = sum(1 for e in entries if isinstance(e, CommandEntry))
-   lines.append(f'   fprintf(stderr, "{usageHeader}\\n"')
-
-   for entry in entries:
-      if isinstance(entry, CommandEntry):
-         if entry.args:
-            escapedArgs: str = (
-               entry.args.replace("\\", "\\\\")
-               .replace("\033", "\\033")
-               .replace('"', '\\"')
-               .replace("%", "%%")
-            )
-            lines.append(f'{indent}"\\033[1m%s\\033[0m {escapedArgs}\\n"')
-         else:
-            lines.append(f'{indent}"\\033[1m%s\\033[0m\\n"')
-      elif isinstance(entry, OptionEntry):
-         escapedOpt: str = (
-            entry.text.replace("\\", "\\\\")
-            .replace("\033", "\\033")
-            .replace('"', '\\"')
-            .replace("%", "%%")
-         )
-         lines.append(f'{indent}"\\t{escapedOpt}\\n"')
+   lines.append(f'   fprintf(stderr, HEADER("{usageHeader}") "\\n"')
 
    arguments: Final[list[str]] = []
    if withGettext:
       arguments.append('gettext("Usage:")')
-   if nmCount > 0:
-      arguments.extend(["program"] * nmCount)
+
+   for entry in entries:
+      if isinstance(entry, CommandEntry):
+         if entry.name == firstProgramName:
+            arguments.append("program")
+            if entry.macroArgs:
+               lines.append(f'{indent}CMD("%s") " " {entry.macroArgs} "\\n"')
+            else:
+               lines.append(f'{indent}CMD("%s\\n")')
+         else:
+            if entry.macroArgs:
+               lines.append(f'{indent}CMD("{entry.name}") " " {entry.macroArgs} "\\n"')
+            else:
+               lines.append(f'{indent}CMD("{entry.name}\\n")')
+      elif isinstance(entry, OptionEntry):
+         lines.append(f"{entryIndent}ENTRY({entry.macroText})")
 
    if arguments:
       lines[-1] = lines[-1] + ","
@@ -458,44 +568,35 @@ def renderUsageC(entries: Sequence[Entry], withGettext: bool = False) -> str:
 
 
 # ###### Write "usage-c++" output ###########################################
-def renderUsageCpp(entries: Sequence[Entry], withGettext: bool = False) -> str:
-   """Generate a complete C++ usage() function with std::cerr using string concatenation."""
+def renderUsageCpp(
+   entries: Sequence[Entry],
+   firstProgramName: str,
+   withGettext: bool = False,
+) -> str:
+   """Generate a complete C++ usage() function with std::cerr using C++ macros."""
    lines: Final[list[str]] = list(cppUsageHead)
 
    if withGettext:
       lines.extend(cppTranslatorsComment)
 
+   headerText: Final[str] = 'gettext("Usage:")' if withGettext else '"Usage:"'
+
    if not entries:
-      if withGettext:
-         lines.append('   std::cerr << gettext("Usage:") << "\\n";')
-      else:
-         lines.append('   std::cerr << "Usage:\\n";')
+      lines.append(f'   std::cerr << HEADER({headerText}) << "\\n";')
       lines.extend(cppUsageTail)
       return "\n".join(lines)
 
-   if withGettext:
-      lines.append('   std::cerr << gettext("Usage:") << "\\n"')
-   else:
-      lines.append('   std::cerr << "Usage:\\n"')
+   lines.append(f'   std::cerr << HEADER({headerText}) << "\\n"')
 
    for entry in entries:
       if isinstance(entry, CommandEntry):
-         if entry.args:
-            escapedArgs: str = (
-               entry.args.replace("\\", "\\\\")
-               .replace("\033", "\\033")
-               .replace('"', '\\"')
-            )
-            lines.append(f'             << "\\033[1m" << program << "\\033[0m {escapedArgs}\\n"')
+         progVar: str = "program" if entry.name == firstProgramName else f'"{entry.name}"'
+         if entry.macroArgs:
+            lines.append(f'             << CMD({progVar}) << " "\n                {entry.macroArgs} "\\n"')
          else:
-            lines.append('             << "\\033[1m" << program << "\\033[0m\\n"')
+            lines.append(f'             << CMD({progVar}) << "\\n"')
       elif isinstance(entry, OptionEntry):
-         escapedOpt: str = (
-            entry.text.replace("\\", "\\\\")
-            .replace("\033", "\\033")
-            .replace('"', '\\"')
-         )
-         lines.append(f'                "\\t{escapedOpt}\\n"')
+         lines.append(f"                   ENTRY({entry.macroText})")
 
    lines[-1] = lines[-1] + ";"
    lines.extend(cppUsageTail)
@@ -517,7 +618,7 @@ def renderUsageShell(entries: Sequence[Entry], withGettext: bool = False) -> str
    if not entries:
       lines.extend([
          "   cat >&2 <<EOF",
-         f"{usageHeader}",
+         f"${{underline}}{usageHeader}${{reset}}",
          "EOF",
       ])
       lines.extend(shellUsageTail)
@@ -525,7 +626,7 @@ def renderUsageShell(entries: Sequence[Entry], withGettext: bool = False) -> str
 
    lines.extend([
       "   cat >&2 <<EOF",
-      f"{usageHeader}",
+      f"${{underline}}{usageHeader}${{reset}}",
    ])
 
    for entry in entries:
@@ -563,26 +664,40 @@ def renderUsageShell(entries: Sequence[Entry], withGettext: bool = False) -> str
 # ###### Write output #######################################################
 def renderOutput(
    entries: Sequence[Entry],
+   firstProgramName: str,
    outputFormat: str,
-   withGettext: bool = False,
+   withGettext: bool   = False,
+   withBlockTags: bool = False,
 ) -> str:
-   """Route entries to the requested output formatter."""
+   """Route entries to the requested output formatter and optionally wrap in block tags."""
    fmt: Final[str] = outputFormat.strip().lower()
-   if fmt == "syntax":
-      return renderSyntax(entries)
-   if fmt == "options-only":
-      return renderOptionsOnly(entries)
-   if fmt == "usage-c":
-      return renderUsageC(entries, withGettext = withGettext)
-   if fmt in ("usage-c++", "usage-cpp"):
-      return renderUsageCpp(entries, withGettext = withGettext)
-   if fmt in ("usage-shell", "usage-bash"):
-      return renderUsageShell(entries, withGettext = withGettext)
+   result: str
 
-   raise ValueError(
-      f"Unsupported format '{outputFormat}'. "
-      f"Supported: 'syntax', 'options-only', 'usage-c', 'usage-c++', 'usage-shell'."
-   )
+   if fmt == "syntax":
+      result = renderSyntax(entries)
+   elif fmt == "options-only":
+      result = renderOptionsOnly(entries)
+   elif fmt == "usage-c":
+      result = renderUsageC(entries, firstProgramName, withGettext = withGettext)
+   elif fmt in ("usage-c++", "usage-cpp"):
+      result = renderUsageCpp(entries, firstProgramName, withGettext = withGettext)
+   elif fmt in ("usage-shell", "usage-bash"):
+      result = renderUsageShell(entries, withGettext = withGettext)
+   else:
+      raise ValueError(
+         f"Unsupported format '{outputFormat}'. "
+         f"Supported: 'syntax', 'options-only', 'usage-c', 'usage-c++', 'usage-shell'."
+      )
+
+   if withBlockTags:
+      tagComment: Final[str] = "#" if fmt in ("usage-shell", "usage-bash") else "//"
+      return (
+         f"{tagComment} ------ BEGIN-OF-USAGE-BLOCK ------\n"
+         f"{result}\n"
+         f"{tagComment} ------ END-OF-USAGE-BLOCK ------"
+      )
+
+   return result
 
 
 # ###### Arguments parser ###################################################
@@ -595,6 +710,13 @@ def buildParser() -> argparse.ArgumentParser:
       "manpage",
       type = Path,
       help = "Path to the manpage file."
+   )
+   parser.add_argument(
+      "-b", "--with-block-tags",
+      dest    = "withBlockTags",
+      action  = "store_true",
+      default = False,
+      help    = "Add begin and end block tag comments around the usage function output."
    )
    parser.add_argument(
       "-F", "--format",
@@ -630,15 +752,17 @@ def main(argv: Sequence[str] | None = None) -> int:
       return 1
 
    try:
-      rawEntries: Final[list[Entry]] = parseManpage(args.manpage)
+      rawEntries, firstProgramName = parseManpage(args.manpage)
       entries: Final[Sequence[Entry]] = (
          sortEntries(rawEntries) if args.isSorted else rawEntries
       )
 
       output: Final[str] = renderOutput(
          entries,
-         outputFormat = args.format,
-         withGettext  = args.withGettext,
+         firstProgramName = firstProgramName,
+         outputFormat     = args.format,
+         withGettext      = args.withGettext,
+         withBlockTags    = args.withBlockTags,
       )
       if output:
          print(output)
