@@ -142,7 +142,7 @@ def parseTokens(
    total: Final[int]       = len(tokens)
 
    while i < total:
-      token: Final[str] = tokens[i]
+      token: str = tokens[i]
 
       if token == "Fl":
          dashCount: int = 0
@@ -156,9 +156,9 @@ def parseTokens(
             i += 1
 
          if i < total and tokens[i] not in ("Fl", "Ar", "|"):
-            word: Final[str]        = tokens[i]
-            stripped: Final[str]    = word.lstrip("-")
-            extraDashes: Final[int] = len(word) - len(stripped)
+            word: str        = tokens[i]
+            stripped: str    = word.lstrip("-")
+            extraDashes: int = len(word) - len(stripped)
 
             if extraDashes > 0 and stripped:
                dashCount += extraDashes
@@ -173,7 +173,7 @@ def parseTokens(
       elif token == "Ar":
          i += 1
          if i < total:
-            argVal: Final[str] = tokens[i]
+            argVal: str = tokens[i]
             if includeArgs:
                words.append(argVal.upper() if capitalizeArgs else argVal)
             i += 1
@@ -204,19 +204,19 @@ def parseManpage(filePath: Path) -> list[Entry]:
    inSynopsis: bool                = not hasSynopsisSection
 
    for line in lines:
-      stripped: Final[str] = line.rstrip("\r\n")
+      stripped: str = line.rstrip("\r\n")
 
       # Track section headers (.Sh):
-      shMatch: Final[re.Match[str] | None] = shPattern.match(stripped)
+      shMatch: re.Match[str] | None = shPattern.match(stripped)
       if shMatch:
-         sectionName: Final[str] = (shMatch.group(1) or "").strip()
-         inSynopsis              = sectionName == "SYNOPSIS"
+         sectionName: str = (shMatch.group(1) or "").strip()
+         inSynopsis       = sectionName == "SYNOPSIS"
          continue
 
       # Track program names (.Nm):
-      nmMatch: Final[re.Match[str] | None] = nmPattern.match(stripped)
+      nmMatch: re.Match[str] | None = nmPattern.match(stripped)
       if nmMatch:
-         rawArg: Final[str | None] = nmMatch.group(1)
+         rawArg: str | None = nmMatch.group(1)
          cleanedName: str          = ""
          if rawArg:
             cleanedName = (
@@ -235,7 +235,7 @@ def parseManpage(filePath: Path) -> list[Entry]:
          continue
 
       # Track option definitions (.Op)
-      opMatch: Final[re.Match[str] | None] = opPattern.match(stripped)
+      opMatch: re.Match[str] | None = opPattern.match(stripped)
       if opMatch:
          if not inSynopsis:
             continue
@@ -245,12 +245,12 @@ def parseManpage(filePath: Path) -> list[Entry]:
             .replace(r"\-", "-")
             .replace(r"\%", "")
          )
-         tokens: Final[list[str]] = content.split()
+         tokens: list[str] = content.split()
          if tokens:
-            textVal: Final[str]    = parseTokens(
+            textVal: str    = parseTokens(
                tokens, capitalizeArgs=True, includeArgs=True
             )
-            optOnlyVal: Final[str] = parseTokens(
+            optOnlyVal: str = parseTokens(
                tokens, capitalizeArgs=False, includeArgs=False
             )
             entries.append(OptionEntry(text=textVal, optionsOnly=optOnlyVal))
@@ -262,12 +262,13 @@ def parseManpage(filePath: Path) -> list[Entry]:
 def sortOptionKey(opt: OptionEntry) -> tuple[int, str, str]:
    """Key for sorting options: short options first (0), long options second (1), other third (2)."""
    text: Final[str] = opt.text.strip()
+   priority: int
    if text.startswith("-") and not text.startswith("--"):
-      priority: Final[int] = 0
+      priority = 0
    elif text.startswith("--"):
-      priority: Final[int] = 1
+      priority = 1
    else:
-      priority: Final[int] = 2
+      priority = 2
    return (priority, text.casefold(), text)
 
 
@@ -343,7 +344,7 @@ def renderUsageC(entries: Sequence[Entry], withGettext: bool = False) -> str:
       if isinstance(entry, CommandEntry):
          lines.append(f'{indent}"%s\\n"')
       elif isinstance(entry, OptionEntry):
-         escapedOpt: Final[str] = (
+         escapedOpt: str = (
             entry.text.replace("\\", "\\\\")
             .replace('"', '\\"')
             .replace("%", "%%")
@@ -392,7 +393,7 @@ def renderUsageCpp(entries: Sequence[Entry], withGettext: bool = False) -> str:
       if isinstance(entry, CommandEntry):
          lines.append('             << program << "\\n"')
       elif isinstance(entry, OptionEntry):
-         escapedOpt: Final[str] = (
+         escapedOpt: str = (
             entry.text.replace("\\", "\\\\")
             .replace('"', '\\"')
          )
@@ -433,7 +434,7 @@ def renderUsageShell(entries: Sequence[Entry], withGettext: bool = False) -> str
       if isinstance(entry, CommandEntry):
          lines.append("$0")
       elif isinstance(entry, OptionEntry):
-         escapedOpt: Final[str] = (
+         escapedOpt: str = (
             entry.text.replace("\\", "\\\\")
             .replace('"', '\\"')
             .replace("$", "\\$")
