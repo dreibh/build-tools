@@ -44,6 +44,7 @@ opPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Op(?:\s+(.*))?$")
 nmPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Nm(?:\s+(.*))?$")
 noPattern: Final[re.Pattern[str]]        = re.compile(r"^\.(?:No|Ar)(?:\s+(.*))?$")
 shPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Sh(?:\s+(.*))?$")
+syPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Sy(?:\s+(.*))?$")
 
 defaultFormat: Final[str]                = "syntax"
 supportedFormats: Final[tuple[str, ...]] = (
@@ -137,7 +138,7 @@ shellTranslatorsComment: Final[tuple[str, ...]] = (
 
 @dataclass(frozen = True)
 class CommandEntry:
-   """Represents a .Nm macro occurrence with program name and optional leading arguments."""
+   """Represents a program name or section header (.Nm / .Sy) with optional leading arguments."""
 
    name:      str
    args:      str = ""
@@ -330,7 +331,7 @@ def parseTokensMacro(tokens: Sequence[str]) -> str:
 
 # ###### Parse manpage ######################################################
 def parseManpage(filePath: Path) -> tuple[list[Entry], str]:
-   """Parse a manpage line-by-line, capturing .Nm, options, and arguments."""
+   """Parse a manpage line-by-line, capturing .Nm, .Sy, options, and arguments."""
    entries: Final[list[Entry]] = []
    firstProgramName: str       = ""
    hasSeenOptionsForCmd: bool  = False
@@ -396,6 +397,27 @@ def parseManpage(filePath: Path) -> tuple[list[Entry], str]:
          hasSeenOptionsForCmd = False
          continue
 
+      # Track section subtitles (.Sy):
+      syMatch: re.Match[str] | None = syPattern.match(stripped)
+      if syMatch:
+         rawSy: str = (
+            (syMatch.group(1) or "")
+            .replace(r"\_", "_")
+            .replace(r"\-", "-")
+            .replace(r"\%", "")
+            .strip()
+         )
+         if rawSy:
+            entries.append(
+               CommandEntry(
+                  name      = rawSy,
+                  args      = "",
+                  macroArgs = "",
+               )
+            )
+            hasSeenOptionsForCmd = False
+         continue
+
       # Track command arguments (.No / .Ar):
       noMatch: re.Match[str] | None = noPattern.match(stripped)
       if noMatch:
@@ -450,59 +472,22 @@ def parseManpage(filePath: Path) -> tuple[list[Entry], str]:
          )
          opTokens: list[str] = opContent.split()
          if opTokens:
-            isOptionFlag: bool = any(
-               t == "Fl" or t.startswith("-") or t == "OPTIONS" for t in opTokens
+            styledInner: str = parseTokens(
+               opTokens, includeArgs = True, useStyles = True
             )
-            if isOptionFlag:
-               styledInner: str = parseTokens(
-                  opTokens, includeArgs = True, useStyles = True
+            textVal: str     = f"{styleBold}[{styleReset}{styledInner}{styleBold}]{styleReset}"
+            optOnlyVal: str  = parseTokens(
+               opTokens, includeArgs = False, useStyles = False
+            )
+            macroVal: str    = parseTokensMacro(opTokens)
+            entries.append(
+               OptionEntry(
+                  text        = textVal,
+                  optionsOnly = optOnlyVal,
+                  macroText   = macroVal,
                )
-               textVal: str     = f"{styleBold}[{styleReset}{styledInner}{styleBold}]{styleReset}"
-               optOnlyVal: str  = parseTokens(
-                  opTokens, includeArgs = False, useStyles = False
-               )
-               macroVal: str    = parseTokensMacro(opTokens)
-               entries.append(
-                  OptionEntry(
-                     text        = textVal,
-                     optionsOnly = optOnlyVal,
-                     macroText   = macroVal,
-                  )
-               )
-               hasSeenOptionsForCmd = True
-            else:
-               # Standalone optional operand line:
-               styledInner = parseTokens(
-                  opTokens, includeArgs = True, useStyles = True
-               )
-               bracketedArg: str   = f"{styleBold}[{styleReset}{styledInner}{styleBold}]{styleReset}"
-               innerMacro: str     = parseTokensMacro(opTokens)
-               bracketedMacro: str = f'SYN("[") {innerMacro} SYN("]")'
-
-               if hasSeenOptionsForCmd:
-                  entries.append(
-                     ArgumentEntry(
-                        text      = bracketedArg,
-                        macroText = bracketedMacro,
-                     )
-                  )
-               elif entries and isinstance(entries[-1], CommandEntry):
-                  lastCmd = entries[-1]
-                  combinedArgs = (
-                     f"{lastCmd.args} {bracketedArg}".strip()
-                     if lastCmd.args
-                     else bracketedArg
-                  )
-                  combinedMacro = (
-                     f'{lastCmd.macroArgs} " " {bracketedMacro}'.strip()
-                     if lastCmd.macroArgs
-                     else bracketedMacro
-                  )
-                  entries[-1] = CommandEntry(
-                     name      = lastCmd.name,
-                     args      = combinedArgs,
-                     macroArgs = combinedMacro,
-                  )
+            )
+            hasSeenOptionsForCmd = True
 
    return entries, firstProgramName
 
@@ -575,7 +560,7 @@ def renderOptionsOnly(entries: Sequence[Entry]) -> str:
    lines: Final[list[str]] = [
       entry.optionsOnly
       for entry in entries
-      if isinstance(entry, OptionEntry)
+      if isinstance(entry, OptionEntry) and entry.optionsOnly.strip()
    ]
    return "\n".join(lines)
 

@@ -75,6 +75,13 @@ for manpage in "${manpages[@]}" ; do
       -b 'BEGIN-OF-USAGE-BLOCK' -e 'END-OF-USAGE-BLOCK' \
       --full-tag-lines --include-tags \
       --min-actions 1 --max-actions 1
-   diff --color "${directory}/${program}" "${directory}/${program}.updated" || true
+
+   if ! diff --color "${directory}/${program}" "${directory}/${program}.updated" ; then
+      echo -en "\x1b[34m$(date +%FT%H:%M:%S): Apply changes? [yes/no]\x1b[0m "
+      read -er applyChanges
+      if [ "${applyChanges}" == "yes" ] || [ "${applyChanges}" == "y" ] ; then
+         mv "${directory}/${program}.updated" "${directory}/${program}"
+      fi
+  fi
 
 done
