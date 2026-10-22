@@ -192,7 +192,7 @@ def parseTokens(
             dashCount += 1
             i += 1
 
-         if i < total and tokens[i] not in ("Fl", "Ar", "No", "Op", "|"):
+         if i < total and tokens[i] not in macroTokens:
             word: str        = tokens[i]
             stripped: str    = word.lstrip("-")
             extraDashes: int = len(word) - len(stripped)
@@ -235,7 +235,7 @@ def parseTokens(
       elif token in ("Cm", "Sy"):
          i += 1
          while i < total and tokens[i] not in macroTokens:
-            argVal = tokens[i]
+            argVal: str = tokens[i]
             words.append(f"{styleBold}{argVal}{styleReset}" if useStyles else argVal)
             i += 1
 
@@ -282,7 +282,7 @@ def parseTokensMacro(tokens: Sequence[str]) -> str:
             dashCount += 1
             i += 1
 
-         if i < total and tokens[i] not in ("Fl", "Ar", "No", "Op", "|"):
+         if i < total and tokens[i] not in macroTokens:
             word: str        = tokens[i]
             stripped: str    = word.lstrip("-")
             extraDashes: int = len(word) - len(stripped)
@@ -435,7 +435,7 @@ def parseManpage(filePath: Path) -> tuple[list[Entry], str]:
             hasSeenOptionsForCmd = False
          continue
 
-      # Track command arguments (.No / .Ar):
+      # Track command arguments (.No / .Ar / .Cm / .Sy):
       noMatch: re.Match[str] | None = noPattern.match(stripped)
       if noMatch:
          macroType: str      = noMatch.group(1)
@@ -723,7 +723,7 @@ def renderUsageShell(
          escapedOpt = (
             escapedOpt.replace("${opt}[${reset}", "${syn}[${reset}")
             .replace("${opt}]${reset}", "${syn}]${reset}")
-            .replace("${opt}\vert{}${reset}", "${syn}\vert{}${reset}")
+            .replace("${opt}|${reset}", "${syn}|${reset}")
          )
          bodyLines.append(f"\t{escapedOpt}")
       elif isinstance(entry, ArgumentEntry):
