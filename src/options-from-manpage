@@ -42,7 +42,7 @@ from typing import Final, Sequence
 
 opPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Op(?:\s+(.*))?$")
 nmPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Nm(?:\s+(.*))?$")
-noPattern: Final[re.Pattern[str]]        = re.compile(r"^\.(No|Ar)(?:\s+(.*))?$")
+noPattern: Final[re.Pattern[str]]        = re.compile(r"^\.(No|Ar|Cm|Sy)(?:\s+(.*))?$")
 shPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Sh(?:\s+(.*))?$")
 syPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Sy(?:\s+(.*))?$")
 
@@ -60,7 +60,7 @@ styleBold: Final[str]      = "\x1b[1m"
 styleUnderline: Final[str] = "\x1b[4m"
 styleReset: Final[str]     = "\x1b[0m"
 
-macroTokens: Final[set[str]] = {"Fl", "Ar", "No", "Op", "|", "{", "}", "--"}
+macroTokens: Final[set[str]] = { "Fl", "Ar", "No", "Op", "Cm", "Sy", "|", "{", "}", "--" }
 
 
 # ###### C usage function definitions #######################################
@@ -155,6 +155,19 @@ class ArgumentEntry:
 Entry = CommandEntry | OptionEntry | ArgumentEntry
 
 
+# ###### Clean mdoc escape sequences ########################################
+def cleanMdocEscapes(text: str) -> str:
+   r"""Strip roff escapes, hyphenation hints (\%), break hints (\:), and formatting."""
+   cleaned: str = (
+      text.replace(r"\%", "")   # Strip hyphenation hints FIRST before consuming '\'
+      .replace(r"\:", "")       # Strip zero-width break points
+      .replace(r"\_", "_")       # Convert escaped underscores
+      .replace(r"\-", "-")       # Convert escaped dashes
+   )
+   # Clean up any stray unescaped % within word/underscore identifiers (e.g. _%frame)
+   return re.sub(r"(?<=[a-zA-Z0-9_])%(?=[a-zA-Z0-9_])", "", cleaned)
+
+
 # ###### Parse tokens from manpage ##########################################
 def parseTokens(
    tokens: Sequence[str],
@@ -217,6 +230,13 @@ def parseTokens(
          i += 1
          while i < total and tokens[i] not in macroTokens:
             words.append(tokens[i])
+            i += 1
+
+      elif token in ("Cm", "Sy"):
+         i += 1
+         while i < total and tokens[i] not in macroTokens:
+            argVal = tokens[i]
+            words.append(f"{styleBold}{argVal}{styleReset}" if useStyles else argVal)
             i += 1
 
       elif token == "Op":
@@ -287,6 +307,12 @@ def parseTokensMacro(tokens: Sequence[str]) -> str:
                parts.append('"..."')
             else:
                parts.append(f'ARG("{argVal}")')
+            i += 1
+
+      elif token in ("Cm", "Sy"):
+         i += 1
+         while i < total and tokens[i] not in macroTokens:
+            parts.append(f'SYN("{tokens[i]}")')
             i += 1
 
       elif token == "No":
@@ -369,12 +395,7 @@ def parseManpage(filePath: Path) -> tuple[list[Entry], str]:
          trailingMacro: str = ""
 
          if rawArg:
-            cleanedNm: str = (
-               rawArg.replace(r"\_", "_")
-               .replace(r"\-", "-")
-               .replace(r"\%", "")
-               .strip()
-            )
+            cleanedNm: str      = cleanMdocEscapes(rawArg).strip()
             nmTokens: list[str] = cleanedNm.split()
             if nmTokens:
                cleanedName = nmTokens[0]
@@ -402,13 +423,7 @@ def parseManpage(filePath: Path) -> tuple[list[Entry], str]:
       # Track section subtitles (.Sy):
       syMatch: re.Match[str] | None = syPattern.match(stripped)
       if syMatch:
-         rawSy: str = (
-            (syMatch.group(1) or "")
-            .replace(r"\_", "_")
-            .replace(r"\-", "-")
-            .replace(r"\%", "")
-            .strip()
-         )
+         rawSy: str = cleanMdocEscapes(syMatch.group(1) or "").strip()
          if rawSy:
             entries.append(
                CommandEntry(
@@ -423,13 +438,8 @@ def parseManpage(filePath: Path) -> tuple[list[Entry], str]:
       # Track command arguments (.No / .Ar):
       noMatch: re.Match[str] | None = noPattern.match(stripped)
       if noMatch:
-         macroType: str = noMatch.group(1)
-         noContent: str = (
-            (noMatch.group(2) or "")
-            .replace(r"\_", "_")
-            .replace(r"\-", "-")
-            .replace(r"\%", "")
-         )
+         macroType: str      = noMatch.group(1)
+         noContent: str      = cleanMdocEscapes(noMatch.group(2) or "")
          noTokens: list[str] = noContent.split()
          if noTokens:
             tokensToParse: list[str] = [macroType] + noTokens
@@ -467,12 +477,7 @@ def parseManpage(filePath: Path) -> tuple[list[Entry], str]:
       # Track option definitions (.Op):
       opMatch: re.Match[str] | None = opPattern.match(stripped)
       if opMatch:
-         opContent: str = (
-            (opMatch.group(1) or "")
-            .replace(r"\_", "_")
-            .replace(r"\-", "-")
-            .replace(r"\%", "")
-         )
+         opContent: str      = cleanMdocEscapes(opMatch.group(1) or "")
          opTokens: list[str] = opContent.split()
          if opTokens:
             styledInner: str = parseTokens(
