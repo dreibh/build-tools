@@ -106,9 +106,27 @@ cppUsageHead: Final[tuple[str, ...]]            = (
    "static void usage(const char* program, const int exitCode)",
    "{",
 )
+cppUsageVariables: Final[tuple[str, ...]]       = (
+   '   const std::string manpage(std::string("\\x1b[1m") +',
+   "                             std::filesystem::path(program).stem().string() +",
+   '                             std::string("\\x1b[0m"));',
+   '   const std::string homepage(std::string("\\x1b[1m\\x1b]8;;") +',
+   "                              std::string(PACKAGE_HOMEPAGE) +",
+   '                              "\\a" + std::string(PACKAGE_HOMEPAGE) + "\\a" +',
+   '                              std::string("\\x1b]8;;\\a\\x1b[0m"));',
+   '   const std::string repository(std::string("\\x1b[1m\\x1b]8;;") +',
+   "                                std::string(PACKAGE_SOURCEREPO) +",
+   '                                "\\a" + std::string(PACKAGE_SOURCEREPO) + "\\a" +',
+   '                                std::string("\\x1b]8;;\\a\\x1b[0m"));',
+)
 cppUsageTail: Final[tuple[str, ...]]            = (
    "   exit(exitCode);",
    "}",
+)
+cppUsageFooter: Final[tuple[str, ...]]          = (
+   '             << "\\n"',
+   '             << formatText("For further information, see the man page for {}, read the documentation at {}, examine the source code at {}, or consult your favourite LLM.",',
+   '                           manpage, homepage, repository) << "\\n";',
 )
 cppTranslatorsComment: Final[tuple[str, ...]]   = (
    "   // TRANSLATORS: Command-line syntax message prefix:",
@@ -652,6 +670,8 @@ def renderUsageCpp(
 ) -> str:
    """Generate a complete C++ usage() function with std::cerr using C++ macros."""
    lines: Final[list[str]] = list(cppUsageHead)
+   lines.extend(cppUsageVariables)
+   lines.append("")
 
    if withGettext:
       lines.extend(cppTranslatorsComment)
@@ -659,7 +679,8 @@ def renderUsageCpp(
    headerText: Final[str] = 'gettext("Usage:")' if withGettext else '"Usage:"'
 
    if not entries:
-      lines.append(f'   std::cerr << HEADER({headerText}) << "\\n";')
+      lines.append(f'   std::cerr << HEADER({headerText}) << "\\n"')
+      lines.extend(cppUsageFooter)
       lines.extend(cppUsageTail)
       return "\n".join(lines)
 
@@ -677,7 +698,7 @@ def renderUsageCpp(
       elif isinstance(entry, ArgumentEntry):
          lines.append(f'                   "\\t" {entry.macroText} "\\n"')
 
-   lines[-1] = lines[-1] + ";"
+   lines.extend(cppUsageFooter)
    lines.extend(cppUsageTail)
    return "\n".join(lines)
 
