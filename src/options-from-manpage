@@ -53,6 +53,7 @@ supportedFormats: Final[tuple[str, ...]] = (
    "usage-c",
    "usage-c++",
    "usage-shell",
+   "usage-perl",
 )
 
 # ANSI style escape codes
@@ -121,6 +122,17 @@ shellUsageTail: Final[tuple[str, ...]]          = (
    "}",
 )
 shellTranslatorsComment: Final[tuple[str, ...]] = (
+   "   # TRANSLATORS: Command-line syntax message prefix:",
+   '   # "Usage: <program> [options]".',
+)
+
+
+# ###### Perl usage function definitions ####################################
+perlUsageTail: Final[tuple[str, ...]]           = (
+   "   exit($exitCode);",
+   "}",
+)
+perlTranslatorsComment: Final[tuple[str, ...]]  = (
    "   # TRANSLATORS: Command-line syntax message prefix:",
    '   # "Usage: <program> [options]".',
 )
@@ -759,6 +771,92 @@ def renderUsageShell(
    return "\n".join(lines)
 
 
+# ###### Write "usage-perl" output ##########################################
+def renderUsagePerl(
+   entries: Sequence[Entry],
+   firstProgramName: str,
+   withGettext: bool = False,
+) -> str:
+   """Generate a complete Perl usage() function using a here-document."""
+   lines: Final[list[str]] = [
+      "# ###### Usage ##############################################################",
+      "sub usage($$) {",
+      "   my ($program, $exitCode) = @_;",
+      '   my $header = "\\x1b[4m";',
+      '   my $cmd    = "\\x1b[1m";',
+   ]
+
+   usageHeaderToken: Final[str] = (
+      "${usageHeader}" if withGettext else "Usage:"
+   )
+
+   bodyLines: Final[list[str]] = [
+      f"${{header}}{usageHeaderToken}${{reset}}",
+   ]
+
+   for entry in entries:
+      if isinstance(entry, CommandEntry):
+         progToken: str = "${program}" if entry.name == firstProgramName else entry.name
+         if entry.args:
+            escapedArgs: str = (
+               entry.args.replace("\\", "\\\\")
+               .replace("@", "\\@")
+               .replace("$", "\\$")
+               .replace(styleBold, "${syn}")
+               .replace(styleUnderline, "${arg}")
+               .replace(styleReset, "${reset}")
+            )
+            bodyLines.append(f"${{cmd}}{progToken}${{reset}} {escapedArgs}")
+         else:
+            bodyLines.append(f"${{cmd}}{progToken}${{reset}}")
+      elif isinstance(entry, OptionEntry):
+         escapedOpt: str = (
+            entry.text.replace("\\", "\\\\")
+            .replace("@", "\\@")
+            .replace("$", "\\$")
+            .replace(styleBold, "${opt}")
+            .replace(styleUnderline, "${arg}")
+            .replace(styleReset, "${reset}")
+         )
+         escapedOpt = (
+            escapedOpt.replace("${opt}[${reset}", "${syn}[${reset}")
+            .replace("${opt}]${reset}", "${syn}]${reset}")
+            .replace("${opt}|${reset}", "${syn}|${reset}")
+         )
+         bodyLines.append(f"\t{escapedOpt}")
+      elif isinstance(entry, ArgumentEntry):
+         escapedArg: str = (
+            entry.text.replace("\\", "\\\\")
+            .replace("@", "\\@")
+            .replace("$", "\\$")
+            .replace(styleBold, "${syn}")
+            .replace(styleUnderline, "${arg}")
+            .replace(styleReset, "${reset}")
+         )
+         bodyLines.append(f"\t{escapedArg}")
+
+   bodyText: Final[str] = "\n".join(bodyLines)
+   hasOpt: Final[bool]  = "${opt}" in bodyText
+   hasArg: Final[bool]  = "${arg}" in bodyText
+   hasSyn: Final[bool]  = "${syn}" in bodyText
+
+   lines.append(f"{'   ' if hasOpt else '   # '}my $opt    = \"\\x1b[1m\";")
+   lines.append(f"{'   ' if hasArg else '   # '}my $arg    = \"\\x1b[4m\";")
+   lines.append(f"{'   ' if hasSyn else '   # '}my $syn    = \"\\x1b[1m\";")
+   lines.append('   my $reset  = "\\x1b[0m";')
+
+   if withGettext:
+      lines.extend(perlTranslatorsComment)
+      lines.append('   my $usageHeader = gettext("Usage:");')
+
+   lines.append("   print STDERR <<EOF;")
+   lines.extend(bodyLines)
+   lines.append("EOF")
+   lines.extend(perlUsageTail)
+
+   return "\n".join(lines)
+
+
 # ###### Write output #######################################################
 def renderOutput(
    entries: Sequence[Entry],
@@ -781,14 +879,18 @@ def renderOutput(
       result = renderUsageCpp(entries, firstProgramName, withGettext = withGettext)
    elif fmt in ("usage-shell", "usage-bash"):
       result = renderUsageShell(entries, firstProgramName, withGettext = withGettext)
+   elif fmt in ("usage-perl", "usage-pl"):
+      result = renderUsagePerl(entries, firstProgramName, withGettext = withGettext)
    else:
       raise ValueError(
          f"Unsupported format '{outputFormat}'. "
-         f"Supported: 'syntax', 'options-only', 'usage-c', 'usage-c++', 'usage-shell'."
+         f"Supported: 'syntax', 'options-only', 'usage-c', 'usage-c++', 'usage-shell', 'usage-perl'."
       )
 
    if withBlockTags:
-      tagComment: Final[str] = "#" if fmt in ("usage-shell", "usage-bash") else "//"
+      tagComment: Final[str] = (
+         "#" if fmt in ("usage-shell", "usage-bash", "usage-perl", "usage-pl") else "//"
+      )
       return (
          f"{tagComment} ------ BEGIN-OF-USAGE-BLOCK ------\n"
          f"{result}\n"
@@ -821,14 +923,20 @@ def buildParser() -> argparse.ArgumentParser:
       dest    = "format",
       default = defaultFormat,
       choices = list(supportedFormats),
-      help    = "Output format: 'syntax' (default), 'options-only', 'usage-c', 'usage-c++', or 'usage-shell'."
+      help    = (
+         "Output format: 'syntax' (default), 'options-only', 'usage-c', "
+         "'usage-c++', 'usage-shell', or 'usage-perl'."
+      )
    )
    parser.add_argument(
       "-g", "--with-gettext",
       dest    = "withGettext",
       action  = "store_true",
       default = False,
-      help    = 'Use gettext("Usage:") for internationalization in "usage-c", "usage-c++", and "usage-shell" output.'
+      help    = (
+         'Use gettext("Usage:") for internationalization in "usage-c", '
+         '"usage-c++", "usage-shell", and "usage-perl" output.'
+      )
    )
    parser.add_argument(
       "-s", "--sorted",
