@@ -33,8 +33,12 @@ set -euo pipefail
 
 DIRNAME="$(dirname "$0")"
 
-mapfile -t manpages < <(find . -name "*.[0-9]" -and ! -name "*.so.*")
-for manpage in "${manpages[@]}" ; do
+# mapfile -t manpages < <(find . -name "*.[0-9]" -and ! -name "*.so.*")
+# for manpage in "${manpages[@]}" ; do
+
+while [ $# -gt 0 ] ; do
+   manpage="$1"
+   shift
    print-utf8 -n -s "\e[34m======  ${manpage} " "=" "=\e[0m"
 
    # ====== Find the program ================================================
