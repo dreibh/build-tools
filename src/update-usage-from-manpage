@@ -55,6 +55,13 @@ while [ $# -gt 0 ] ; do
    elif [ -e "${directory}/${program}.c" ] ; then
       source="${program}.c"
       options+=( "-F" "usage-c" )
+   elif [ -e "${directory}/${program}.py" ] || ( [ -e "${directory}/${program}" ] && head -n 1 "${directory}/${program}" | grep -q "python" ); then
+      source="${program}"
+      if [ -e "${directory}/${program}.py" ]; then
+         source="${program}.py"
+      fi
+      options+=( "-F" "usage-python" )
+      type="python"
    elif [ -e "${directory}/${program}" ] ; then
       source="${program}"
       options+=( "-F" "usage-shell" )
@@ -89,7 +96,7 @@ while [ $# -gt 0 ] ; do
       read -er applyChanges
       if [ "${applyChanges}" == "yes" ] || [ "${applyChanges}" == "y" ] ; then
          mv "${directory}/${source}.updated" "${directory}/${source}"
-         if [ "${type}" == "shell" ] ; then
+         if [ "${type}" == "shell" ] || [ "${type}" == "python" ] ; then
             chmod +x "${directory}/${source}"
          else
             make
