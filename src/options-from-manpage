@@ -125,7 +125,7 @@ cppUsageTail: Final[tuple[str, ...]]            = (
 )
 cppUsageFooter: Final[tuple[str, ...]]          = (
    '             << "\\n"',
-   '             << formatText("For further information, see the man page for {}, read the documentation at [{}], examine the source code at [{}], or consult your favourite LLM.",',
+   '             << formatText("For further information, see the man page for {}, read the documentation at {}, examine the source code at {}, or consult your favourite LLM.",',
    '                           manpage, homepage, repository) << "\\n";',
 )
 cppTranslatorsComment: Final[tuple[str, ...]]   = (
@@ -170,7 +170,7 @@ class OptionEntry:
    """Represents a .Op macro occurrence with formatted option text."""
 
    text:        str
-   optionsOnly: str
+   optionsOnly: tuple[str, ...]
    macroText:   str
 
 
@@ -196,6 +196,48 @@ def cleanMdocEscapes(text: str) -> str:
    )
    # Clean up any stray unescaped % within word/underscore identifiers (e.g. _%frame)
    return re.sub(r"(?<=[a-zA-Z0-9_])%(?=[a-zA-Z0-9_])", "", cleaned)
+
+
+# ###### Extract only option switch names ###################################
+def extractOptionsOnly(tokens: Sequence[str]) -> tuple[str, ...]:
+   """Extract only individual option switch names (e.g. -a, --authors-fix-file)."""
+   options: list[str] = []
+   i: int = 0
+   total: int = len(tokens)
+
+   while i < total:
+      token: str = tokens[i]
+      if token == "Fl":
+         dashCount: int = 0
+         while i < total and tokens[i] == "Fl":
+            dashCount += 1
+            i += 1
+
+         while i < total and tokens[i] == "-":
+            dashCount += 1
+            i += 1
+
+         if i < total and tokens[i] not in macroTokens:
+            word: str        = tokens[i]
+            stripped: str    = word.lstrip("-")
+            extraDashes: int = len(word) - len(stripped)
+
+            if extraDashes > 0 and stripped:
+               dashCount += extraDashes
+               optStr: str = f"{'-' * dashCount}{stripped}"
+               i += 1
+            else:
+               optStr = f"{'-' * dashCount}{word}"
+               i += 1
+         else:
+            optStr = "-" * dashCount
+
+         if optStr.strip("-"):
+            options.append(optStr)
+      else:
+         i += 1
+
+   return tuple(options)
 
 
 # ###### Parse tokens from manpage ##########################################
@@ -294,7 +336,6 @@ def parseTokens(
                i += 1
 
       elif token == "Bro":
-         # Find matching Brc enclosure
          depth: int = 1
          j: int     = i + 1
          while j < total:
@@ -597,18 +638,16 @@ def parseManpage(filePath: Path) -> tuple[list[Entry], str]:
          opContent: str      = cleanMdocEscapes(opMatch.group(1) or "")
          opTokens: list[str] = opContent.split()
          if opTokens:
-            styledInner: str = parseTokens(
+            styledInner: str          = parseTokens(
                opTokens, includeArgs = True, useStyles = True
             )
-            textVal: str     = f"{styleBold}[{styleReset}{styledInner}{styleBold}]{styleReset}"
-            optOnlyVal: str  = parseTokens(
-               opTokens, includeArgs = False, useStyles = False
-            )
-            macroVal: str    = parseTokensMacro(opTokens)
+            textVal: str              = f"{styleBold}[{styleReset}{styledInner}{styleBold}]{styleReset}"
+            optsOnly: tuple[str, ...] = extractOptionsOnly(opTokens)
+            macroVal: str             = parseTokensMacro(opTokens)
             entries.append(
                OptionEntry(
                   text        = textVal,
-                  optionsOnly = optOnlyVal,
+                  optionsOnly = optsOnly,
                   macroText   = macroVal,
                )
             )
@@ -618,15 +657,9 @@ def parseManpage(filePath: Path) -> tuple[list[Entry], str]:
 
 
 # ###### Sorting order for options ##########################################
-def sortOptionKey(opt: OptionEntry) -> tuple[int, str, str]:
+def sortOptionKey(optStr: str) -> tuple[int, str, str]:
    """Key for sorting options: short options first (0), long options second (1), other third (2)."""
-   plain: str = (
-      opt.text.replace(styleBold, "")
-      .replace(styleUnderline, "")
-      .replace(styleReset, "")
-      .lstrip("[")
-      .strip()
-   )
+   plain: str = optStr.strip()
    priority: int
    if plain.startswith("-") and not plain.startswith("--"):
       priority = 0
@@ -637,6 +670,18 @@ def sortOptionKey(opt: OptionEntry) -> tuple[int, str, str]:
    return (priority, plain.casefold(), plain)
 
 
+def sortEntryKey(opt: OptionEntry) -> tuple[int, str, str]:
+   """Key for sorting option entries based on their primary option."""
+   plain: str = (
+      opt.text.replace(styleBold, "")
+      .replace(styleUnderline, "")
+      .replace(styleReset, "")
+      .lstrip("[")
+      .strip()
+   )
+   return sortOptionKey(plain)
+
+
 # ###### Sort option entries ################################################
 def sortEntries(entries: Sequence[Entry]) -> list[Entry]:
    """Sort option entries per program name (.Nm): short options first, then long options."""
@@ -645,7 +690,7 @@ def sortEntries(entries: Sequence[Entry]) -> list[Entry]:
 
    def flushOptions() -> None:
       if currentOptions:
-         currentOptions.sort(key = sortOptionKey)
+         currentOptions.sort(key = sortEntryKey)
          sortedEntries.extend(currentOptions)
          currentOptions.clear()
 
@@ -680,13 +725,21 @@ def renderSyntax(entries: Sequence[Entry]) -> str:
 
 
 # ###### Write "options-only" output ########################################
-def renderOptionsOnly(entries: Sequence[Entry]) -> str:
-   """Render only option definitions without program names or arguments."""
-   lines: Final[list[str]] = [
-      entry.optionsOnly
-      for entry in entries
-      if isinstance(entry, OptionEntry) and entry.optionsOnly.strip()
-   ]
+def renderOptionsOnly(entries: Sequence[Entry], isSorted: bool = False) -> str:
+   """Render only option definitions without program names, arguments, or pipes (one per line)."""
+   lines: Final[list[str]] = []
+   seen: Final[set[str]]   = set()
+
+   for entry in entries:
+      if isinstance(entry, OptionEntry):
+         for opt in entry.optionsOnly:
+            if opt not in seen:
+               seen.add(opt)
+               lines.append(opt)
+
+   if isSorted:
+      lines.sort(key = sortOptionKey)
+
    return "\n".join(lines)
 
 
@@ -976,6 +1029,7 @@ def renderOutput(
    outputFormat: str,
    withGettext: bool   = False,
    withBlockTags: bool = False,
+   isSorted: bool      = False,
 ) -> str:
    """Route entries to the requested output formatter and optionally wrap in block tags."""
    fmt: Final[str] = outputFormat.strip().lower()
@@ -984,7 +1038,7 @@ def renderOutput(
    if fmt == "syntax":
       result = renderSyntax(entries)
    elif fmt == "options-only":
-      result = renderOptionsOnly(entries)
+      result = renderOptionsOnly(entries, isSorted = isSorted)
    elif fmt == "usage-c":
       result = renderUsageC(entries, firstProgramName, withGettext = withGettext)
    elif fmt in ("usage-c++", "usage-cpp"):
@@ -1081,6 +1135,7 @@ def main(argv: Sequence[str] | None = None) -> int:
          outputFormat     = args.format,
          withGettext      = args.withGettext,
          withBlockTags    = args.withBlockTags,
+         isSorted         = args.isSorted,
       )
       if output:
          print(output)
