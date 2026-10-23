@@ -42,7 +42,7 @@ from typing import Final, Sequence
 
 opPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Op(?:\s+(.*))?$")
 nmPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Nm(?:\s+(.*))?$")
-noPattern: Final[re.Pattern[str]]        = re.compile(r"^\.(No|Ar|Cm|Sy)(?:\s+(.*))?$")
+noPattern: Final[re.Pattern[str]]        = re.compile(r"^\.(No|Ar|Cm|Sy|Bro)(?:\s+(.*))?$")
 shPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Sh(?:\s+(.*))?$")
 syPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Sy(?:\s+(.*))?$")
 
@@ -61,7 +61,7 @@ styleBold: Final[str]      = "\x1b[1m"
 styleUnderline: Final[str] = "\x1b[4m"
 styleReset: Final[str]     = "\x1b[0m"
 
-macroTokens: Final[set[str]] = { "Fl", "Ar", "No", "Op", "Cm", "Sy", "|", "{", "}", "--" }
+macroTokens: Final[set[str]] = { "Fl", "Ar", "No", "Op", "Cm", "Sy", "Bro", "Brc", "|", "--" }
 
 
 # ###### C usage function definitions #######################################
@@ -125,7 +125,7 @@ cppUsageTail: Final[tuple[str, ...]]            = (
 )
 cppUsageFooter: Final[tuple[str, ...]]          = (
    '             << "\\n"',
-   '             << formatText("For further information, see the man page for {}, read the documentation at {}, examine the source code at {}, or consult your favourite LLM.",',
+   '             << formatText("For further information, see the man page for {}, read the documentation at [{}], examine the source code at [{}], or consult your favourite LLM.",',
    '                           manpage, homepage, repository) << "\\n";',
 )
 cppTranslatorsComment: Final[tuple[str, ...]]   = (
@@ -244,17 +244,29 @@ def parseTokens(
 
       elif token == "Ar":
          i += 1
-         while i < total and tokens[i] not in macroTokens:
-            argVal: str = tokens[i]
-            if argVal == "...":
-               words.append("...")
+         while i < total:
+            if tokens[i] == "|":
+               if i + 1 < total and tokens[i + 1] not in macroTokens:
+                  if includeArgs:
+                     words.append(f"{styleBold}|{styleReset}" if useStyles else "|")
+                  i += 1
+                  continue
+               else:
+                  break
+            elif tokens[i] in macroTokens:
+               break
             else:
-               if includeArgs:
-                  if useStyles:
-                     words.append(f"{styleUnderline}{argVal}{styleReset}")
-                  else:
-                     words.append(argVal)
-            i += 1
+               argVal: str = tokens[i]
+               if argVal == "...":
+                  if includeArgs:
+                     words.append("...")
+               else:
+                  if includeArgs:
+                     if useStyles:
+                        words.append(f"{styleUnderline}{argVal}{styleReset}")
+                     else:
+                        words.append(argVal)
+               i += 1
 
       elif token == "No":
          i += 1
@@ -264,10 +276,55 @@ def parseTokens(
 
       elif token in ("Cm", "Sy"):
          i += 1
-         while i < total and tokens[i] not in macroTokens:
-            argVal: str = tokens[i]
-            words.append(f"{styleBold}{argVal}{styleReset}" if useStyles else argVal)
+         while i < total:
+            if tokens[i] == "|":
+               if i + 1 < total and tokens[i + 1] not in macroTokens:
+                  if includeArgs:
+                     words.append(f"{styleBold}|{styleReset}" if useStyles else "|")
+                  i += 1
+                  continue
+               else:
+                  break
+            elif tokens[i] in macroTokens:
+               break
+            else:
+               argVal: str = tokens[i]
+               if includeArgs:
+                  words.append(f"{styleBold}{argVal}{styleReset}" if useStyles else argVal)
+               i += 1
+
+      elif token == "Bro":
+         # Find matching Brc enclosure
+         depth: int = 1
+         j: int     = i + 1
+         while j < total:
+            if tokens[j] == "Bro":
+               depth += 1
+            elif tokens[j] == "Brc":
+               depth -= 1
+               if depth == 0:
+                  break
+            j += 1
+
+         if j < total and tokens[j] == "Brc":
+            if includeArgs:
+               inner: str = parseTokens(
+                  tokens[i + 1 : j], includeArgs = includeArgs, useStyles = useStyles
+               )
+               if useStyles:
+                  words.append(f"{styleBold}{{{styleReset}{inner}{styleBold}}}{styleReset}")
+               else:
+                  words.append(f"{{{inner}}}")
+            i = j + 1
+         else:
+            if includeArgs:
+               words.append(f"{styleBold}{{{styleReset}" if useStyles else "{")
             i += 1
+
+      elif token == "Brc":
+         if includeArgs:
+            words.append(f"{styleBold}}}{styleReset}" if useStyles else "}")
+         i += 1
 
       elif token == "Op":
          i += 1
@@ -278,7 +335,7 @@ def parseTokens(
             words.append(f"[{inner}]")
          break
 
-      elif token in ("|", "{", "}", "--"):
+      elif token in ("|", "--"):
          if useStyles:
             words.append(f"{styleBold}{token}{styleReset}")
          else:
@@ -331,19 +388,47 @@ def parseTokensMacro(tokens: Sequence[str]) -> str:
 
       elif token == "Ar":
          i += 1
-         while i < total and tokens[i] not in macroTokens:
-            argVal: str = tokens[i]
-            if argVal == "...":
-               parts.append('"..."')
+         while i < total:
+            if tokens[i] == "|":
+               if i + 1 < total and tokens[i + 1] not in macroTokens:
+                  parts.append("PIPE")
+                  i += 1
+                  continue
+               else:
+                  break
+            elif tokens[i] in macroTokens:
+               break
             else:
-               parts.append(f'ARG("{argVal}")')
-            i += 1
+               argVal: str = tokens[i]
+               if argVal == "...":
+                  parts.append('"..."')
+               else:
+                  parts.append(f'ARG("{argVal}")')
+               i += 1
 
       elif token in ("Cm", "Sy"):
          i += 1
-         while i < total and tokens[i] not in macroTokens:
-            parts.append(f'SYN("{tokens[i]}")')
-            i += 1
+         while i < total:
+            if tokens[i] == "|":
+               if i + 1 < total and tokens[i + 1] not in macroTokens:
+                  parts.append("PIPE")
+                  i += 1
+                  continue
+               else:
+                  break
+            elif tokens[i] in macroTokens:
+               break
+            else:
+               parts.append(f'SYN("{tokens[i]}")')
+               i += 1
+
+      elif token == "Bro":
+         parts.append('SYN("{")')
+         i += 1
+
+      elif token == "Brc":
+         parts.append('SYN("}")')
+         i += 1
 
       elif token == "No":
          i += 1
@@ -361,7 +446,7 @@ def parseTokensMacro(tokens: Sequence[str]) -> str:
          parts.append("PIPE")
          i += 1
 
-      elif token in ("{", "}", "[", "]", "--"):
+      elif token in ("[", "]", "--"):
          parts.append(f'SYN("{token}")')
          i += 1
 
@@ -381,6 +466,8 @@ def parseTokensMacro(tokens: Sequence[str]) -> str:
       if prev == "PIPE" or p == "PIPE":
          res.append(f" {p}")
       elif prev.endswith('SYN("[")') or p.startswith('SYN("]")'):
+         res.append(f" {p}")
+      elif prev.endswith('SYN("{")') or p.startswith('SYN("}")'):
          res.append(f" {p}")
       else:
          res.append(f' " " {p}')
@@ -465,7 +552,7 @@ def parseManpage(filePath: Path) -> tuple[list[Entry], str]:
             hasSeenOptionsForCmd = False
          continue
 
-      # Track command arguments (.No / .Ar / .Cm / .Sy):
+      # Track command arguments (.No / .Ar / .Cm / .Sy / .Bro):
       noMatch: re.Match[str] | None = noPattern.match(stripped)
       if noMatch:
          macroType: str      = noMatch.group(1)
@@ -757,6 +844,8 @@ def renderUsageShell(
             escapedOpt.replace("${opt}[${reset}", "${syn}[${reset}")
             .replace("${opt}]${reset}", "${syn}]${reset}")
             .replace("${opt}|${reset}", "${syn}|${reset}")
+            .replace("${opt}{${reset}", "${syn}{${reset}")
+            .replace("${opt}}${reset}", "${syn}}${reset}")
          )
          bodyLines.append(f"\t{escapedOpt}")
       elif isinstance(entry, ArgumentEntry):
@@ -843,6 +932,8 @@ def renderUsagePerl(
             escapedOpt.replace("${opt}[${reset}", "${syn}[${reset}")
             .replace("${opt}]${reset}", "${syn}]${reset}")
             .replace("${opt}|${reset}", "${syn}|${reset}")
+            .replace("${opt}{${reset}", "${syn}{${reset}")
+            .replace("${opt}}${reset}", "${syn}}${reset}")
          )
          bodyLines.append(f"\t{escapedOpt}")
       elif isinstance(entry, ArgumentEntry):
