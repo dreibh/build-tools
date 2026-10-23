@@ -977,8 +977,8 @@ def renderUsageShell(
    lines.append("   local reset=$'\\x1b[0m'")
    lines.append('   local progname="${program##*/}"')
    lines.append('   local manpage="${cmd}${progname%.*}${reset}"')
-   lines.append('   local homepage="${cmd}"$\'\\x1b]8;;@PROJECT_HOMEPAGE_URL@\\a@PROJECT_HOMEPAGE_URL@\\a\\x1b]8;;\\a\'"${reset}"')
-   lines.append('   local repository="${cmd}"$\'\\x1b]8;;@PROJECT_SOURCE_URL@\\a@PROJECT_SOURCE_URL@\\a\\x1b]8;;\\a\'"${reset}"')
+   lines.append("   local homepage=$'\\x1b[1m\\x1b]8;;@PROJECT_HOMEPAGE_URL@\\a@PROJECT_HOMEPAGE_URL@\\a\\x1b]8;;\\a\\x1b[0m'")
+   lines.append("   local repository=$'\\x1b[1m\\x1b]8;;@PROJECT_SOURCE_URL@\\a@PROJECT_SOURCE_URL@\\a\\x1b]8;;\\a\\x1b[0m'")
 
    if withGettext:
       lines.extend(shellTranslatorsComment)
@@ -1165,8 +1165,9 @@ def renderUsagePerl(
    lines.append('   my $progname = (split(m{/}, $program))[-1];')
    lines.append('   $progname =~ s{\\.[^.]+$}{};')
    lines.append('   my $manpage    = "${cmd}${progname}${reset}";')
-   lines.append('   my $homepage   = "${cmd}\\x1b]8;;@PROJECT_HOMEPAGE_URL@\\a@PROJECT_HOMEPAGE_URL@\\a\\x1b]8;;\\a${reset}";')
-   lines.append('   my $repository = "${cmd}\\x1b]8;;@PROJECT_SOURCE_URL@\\a@PROJECT_SOURCE_URL@\\a\\x1b]8;;\\a${reset}";')
+   lines.append('   my $homepage   = "${cmd}\\x1b]8;;\\@PROJECT_HOMEPAGE_URL\\@\\a\\@PROJECT_HOMEPAGE_URL\\@\\a\\x1b]8;;\\a${reset}";')
+   lines.append('   my $repository = "${cmd}\\x1b]8;;\\@PROJECT_SOURCE_URL\\@\\a\\@PROJECT_SOURCE_URL\\@\\a\\x1b]8;;\\a${reset}";')
+   lines.append("")
 
    if withGettext:
       lines.extend(perlTranslatorsComment)
@@ -1177,12 +1178,12 @@ def renderUsagePerl(
    lines.append("")
    lines.append("EOF")
 
-   infoExpr: Final[str] = f'gettext("{infoFooterPrintf}")' if withGettext else f'"{infoFooterPrintf}"'
+   infoExpr: Final[str] = f'gettext("{infoFooterPrintf}\\n")' if withGettext else f'"{infoFooterPrintf}\\n"'
 
    if withGettext:
       lines.extend(perlInfoTranslatorsComment)
 
-   lines.append(f"   printf STDERR ({infoExpr} . \"\\n\",")
+   lines.append(f"   printf STDERR ({infoExpr},")
    lines.append("                  $manpage, $homepage, $repository);")
    lines.extend(perlUsageTail)
 
