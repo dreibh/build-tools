@@ -62,6 +62,13 @@ while [ $# -gt 0 ] ; do
       fi
       options+=( "-F" "usage-python" )
       type="python"
+   elif [ -e "${directory}/${program}.pl" ] || ( [ -e "${directory}/${program}" ] && head -n 1 "${directory}/${program}" | grep -q "perl" ); then
+      source="${program}"
+      if [ -e "${directory}/${program}.pl" ]; then
+         source="${program}.pl"
+      fi
+      options+=( "-F" "usage-perl" )
+      type="perl"
    elif [ -e "${directory}/${program}" ] ; then
       source="${program}"
       options+=( "-F" "usage-shell" )
@@ -96,7 +103,7 @@ while [ $# -gt 0 ] ; do
       read -er applyChanges
       if [ "${applyChanges}" == "yes" ] || [ "${applyChanges}" == "y" ] ; then
          mv "${directory}/${source}.updated" "${directory}/${source}"
-         if [ "${type}" == "shell" ] || [ "${type}" == "python" ] ; then
+         if [ "${type}" == "shell" ] || [ "${type}" == "python" ] || [ "${type}" == "perl" ] ; then
             chmod +x "${directory}/${source}"
          else
             make

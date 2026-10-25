@@ -144,7 +144,7 @@ cppUsageVariables: Final[tuple[str, ...]]       = (
    '                                std::string("\\x1b]8;;\\a\\x1b[0m"));',
 )
 cppUsageTail: Final[tuple[str, ...]]            = (
-   "   exit(exitCode);",
+   "   std::exit(exitCode);",
    "}",
 )
 cppTranslatorsComment: Final[tuple[str, ...]]   = (
