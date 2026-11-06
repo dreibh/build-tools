@@ -26,21 +26,30 @@
 .\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
 .\"
 .\" Contact: thomas.dreibholz@gmail.com
+.\"
+.\" ###### Setup ############################################################
 .Dd November 6, 2026
 .Dt OPTIONS-FROM-MANPAGE 1
 .Os
+.\" ###### Name #############################################################
 .Sh NAME
 .Nm options-from-manpage
 .Nd extract and format options and program synopsis from an mdoc manpage
+.\" ###### Synopsis #########################################################
 .Sh SYNOPSIS
 .Nm options-from-manpage
 .Op Fl b | Fl -with-block-tags
+.br
 .Op Fl F Ar format | Fl -format Ar format
+.br
 .Op Fl g | Fl -with-gettext
+.br
 .Op Fl s | Fl -sorted
+.br
 .Ar manpage
 .Nm options-from-manpage
 .Op Fl h | Fl -help
+.\" ###### Description ######################################################
 .Sh DESCRIPTION
 .Nm
 parses the
@@ -91,6 +100,7 @@ first, followed by long options
 .It Fl h , Fl -help
 Display a summary of command-line syntax and options, then exit.
 .El
+.\" ###### Formats ##########################################################
 .Sh FORMATS
 The
 .Fl F
@@ -139,6 +149,12 @@ and
 writing to
 .Dv stderr() .
 .El
+.\" ###### Exit status ######################################################
+.Sh EXIT STATUS
+The
+.Nm
+tool exits with 0 on success, and >0 in case of an error.
+.\" ###### Examples #########################################################
 .Sh EXAMPLES
 Extract syntax listings from an mdoc manpage:
 .Pp
@@ -155,9 +171,11 @@ Generate a GNU R usage function:
 Generate a sorted switch list for command completion:
 .Pp
 .Dl $ options-from-manpage -s -F options-only subnetcalc.1
+.\" ###### See also #########################################################
 .Sh SEE ALSO
 .Xr mdoc 7 ,
 .Xr man 1 ,
 .Xr gettext 1
+.\" ###### Authors ##########################################################
 .Sh AUTHORS
 .An Thomas Dreibholz Aq Mt thomas.dreibholz@gmail.com
