@@ -55,6 +55,7 @@ supportedFormats: Final[tuple[str, ...]] = (
    "usage-shell",
    "usage-python",
    "usage-perl",
+   "usage-r",
 )
 
 # ANSI style escape codes
@@ -261,6 +262,27 @@ perlTranslatorsComment: Final[tuple[str, ...]]  = (
    '   # "Usage: <program> [options]".',
 )
 perlInfoTranslatorsComment: Final[tuple[str, ...]] = (
+   "   # TRANSLATORS: Informational message at the end of usage:",
+   '   # "For further information, see the man page for <manpage>, read the documentation at <url>, examine the source code at <url>, or consult your favourite LLM.".',
+)
+
+
+# ###### R usage function definitions #######################################
+rUsageHead: Final[tuple[str, ...]]              = (
+   "# ###### Usage ##############################################################",
+   "usage <- function(program, exitCode = 0) {",
+   '   header <- "\\x1b[4m"',
+   '   cmd    <- "\\x1b[1m"',
+)
+rUsageTail: Final[tuple[str, ...]]              = (
+   '   quit(status = exitCode, save = "no")',
+   "}",
+)
+rTranslatorsComment: Final[tuple[str, ...]]     = (
+   "   # TRANSLATORS: Command-line syntax message prefix:",
+   '   # "Usage: <program> [options]".',
+)
+rInfoTranslatorsComment: Final[tuple[str, ...]] = (
    "   # TRANSLATORS: Informational message at the end of usage:",
    '   # "For further information, see the man page for <manpage>, read the documentation at <url>, examine the source code at <url>, or consult your favourite LLM.".',
 )
@@ -1272,6 +1294,131 @@ def renderUsagePerl(
    return "\n".join(lines)
 
 
+# ###### Write "usage-r" output #############################################
+def renderUsageR(
+   entries: Sequence[Entry],
+   firstProgramName: str,
+   withGettext: bool = False,
+) -> str:
+   """Generate a complete GNU R usage() function using cat(..., file = stderr(), sep = "")."""
+   def formatTokensToR(text: str, isOption: bool = False, isCommand: bool = False, progVar: str = "") -> str:
+      escaped: str = text.replace("\\", "\\\\").replace('"', '\\"')
+      escaped = (
+         escaped.replace(styleBold, "@@@OPT@@@")
+         .replace(styleUnderline, "@@@ARG@@@")
+         .replace(styleReset, "@@@RESET@@@")
+      )
+      escaped = (
+         escaped.replace("@@@OPT@@@[@@@RESET@@@", "@@@SYN@@@[@@@RESET@@@")
+         .replace("@@@OPT@@@]@@@RESET@@@", "@@@SYN@@@]@@@RESET@@@")
+         .replace("@@@OPT@@@|@@@RESET@@@", "@@@SYN@@@|@@@RESET@@@")
+         .replace("@@@OPT@@@\\{@@@RESET@@@", "@@@SYN@@@\\{@@@RESET@@@")
+         .replace("@@@OPT@@@\\}@@@RESET@@@", "@@@SYN@@@\\}@@@RESET@@@")
+         .replace("@@@OPT@@@{@@@RESET@@@", "@@@SYN@@@{@@@RESET@@@")
+         .replace("@@@OPT@@@}@@@RESET@@@", "@@@SYN@@@}@@@RESET@@@")
+      )
+      pattern: Final[re.Pattern[str]] = re.compile(r"(@@@OPT@@@|@@@SYN@@@|@@@ARG@@@|@@@RESET@@@)")
+      rawTokens: Final[list[str]]     = pattern.split(escaped)
+
+      varMap: Final[dict[str, str]] = {
+         "@@@OPT@@@":   "opt",
+         "@@@SYN@@@":   "syn",
+         "@@@ARG@@@":   "arg",
+         "@@@RESET@@@": "reset",
+      }
+
+      pieces: list[str] = []
+      if isCommand:
+         pieces.extend(["cmd", progVar, "reset"])
+         if text.strip():
+            pieces.append('" "')
+
+      if isOption:
+         pieces.append('"\\t"')
+
+      for t in rawTokens:
+         if not t:
+            continue
+         if t in varMap:
+            pieces.append(varMap[t])
+         else:
+            pieces.append(f'"{t}"')
+
+      combined: list[str] = []
+      for p in pieces:
+         if combined and combined[-1].startswith('"') and combined[-1].endswith('"') and p.startswith('"') and p.endswith('"'):
+            combined[-1] = f'"{combined[-1][1:-1]}{p[1:-1]}"'
+         else:
+            combined.append(p)
+
+      combined.append('"\\n"')
+      if len(combined) >= 2 and combined[-2].startswith('"') and combined[-2].endswith('"'):
+         lastStr: str = combined[-2][1:-1] + combined[-1][1:-1]
+         combined.pop()
+         combined[-1] = f'"{lastStr}"'
+
+      return ", ".join(combined)
+
+   bodyLines: list[str] = []
+   for entry in entries:
+      if isinstance(entry, CommandEntry):
+         progToken: str = "program" if entry.name == firstProgramName else f'"{entry.name}"'
+         bodyLines.append(formatTokensToR(entry.args, isCommand = True, progVar = progToken))
+      elif isinstance(entry, OptionEntry):
+         bodyLines.append(formatTokensToR(entry.text, isOption = True))
+      elif isinstance(entry, ArgumentEntry):
+         bodyLines.append(formatTokensToR(f"\t{entry.text}"))
+
+   bodyFull: Final[str] = "\n".join(bodyLines)
+   hasOpt: Final[bool]  = bool(re.search(r"\bopt\b", bodyFull))
+   hasArg: Final[bool]  = bool(re.search(r"\barg\b", bodyFull))
+   hasSyn: Final[bool]  = bool(re.search(r"\bsyn\b", bodyFull))
+
+   lines: Final[list[str]] = list(rUsageHead)
+   lines.append(f"{'   ' if hasOpt else '   # '}opt    <- \"\\x1b[1m\"")
+   lines.append(f"{'   ' if hasArg else '   # '}arg    <- \"\\x1b[4m\"")
+   lines.append(f"{'   ' if hasSyn else '   # '}syn    <- \"\\x1b[1m\"")
+   lines.append('   reset  <- "\\x1b[0m"')
+   lines.append('   progname <- basename(program)')
+   lines.append('   progname <- sub("\\\\.[^.]+$", "", progname)')
+   lines.append('   manpage  <- paste0(cmd, progname, reset)')
+
+   if withGettext:
+      lines.append("   # TRANSLATORS: Text direction: LTR (Left-to-Right) or RTL (Right-to-Left)")
+      lines.append('   rtl <- (gettext("LTR") == "RTL")')
+      lines.append('   lrm <- if (rtl) "\\xe2\\x80\\x8e" else ""')
+      lines.append('   rlm <- if (rtl) "\\xe2\\x80\\x8f" else ""')
+      lines.append('   homepage   <- paste0(lrm, "[\\x1b[1m\\x1b]8;;@PROJECT_HOMEPAGE_URL@\\a@PROJECT_HOMEPAGE_URL@\\a\\x1b]8;;\\a\\x1b[0m]", rlm)')
+      lines.append('   repository <- paste0(lrm, "[\\x1b[1m\\x1b]8;;@PROJECT_SOURCE_URL@\\a@PROJECT_SOURCE_URL@\\a\\x1b]8;;\\a\\x1b[0m]", rlm)')
+      lines.append("")
+      lines.extend(rTranslatorsComment)
+      lines.append('   usageHeader <- gettext("Usage:")')
+   else:
+      lines.append('   homepage   <- "[\\x1b[1m\\x1b]8;;@PROJECT_HOMEPAGE_URL@\\a@PROJECT_HOMEPAGE_URL@\\a\\x1b]8;;\\a\\x1b[0m]"')
+      lines.append('   repository <- "[\\x1b[1m\\x1b]8;;@PROJECT_SOURCE_URL@\\a@PROJECT_SOURCE_URL@\\a\\x1b]8;;\\a\\x1b[0m]"')
+      lines.append('   usageHeader <- "Usage:"')
+
+   lines.append("   cat(")
+   lines.append('      header, usageHeader, reset, "\\n",')
+   for bl in bodyLines:
+      lines.append(f"      {bl},")
+   lines.append('      "\\n",')
+   lines.append('      file = stderr(), sep = ""')
+   lines.append("   )")
+
+   infoExpr: Final[str] = f'gettext("{infoFooterPrintf}\\n")' if withGettext else f'"{infoFooterPrintf}\\n"'
+
+   if withGettext:
+      lines.extend(rInfoTranslatorsComment)
+
+   lines.append(f"   cat(sprintf({infoExpr},")
+   lines.append("               manpage, homepage, repository),")
+   lines.append("       file = stderr())")
+   lines.extend(rUsageTail)
+
+   return "\n".join(lines)
+
+
 # ###### Write output #######################################################
 def renderOutput(
    entries: Sequence[Entry],
@@ -1299,15 +1446,17 @@ def renderOutput(
       result = renderUsagePython(entries, firstProgramName, withGettext = withGettext)
    elif fmt in ("usage-perl", "usage-pl"):
       result = renderUsagePerl(entries, firstProgramName, withGettext = withGettext)
+   elif fmt in ("usage-r", "usage-R"):
+      result = renderUsageR(entries, firstProgramName, withGettext = withGettext)
    else:
       raise ValueError(
          f"Unsupported format '{outputFormat}'. "
-         f"Supported: 'syntax', 'options-only', 'usage-c', 'usage-c++', 'usage-shell', 'usage-perl', 'usage-python'."
+         f"Supported: 'syntax', 'options-only', 'usage-c', 'usage-c++', 'usage-shell', 'usage-perl', 'usage-python', 'usage-r'."
       )
 
    if withBlockTags:
       tagComment: Final[str] = (
-         "#" if fmt in ("usage-shell", "usage-bash", "usage-perl", "usage-pl", "usage-python", "usage-py") else "//"
+         "#" if fmt in ("usage-shell", "usage-bash", "usage-perl", "usage-pl", "usage-python", "usage-py", "usage-r", "usage-R") else "//"
       )
       return (
          f"{tagComment} ------ BEGIN-OF-USAGE-BLOCK ------\n"
@@ -1343,7 +1492,7 @@ def buildParser() -> argparse.ArgumentParser:
       choices = list(supportedFormats),
       help    = (
          "Output format: 'syntax' (default), 'options-only', 'usage-c', "
-         "'usage-c++', 'usage-shell', 'usage-perl', or 'usage-python'."
+         "'usage-c++', 'usage-shell', 'usage-perl', 'usage-python', or 'usage-r'."
       )
    )
    parser.add_argument(
@@ -1353,7 +1502,7 @@ def buildParser() -> argparse.ArgumentParser:
       default = False,
       help    = (
          'Use gettext("Usage:") for internationalization in "usage-c", '
-         '"usage-c++", "usage-shell", "usage-perl", and "usage-python" output.'
+         '"usage-c++", "usage-shell", "usage-perl", "usage-python", and "usage-r" output.'
       )
    )
    parser.add_argument(
