@@ -7,7 +7,7 @@
 #             |____/ \__,_|_|_|\__,_|     |_|\___/ \___/|_|___/
 #
 #                           --- Build-Tools ---
-#                https://www.nntb.no/~dreibh/system-tools/
+#                  https://www.nntb.no/~dreibh/build-tools/
 # ==========================================================================
 #
 # Packaging Scripts
@@ -33,11 +33,12 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, Sequence
+from typing import Final, Sequence, TextIO
 
 
 opPattern: Final[re.Pattern[str]]        = re.compile(r"^\.Op(?:\s+(.*))?$")
@@ -286,6 +287,48 @@ rInfoTranslatorsComment: Final[tuple[str, ...]] = (
    "   # TRANSLATORS: Informational message at the end of usage:",
    '   # "For further information, see the man page for <manpage>, read the documentation at <url>, examine the source code at <url>, or consult your favourite LLM.".',
 )
+
+
+# ###### Self-contained Usage function for options-from-manpage ############
+def usage(exitCode: int = 0) -> None:
+   """Display program syntax and command-line options, then exit."""
+   header: Final[str] = "\x1b[4m"
+   cmd:    Final[str] = "\x1b[1m"
+   opt:    Final[str] = "\x1b[1m"
+   arg:    Final[str] = "\x1b[4m"
+   syn:    Final[str] = "\x1b[1m"
+   reset:  Final[str] = "\x1b[0m"
+
+   out: Final[TextIO]   = sys.stderr if exitCode != 0 else sys.stdout
+   program: Final[str]  = os.path.basename(sys.argv[0])
+   manpage: Final[str]  = f"\x1b[1m{os.path.splitext(program)[0]}\x1b[0m"
+   homepage: Final[str] = (
+      "[\x1b[1m\x1b]8;;"
+      "https://www.nntb.no/~dreibh/build-tools/"
+      "\ahttps://www.nntb.no/~dreibh/build-tools/\a"
+      "\x1b]8;;\a\x1b[0m]"
+   )
+   repository: Final[str] = (
+      "[\x1b[1m\x1b]8;;"
+      "https://github.com/dreibh/build-tools"
+      "\ahttps://github.com/dreibh/build-tools\a"
+      "\x1b]8;;\a\x1b[0m]"
+   )
+
+   out.write(
+      f"{header}Usage:{reset}\n"
+      f"{cmd}{program}{reset}\n"
+      f"\t{syn}[{reset}{opt}-b{reset} {syn}|{reset} {opt}--with-block-tags{reset}{syn}]{reset}\n"
+      f"\t{syn}[{reset}{opt}-F{reset} {arg}format{reset} {syn}|{reset} {opt}--format{reset} {arg}format{reset}{syn}]{reset}\n"
+      f"\t{syn}[{reset}{opt}-g{reset} {syn}|{reset} {opt}--with-gettext{reset}{syn}]{reset}\n"
+      f"\t{syn}[{reset}{opt}-s{reset} {syn}|{reset} {opt}--sorted{reset}{syn}]{reset}\n"
+      f"\t{arg}manpage{reset}\n"
+      f"{cmd}{program}{reset}\n"
+      f"\t{syn}[{reset}{opt}-h{reset} {syn}|{reset} {opt}--help{reset}{syn}]{reset}\n"
+      f"\n"
+      f"{'For further information, see the man page for {}, read the documentation at {}, examine the source code at {}, or consult your favourite LLM.'.format(manpage, homepage, repository)}\n"
+   )
+   sys.exit(exitCode)
 
 
 @dataclass(frozen = True)
@@ -1471,12 +1514,15 @@ def renderOutput(
 def buildParser() -> argparse.ArgumentParser:
    """Build command-line arguments."""
    parser: Final[argparse.ArgumentParser] = argparse.ArgumentParser(
-      description = "Extract and format options from an mdoc manpage file."
+      description = "Extract and format options from an mdoc manpage file.",
+      add_help    = False
    )
    parser.add_argument(
       "manpage",
-      type = Path,
-      help = "Path to the manpage file."
+      type    = Path,
+      nargs   = "?",
+      default = None,
+      help    = "Path to the manpage file."
    )
    parser.add_argument(
       "-b", "--with-block-tags",
@@ -1512,13 +1558,27 @@ def buildParser() -> argparse.ArgumentParser:
       default = False,
       help    = "Sort option lines per program name alphabetically (short options first, then long options)."
    )
+   parser.add_argument(
+      "-h", "--help",
+      dest    = "help",
+      action  = "store_true",
+      default = False,
+      help    = "Display command-line syntax and option summary, then exit."
+   )
    return parser
 
 
-# ###### Parse manpage and write output #####################################
+# ###### Main program #######################################################
 def main(argv: Sequence[str] | None = None) -> int:
    parser: Final[argparse.ArgumentParser] = buildParser()
    args: Final[argparse.Namespace]        = parser.parse_args(argv)
+
+   if args.help:
+      usage(0)
+
+   if args.manpage is None:
+      sys.stderr.write("ERROR: Missing manpage argument!\n\n")
+      usage(1)
 
    if not args.manpage.is_file():
       sys.stderr.write(f"ERROR: File not found: '{args.manpage}'\n")
@@ -1547,6 +1607,5 @@ def main(argv: Sequence[str] | None = None) -> int:
    return 0
 
 
-# ###### Main program #######################################################
 if __name__ == "__main__":
    sys.exit(main())
