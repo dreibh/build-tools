@@ -67,17 +67,17 @@ macroTokens: Final[set[str]] = { "Fl", "Ar", "No", "Op", "Cm", "Sy", "Bro", "Brc
 # Common informational footer templates
 infoFooterBraced: Final[str] = (
    "For further information, see the man page for {}, "
-   "read the documentation at [{}], examine the source code at [{}], "
-   "or consult your favourite LLM."
-)
-cppInfoFooterBraced: Final[str] = (
-   "For further information, see the man page for {}, "
    "read the documentation at {}, examine the source code at {}, "
    "or consult your favourite LLM."
 )
 infoFooterPrintf: Final[str] = (
    "For further information, see the man page for %s, "
    "read the documentation at [%s], examine the source code at [%s], "
+   "or consult your favourite LLM."
+)
+cInfoFooterPrintf: Final[str] = (
+   "For further information, see the man page for %s, "
+   "read the documentation at %s, examine the source code at %s, "
    "or consult your favourite LLM."
 )
 
@@ -103,8 +103,20 @@ cUsageVariables: Final[tuple[str, ...]]         = (
    "   const char* progname = strrchr(program, '/');",
    "   char manpage[1024];",
    '   snprintf(manpage, sizeof(manpage), "\\x1b[1m%s\\x1b[0m", (progname != NULL) ? progname + 1 : program);',
-   '   const char* homepage = "\\x1b[1m\\x1b]8;;" PROJECT_HOMEPAGE_URL "\\a" PROJECT_HOMEPAGE_URL "\\a\\x1b]8;;\\a\\x1b[0m";',
-   '   const char* repository = "\\x1b[1m\\x1b]8;;" PROJECT_SOURCE_URL "\\a" PROJECT_SOURCE_URL "\\a\\x1b]8;;\\a\\x1b[0m";',
+   '   const char* homepage = "[\\x1b[1m\\x1b]8;;" PROJECT_HOMEPAGE_URL "\\a" PROJECT_HOMEPAGE_URL "\\a\\x1b]8;;\\a\\x1b[0m]";',
+   '   const char* repository = "[\\x1b[1m\\x1b]8;;" PROJECT_SOURCE_URL "\\a" PROJECT_SOURCE_URL "\\a\\x1b]8;;\\a\\x1b[0m]";',
+)
+cUsageVariablesGettext: Final[tuple[str, ...]]  = (
+   "   const bool rtl = isRTL();",
+   "   const char* progname = strrchr(program, '/');",
+   "   char manpage[1024];",
+   '   snprintf(manpage, sizeof(manpage), "\\x1b[1m%s\\x1b[0m", (progname != NULL) ? progname + 1 : program);',
+   "   const char* homepage = (rtl ?",
+   '                              "\\xe2\\x80\\x8e[\\x1b[1m\\x1b]8;;" PROJECT_HOMEPAGE_URL "\\a" PROJECT_HOMEPAGE_URL "\\a\\x1b]8;;\\a\\x1b[0m]\\xe2\\x80\\x8f" :',
+   '                              "[\\x1b[1m\\x1b]8;;" PROJECT_HOMEPAGE_URL "\\a" PROJECT_HOMEPAGE_URL "\\a\\x1b]8;;\\a\\x1b[0m]");',
+   "   const char* repository = (rtl ?",
+   '                                "\\xe2\\x80\\x8e[\\x1b[1m\\x1b]8;;" PROJECT_SOURCE_URL "\\a" PROJECT_SOURCE_URL "\\a\\x1b]8;;\\a\\x1b[0m]\\xe2\\x80\\x8f" :',
+   '                                "[\\x1b[1m\\x1b]8;;" PROJECT_SOURCE_URL "\\a" PROJECT_SOURCE_URL "\\a\\x1b]8;;\\a\\x1b[0m]");',
 )
 cUsageTail: Final[tuple[str, ...]]              = (
    "   exit(exitCode);",
@@ -116,7 +128,7 @@ cTranslatorsComment: Final[tuple[str, ...]]     = (
 )
 cInfoTranslatorsComment: Final[tuple[str, ...]] = (
    "   // TRANSLATORS: Informational message at the end of usage:",
-   '   // "For further information, see the man page for <manpage>, read the documentation at [<url>], examine the source code at [<url>], or consult your favourite LLM.".',
+   '   // "For further information, see the man page for <manpage>, read the documentation at <url>, examine the source code at <url>, or consult your favourite LLM.".',
 )
 
 
@@ -176,7 +188,7 @@ cppTranslatorsComment: Final[tuple[str, ...]]   = (
 )
 cppInfoTranslatorsComment: Final[tuple[str, ...]] = (
    "             // TRANSLATORS: Informational message at the end of usage:",
-   '             // "For further information, see the man page for <manpage>, read the documentation at [<url>], examine the source code at [<url>], or consult your favourite LLM.".',
+   '             // "For further information, see the man page for <manpage>, read the documentation at <url>, examine the source code at <url>, or consult your favourite LLM.".',
 )
 
 
@@ -196,6 +208,38 @@ shellInfoTranslatorsComment: Final[tuple[str, ...]] = (
 
 
 # ###### Python usage function definitions ##################################
+pythonUsageHead: Final[tuple[str, ...]]         = (
+   "def usage(exitCode : int = 0) -> None:",
+   '   header : Final[str] = "\\x1b[4m"',
+   '   cmd    : Final[str] = "\\x1b[1m"',
+   '   opt    : Final[str] = "\\x1b[1m"',
+   '   arg    : Final[str] = "\\x1b[4m"',
+   '   syn    : Final[str] = "\\x1b[1m"',
+   '   reset  : Final[str] = "\\x1b[0m"',
+   "",
+   "   out : Final[TextIO] = sys.stderr if exitCode != 0 else sys.stdout",
+   "   program : Final[str] = os.path.basename(sys.argv[0])",
+   "",
+)
+pythonUsageVariables: Final[tuple[str, ...]]    = (
+   '   manpage : Final[str] = f"\\x1b[1m{os.path.splitext(program)[0]}\\x1b[0m"',
+   '   homepage : Final[str] = "[\\x1b[1m\\x1b]8;;@PROJECT_HOMEPAGE_URL@\\a@PROJECT_HOMEPAGE_URL@\\a\\x1b]8;;\\a\\x1b[0m]"',
+   '   repository : Final[str] = "[\\x1b[1m\\x1b]8;;@PROJECT_SOURCE_URL@\\a@PROJECT_SOURCE_URL@\\a\\x1b]8;;\\a\\x1b[0m]"',
+)
+pythonUsageVariablesGettext: Final[tuple[str, ...]] = (
+   "   rtl : Final[bool] = isRTL()",
+   '   manpage : Final[str] = f"\\x1b[1m{os.path.splitext(program)[0]}\\x1b[0m"',
+   "   homepage : Final[str] = (",
+   '      ("\\xe2\\x80\\x8e" if rtl else "") +',
+   '      "[\\x1b[1m\\x1b]8;;@PROJECT_HOMEPAGE_URL@\\a@PROJECT_HOMEPAGE_URL@\\a\\x1b]8;;\\a\\x1b[0m]" +',
+   '      ("\\xe2\\x80\\x8f" if rtl else "")',
+   "   )",
+   "   repository : Final[str] = (",
+   '      ("\\xe2\\x80\\x8e" if rtl else "") +',
+   '      "[\\x1b[1m\\x1b]8;;@PROJECT_SOURCE_URL@\\a@PROJECT_SOURCE_URL@\\a\\x1b]8;;\\a\\x1b[0m]" +',
+   '      ("\\xe2\\x80\\x8f" if rtl else "")',
+   "   )",
+)
 pythonUsageTail: Final[tuple[str, ...]]         = (
    "   sys.exit(exitCode)",
 )
@@ -205,7 +249,7 @@ pythonTranslatorsComment: Final[tuple[str, ...]] = (
 )
 pythonInfoTranslatorsComment: Final[tuple[str, ...]] = (
    "   # TRANSLATORS: Informational message at the end of usage:",
-   '   # "For further information, see the man page for <manpage>, read the documentation at [<url>], examine the source code at [<url>], or consult your favourite LLM.".',
+   '   # "For further information, see the man page for <manpage>, read the documentation at <url>, examine the source code at <url>, or consult your favourite LLM.".',
 )
 
 
@@ -818,7 +862,10 @@ def renderUsageC(
 ) -> str:
    """Generate a complete C usage() function with fprintf(stderr, ...) and C macros."""
    lines: Final[list[str]] = list(cUsageHead)
-   lines.extend(cUsageVariables)
+   if withGettext:
+      lines.extend(cUsageVariablesGettext)
+   else:
+      lines.extend(cUsageVariables)
    lines.append("")
 
    if withGettext:
@@ -866,7 +913,7 @@ def renderUsageC(
       else:
          lines[-1] = lines[-1] + ");"
 
-   infoExpr: Final[str] = f'gettext("{infoFooterPrintf}\\n")' if withGettext else f'"{infoFooterPrintf}\\n"'
+   infoExpr: Final[str] = f'gettext("{cInfoFooterPrintf}\\n")' if withGettext else f'"{cInfoFooterPrintf}\\n"'
 
    if withGettext:
       lines.extend(cInfoTranslatorsComment)
@@ -895,7 +942,7 @@ def renderUsageCpp(
       lines.extend(cppTranslatorsComment)
 
    headerText: Final[str] = 'gettext("Usage:")' if withGettext else '"Usage:"'
-   infoExpr: Final[str]   = f'gettext("{cppInfoFooterBraced}")' if withGettext else f'"{cppInfoFooterBraced}"'
+   infoExpr: Final[str]   = f'gettext("{infoFooterBraced}")' if withGettext else f'"{infoFooterBraced}"'
 
    lines.append(f'   std::cerr << HEADER({headerText}) << "\\n"')
 
@@ -1033,23 +1080,12 @@ def renderUsagePython(
    withGettext: bool = False,
 ) -> str:
    """Generate a complete Python usage() function using an f-string block."""
-   lines: Final[list[str]] = [
-      "def usage(exitCode : int = 0) -> None:",
-      '   header : Final[str] = "\\x1b[4m"',
-      '   cmd    : Final[str] = "\\x1b[1m"',
-      '   opt    : Final[str] = "\\x1b[1m"',
-      '   arg    : Final[str] = "\\x1b[4m"',
-      '   syn    : Final[str] = "\\x1b[1m"',
-      '   reset  : Final[str] = "\\x1b[0m"',
-      "",
-      "   out : Final[TextIO] = sys.stderr if exitCode != 0 else sys.stdout",
-      "   program : Final[str] = os.path.basename(sys.argv[0])",
-      "",
-      '   manpage : Final[str] = f"\\x1b[1m{os.path.splitext(program)[0]}\\x1b[0m"',
-      '   homepage : Final[str] = "\\x1b[1m\\x1b]8;;@PROJECT_HOMEPAGE_URL@\\a@PROJECT_HOMEPAGE_URL@\\a\\x1b]8;;\\a\\x1b[0m"',
-      '   repository : Final[str] = "\\x1b[1m\\x1b]8;;@PROJECT_SOURCE_URL@\\a@PROJECT_SOURCE_URL@\\a\\x1b]8;;\\a\\x1b[0m"',
-      "",
-   ]
+   lines: Final[list[str]] = list(pythonUsageHead)
+   if withGettext:
+      lines.extend(pythonUsageVariablesGettext)
+   else:
+      lines.extend(pythonUsageVariables)
+   lines.append("")
 
    if withGettext:
       lines.extend(pythonTranslatorsComment)
