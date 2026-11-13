@@ -1141,7 +1141,7 @@ def renderUsageShell(
    if withGettext:
       lines.extend(shellInfoTranslatorsComment)
 
-   lines.append(f'   printf >&2 {infoExpr}"\\n" \\')
+   lines.append(f'   printf >&2 "{infoExpr}\\n" \\')
    lines.append('      "${manpage}" "${homepage}" "${repository}"')
    lines.extend(shellUsageTail)
 

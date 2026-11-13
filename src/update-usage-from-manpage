@@ -39,7 +39,7 @@ DIRNAME="$(dirname "$0")"
 while [ $# -gt 0 ] ; do
    manpage="$1"
    shift
-   print-utf8 -n -s "\e[34m======  ${manpage} " "=" "=\e[0m"
+   print-utf8 -n -s "\e[34m====== ${manpage} " "=" "=\e[0m"
 
    # ====== Find the program ================================================
    directory="$(dirname "${manpage}")"
