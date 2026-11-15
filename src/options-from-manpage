@@ -1325,7 +1325,7 @@ def renderUsagePerl(
    lines.append("")
    lines.append("EOF")
 
-   infoExpr: Final[str] = f'gettext("{infoFooterPrintf}\\n")' if withGettext else f'"{infoFooterPrintf}\\n"'
+   infoExpr: Final[str] = f'gettext("{infoFooterPrintf}") . "\\n"' if withGettext else f'"{infoFooterPrintf}\\n"'
 
    if withGettext:
       lines.extend(perlInfoTranslatorsComment)
