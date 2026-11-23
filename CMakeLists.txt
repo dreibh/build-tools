@@ -1,13 +1,13 @@
-# ==========================================================================
-#              ____        _ _     _     _____           _
-#             | __ ) _   _(_) | __| |   |_   _|__   ___ | |___
-#             |  _ \| | | | | |/ _` |_____| |/ _ \ / _ \| / __|
-#             | |_) | |_| | | | (_| |_____| | (_) | (_) | \__ \
-#             |____/ \__,_|_|_|\__,_|     |_|\___/ \___/|_|___/
+# ===========================================================================
+#                ____        _ _     _     _____           _
+#               | __ ) _   _(_) | __| |   |_   _|__   ___ | |___
+#               |  _ \| | | | | |/ _` |_____| |/ _ \ / _ \| / __|
+#               | |_) | |_| | | | (_| |_____| | (_) | (_) | \__ \
+#               |____/ \__,_|_|_|\__,_|     |_|\___/ \___/|_|___/
 #
-#                           --- Build-Tools ---
-#                https://www.nntb.no/~dreibh/system-tools/
-# ==========================================================================
+#                              --- Build-Tools ---
+#                    https://www.nntb.no/~dreibh/build-tools/
+# ===========================================================================
 #
 # Build-Tools
 # Copyright (C) 2017-2026 by Thomas Dreibholz
@@ -28,12 +28,17 @@
 # Contact: thomas.dreibholz@gmail.com
 
 CMAKE_MINIMUM_REQUIRED(VERSION 3.10)
-PROJECT(td-build-tools)
-ENABLE_LANGUAGE(C)
-
 SET(BUILD_MAJOR "0")
 SET(BUILD_MINOR "4")
 SET(BUILD_PATCH "5")
+PROJECT(td-build-tools
+        VERSION      "${CMAKE_COMPAT_VERSION}"
+        LANGUAGES    C
+        HOMEPAGE_URL "https://www.nntb.no/~dreibh/build-tools")
+SET(PROJECT_SOURCE_URL     "https://github.com/dreibh/build-tools")
+SET(PROJECT_BUGTRACKER_URL "https://github.com/dreibh/build-tools/issues")
+SET(PROJECT_COPYRIGHT      "Copyright (C) 2017-2026 by Thomas Dreibholz")
+
 SET(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH})
 
 
@@ -50,7 +55,7 @@ INCLUDE(GNUInstallDirs)
 
 SET(CPACK_SOURCE_GENERATOR "TXZ")
 SET(CPACK_SOURCE_PACKAGE_FILE_NAME
-    "${CMAKE_PROJECT_NAME}-${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH}")
+    "${CMAKE_PROJECT_NAME}-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
 SET(CPACK_SOURCE_IGNORE_FILES "\\\\.git;\\\\.swp$;~$;\\\\.\\\\#;/\\\\#")
 LIST(APPEND CPACK_SOURCE_IGNORE_FILES "^${PROJECT_SOURCE_DIR}/${CMAKE_PROJECT_NAME}[_-]")
 LIST(APPEND CPACK_SOURCE_IGNORE_FILES "\\\\.make$|\\\\.log$")
@@ -71,12 +76,12 @@ ADD_CUSTOM_TARGET(dist COMMAND ${CMAKE_MAKE_PROGRAM} clean package_source)
 
 IF(NOT TARGET uninstall)
    CONFIGURE_FILE(
-      "${CMAKE_CURRENT_SOURCE_DIR}/cmake_uninstall.cmake.in"
-      "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
-      IMMEDIATE @ONLY)
+      "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake-uninstall.cmake.in"
+      "${CMAKE_CURRENT_BINARY_DIR}/cmake-uninstall.cmake"
+      @ONLY)
 
    ADD_CUSTOM_TARGET(uninstall
-      COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
+      COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake-uninstall.cmake)
 ENDIF()
 
 
