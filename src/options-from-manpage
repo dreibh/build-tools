@@ -68,8 +68,8 @@ macroTokens: Final[set[str]] = { "Fl", "Ar", "No", "Op", "Cm", "Sy", "Bro", "Brc
 
 # Common informational footer templates
 infoFooterBraced: Final[str] = (
-   "For further information, see the man page for {}, "
-   "read the documentation at {}, examine the source code at {}, "
+   "For further information, see the man page for {0}, "
+   "read the documentation at {1}, examine the source code at {2}, "
    "or consult your favourite LLM."
 )
 infoFooterPrintf: Final[str] = (
@@ -187,7 +187,7 @@ cppTranslatorsComment: Final[tuple[str, ...]]   = (
 )
 cppInfoTranslatorsComment: Final[tuple[str, ...]] = (
    "             // TRANSLATORS: Informational message at the end of usage:",
-   '             // "For further information, see the man page for <manpage>, read the documentation at <url>, examine the source code at <url>, or consult your favourite LLM.".',
+   "             // {0} = manpage name, {1} = documentation URL, {2} = repository URL",
 )
 
 
@@ -249,7 +249,7 @@ pythonTranslatorsComment: Final[tuple[str, ...]] = (
 )
 pythonInfoTranslatorsComment: Final[tuple[str, ...]] = (
    "   # TRANSLATORS: Informational message at the end of usage:",
-   '   # "For further information, see the man page for <manpage>, read the documentation at <url>, examine the source code at <url>, or consult your favourite LLM.".',
+   "   # {0} = manpage name, {1} = documentation URL, {2} = repository URL",
 )
 
 
@@ -326,7 +326,7 @@ def usage(exitCode: int = 0) -> None:
       f"{cmd}{program}{reset}\n"
       f"\t{syn}[{reset}{opt}-h{reset} {syn}|{reset} {opt}--help{reset}{syn}]{reset}\n"
       f"\n"
-      f"{'For further information, see the man page for {}, read the documentation at {}, examine the source code at {}, or consult your favourite LLM.'.format(manpage, homepage, repository)}\n"
+      f"{infoFooterBraced.format(manpage, homepage, repository)}\n"
    )
    sys.exit(exitCode)
 
