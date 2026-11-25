@@ -82,7 +82,7 @@ while [ $# -gt 0 ] ; do
    fi
 
    # ====== Run the options extraction script ===============================
-   echo "${options[@]}"
+   echo "Options: ${options[@]}"
    "${DIRNAME}/options-from-manpage" \
       "${manpage}" "${options[@]}" -F syntax
    "${DIRNAME}/options-from-manpage" \

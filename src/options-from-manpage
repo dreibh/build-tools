@@ -1023,11 +1023,16 @@ def renderUsageCpp(
 
    lines.append('             << "\\n"')
 
+   formatFunction : str
    if withGettext:
       lines.extend(cppInfoTranslatorsComment)
+      formatFunction = 'formatText'
+   else:
+      formatFunction = 'std::format'
+   formatFunctionIndent : Final[str] = ' ' * (len(formatFunction) + 1)
 
-   lines.append(f"             << formatText({infoExpr},")
-   lines.append('                           manpage, homepage, repository) << "\\n";')
+   lines.append(f"             << {formatFunction}({infoExpr},")
+   lines.append(f'                {formatFunctionIndent}manpage, homepage, repository) << "\\n";')
    lines.extend(cppUsageTail)
    return "\n".join(lines)
 
